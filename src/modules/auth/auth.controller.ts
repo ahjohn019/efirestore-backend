@@ -1,0 +1,46 @@
+import {
+  Body,
+  Controller,
+  Post,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Get,
+  Request,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { signInDto } from '../auth/dto/signin.dto';
+import { forgetPasswordDto } from './dto/forgetPassword.dto';
+import { updatePasswordDto } from './dto/UpdatePassword.dto';
+import { AuthGuard } from '../../commons/guards/auth';
+
+@Controller('auth')
+export class AuthController {
+  constructor(private authService: AuthService) {}
+
+  @HttpCode(HttpStatus.OK)
+  @Post('login')
+  signIn(@Body() signInDto: signInDto) {
+    return this.authService.signIn(signInDto.email, signInDto.password);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return req.user;
+  }
+
+  // forget password
+  @Post('forget-password')
+  forgetPassword(@Body() forgetPasswordDto: forgetPasswordDto) {
+    return this.authService.forgetPassword(forgetPasswordDto);
+  }
+
+  // update password
+  @Post('update-password')
+  updatePassword(@Body() updatePasswordDto: updatePasswordDto) {
+    return this.authService.updatePassword(updatePasswordDto);
+  }
+}
