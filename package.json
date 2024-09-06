@@ -22,7 +22,9 @@
     "migration:run": "npm run typeorm migration:run -- -d ./src/config/datasource.ts",
     "migration:generate": "npm run typeorm -- -d ./src/config/typeorm.ts migration:generate ./src/migrations/%npm_config_name%",
     "migration:create": "npm run typeorm -- migration:create ./src/migrations/%npm_config_name%",
-    "migration:revert": "npm run typeorm -- -d ./src/config/datasource.ts migration:revert"
+    "migration:revert": "npm run typeorm -- -d ./src/config/datasource.ts migration:revert",
+    "seed:run": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:run -d ./src/config/datasource.ts",
+    "seed:create": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:create --name src/database/seeder/%npm_config_name%"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
@@ -43,9 +45,11 @@
     "nodemailer": "^6.9.14",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.20"
+    "typeorm": "^0.3.20",
+    "typeorm-extension": "^3.6.1"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.0.0",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",

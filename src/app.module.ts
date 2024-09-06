@@ -9,6 +9,8 @@ import { IsUnique } from './shared/validation/is_unique';
 import { AuthModule } from './modules/auth/auth.module';
 import { mailerConfig } from './config/mailer';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { ProductsModule } from './modules/products/products.module';
+import { CategoriesModule } from './modules/categories/categories.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
     UsersModule,
     AuthModule,
     MailerModule.forRoot(mailerConfig()),
+    ProductsModule,
+    CategoriesModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],
