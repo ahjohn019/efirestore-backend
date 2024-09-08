@@ -7,20 +7,21 @@ import { Repository } from 'typeorm';
 import { Products } from './entities/products.entity';
 import { Categories } from '../categories/entities/categories.entity';
 import { Helper } from '../../utils/helper';
-
 @Injectable()
 export class ProductsService {
   constructor(
-    @InjectRepository(Products)
-    private productsRepository: Repository<Products>,
-
     @InjectRepository(Categories)
     private categoriesRepository: Repository<Categories>,
+
+    @InjectRepository(Products)
+    private productsRepository: Repository<Products>,
   ) {}
 
   async create(createProductDto: CreateProductDto) {
-    const categories = await this.categoriesRepository.findOneBy({
-      id: createProductDto.category_id,
+    const categories = await this.categoriesRepository.findOne({
+      where: {
+        id: createProductDto.category_id,
+      },
     });
 
     if (!categories) {
@@ -53,8 +54,10 @@ export class ProductsService {
   async update(id: number, updateProductDto: UpdateProductDto) {
     const productsEntity = await this.findOne(id);
 
-    const categories = await this.categoriesRepository.findOneBy({
-      id: updateProductDto.category_id,
+    const categories = await this.categoriesRepository.findOne({
+      where: {
+        id: updateProductDto.category_id,
+      },
     });
 
     if (!categories) {

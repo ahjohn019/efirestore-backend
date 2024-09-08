@@ -19,6 +19,10 @@ export class Categories {
   @Column()
   name: string;
 
+  @IsNotEmpty()
+  @Column()
+  slug: string;
+
   @Column({ type: 'datetime' })
   created_at: Date;
 

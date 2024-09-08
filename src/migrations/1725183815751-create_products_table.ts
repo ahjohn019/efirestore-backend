@@ -32,6 +32,7 @@ export class CreateProductsTable1725183815751 implements MigrationInterface {
           {
             name: 'category_id',
             type: 'int',
+            isNullable: true,
           },
           {
             name: 'created_at',

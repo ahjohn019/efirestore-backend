@@ -38,4 +38,7 @@ export class Helper {
       total_data,
     };
   }
+  static convertUpperCase(name: string) {
+    return name.replace(/\s+/g, ' ').trim().replace(/ /g, '_').toUpperCase();
+  }
 }
