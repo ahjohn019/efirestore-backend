@@ -37,7 +37,10 @@ export class Products {
   @Column({ type: 'datetime' })
   updated_at: Date;
 
-  @ManyToOne(() => Categories, (categories) => categories.products)
+  @ManyToOne(() => Categories, (categories) => categories.products, {
+    nullable: false,
+    eager: true,
+  })
   @JoinColumn({ name: 'category_id' })
   categories: Categories;
 

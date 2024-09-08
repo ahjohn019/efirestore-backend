@@ -1,26 +1,74 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { AllProductDto } from './dto/all-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Repository } from 'typeorm';
+import { Products } from './entities/products.entity';
+import { Categories } from '../categories/entities/categories.entity';
+import { Helper } from '../../utils/helper';
 
 @Injectable()
 export class ProductsService {
-  create(createProductDto: CreateProductDto) {
-    return 'This action adds a new product';
+  constructor(
+    @InjectRepository(Products)
+    private productsRepository: Repository<Products>,
+
+    @InjectRepository(Categories)
+    private categoriesRepository: Repository<Categories>,
+  ) {}
+
+  async create(createProductDto: CreateProductDto) {
+    const categories = await this.categoriesRepository.findOneBy({
+      id: createProductDto.category_id,
+    });
+
+    if (!categories) {
+      throw new Error('Category not found');
+    }
+
+    const products = this.productsRepository.create({
+      ...createProductDto,
+      categories,
+    });
+
+    return this.productsRepository.save(products);
   }
 
-  findAll() {
-    return `This action returns all products`;
+  async findAll(allProductDto: AllProductDto) {
+    return await Helper.calculatePagination<Products>(
+      allProductDto,
+      this.productsRepository,
+    );
   }
 
   findOne(id: number) {
-    return `This action returns a #${id} product`;
+    return this.productsRepository.findOne({
+      where: {
+        id: id,
+      },
+    });
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
-    return `This action updates a #${id} product`;
+  async update(id: number, updateProductDto: UpdateProductDto) {
+    const productsEntity = await this.findOne(id);
+
+    const categories = await this.categoriesRepository.findOneBy({
+      id: updateProductDto.category_id,
+    });
+
+    if (!categories) {
+      throw new Error('Category not found');
+    }
+
+    await this.productsRepository.save(
+      Object.assign(productsEntity, { ...updateProductDto, categories }),
+    );
+
+    return productsEntity;
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} product`;
+  async remove(id: number) {
+    return await this.productsRepository.delete(id);
   }
 }
