@@ -15,6 +15,7 @@ import { signInDto } from '../auth/dto/signin.dto';
 import { forgetPasswordDto } from './dto/forgetPassword.dto';
 import { updatePasswordDto } from './dto/UpdatePassword.dto';
 import { AuthGuard } from '../../commons/guards/auth';
+import { Users } from '../users/entities/users.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -28,7 +29,8 @@ export class AuthController {
 
   @UseGuards(AuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
+  getProfile(@Request() req, user: Users) {
+    console.log(req);
     return req.user;
   }
 

@@ -12,6 +12,9 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../../commons/guards/auth';
+import { RolesGuard } from '../../commons/guards/roles.guard';
+import { Roles } from '../../commons/decorators/roles.decorator';
+import { Role } from '../../enum/role.enum';
 
 @Controller('users')
 export class UsersController {
@@ -27,8 +30,9 @@ export class UsersController {
     return this.usersService.findByEmail(email);
   }
 
-  @UseGuards(AuthGuard)
   @Get()
+  @Roles(Role.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
   findAll() {
     return this.usersService.findAll();
   }

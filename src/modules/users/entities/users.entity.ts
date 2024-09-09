@@ -5,6 +5,7 @@ import {
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
+import { Role } from '../../../enum/role.enum';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 
@@ -21,6 +22,9 @@ export class Users {
 
   @Column()
   password: string;
+
+  @Column({ type: 'enum', enum: Role, default: Role.USER })
+  role: string;
 
   @Column({ nullable: true })
   remember_token: string;
