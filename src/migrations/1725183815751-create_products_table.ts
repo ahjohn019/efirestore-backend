@@ -24,6 +24,7 @@ export class CreateProductsTable1725183815751 implements MigrationInterface {
           {
             name: 'description',
             type: 'text',
+            isNullable: true,
           },
           {
             name: 'price',

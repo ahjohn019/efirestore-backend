@@ -11,7 +11,7 @@ import { mailerConfig } from './config/mailer';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
-
+import { ImagesModule } from './modules/images/images.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -23,6 +23,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
     MailerModule.forRoot(mailerConfig()),
     ProductsModule,
     CategoriesModule,
+    ImagesModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],

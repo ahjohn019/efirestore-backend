@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllProductDto } from './dto/all-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -6,7 +6,9 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { Repository } from 'typeorm';
 import { Products } from './entities/products.entity';
 import { Categories } from '../categories/entities/categories.entity';
+import { Images } from '../images/entities/images.entity';
 import { Helper } from '../../utils/helper';
+import { ImagesService } from '../images/images.service';
 @Injectable()
 export class ProductsService {
   constructor(
@@ -15,9 +17,15 @@ export class ProductsService {
 
     @InjectRepository(Products)
     private productsRepository: Repository<Products>,
+
+    @InjectRepository(Images)
+    private imagesRepository: Repository<Images>,
   ) {}
 
-  async create(createProductDto: CreateProductDto) {
+  @Inject(ImagesService)
+  private readonly imagesService: ImagesService;
+
+  async create(createProductDto: CreateProductDto, file: Express.Multer.File) {
     const categories = await this.categoriesRepository.findOne({
       where: {
         id: createProductDto.category_id,
@@ -33,7 +41,19 @@ export class ProductsService {
       categories,
     });
 
-    return this.productsRepository.save(products);
+    const savedProducts = await this.productsRepository.save(products);
+
+    const entities = {
+      category: createProductDto.image_category,
+      entity_id: savedProducts.id,
+      entity_type: products.constructor.name,
+    };
+
+    const result = { ...file, ...entities };
+
+    this.imagesService.upload(result);
+
+    return savedProducts;
   }
 
   async findAll(allProductDto: AllProductDto) {
