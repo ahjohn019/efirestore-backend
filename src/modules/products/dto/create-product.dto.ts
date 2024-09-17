@@ -4,7 +4,7 @@ import { IsNotWhitespace } from 'src/shared/validation/is_not_whitespace';
 
 export class CreateProductDto {
   @IsNotEmpty()
-  name: string;
+  title: string;
 
   @IsNotEmpty()
   @Validate(IsUnique, ['products', 'sku'])

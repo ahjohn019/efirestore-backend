@@ -30,7 +30,7 @@ export class ProductsController {
     return this.productsService.findAll(allProductDto);
   }
 
-  @Post()
+  @Post('/create')
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
   @UseInterceptors(FileInterceptor('file'))

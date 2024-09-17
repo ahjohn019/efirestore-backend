@@ -5,7 +5,7 @@ import { IsUnique } from '../../../shared/validation/is_unique';
 
 export class UpdateProductDto extends PartialType(CreateProductDto) {
   @IsNotEmpty()
-  name: string;
+  title: string;
 
   @IsNotEmpty()
   sku: string;

@@ -18,7 +18,7 @@ export class Products {
 
   @IsNotEmpty()
   @Column()
-  name: string;
+  title: string;
 
   @IsNotEmpty()
   @Column()

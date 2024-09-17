@@ -16,6 +16,6 @@ export class ProductsSeeder1725618100032 implements Seeder {
     const categoryRepository = dataSource.getRepository(Categories);
 
     productFactory.setMeta({ category: categoryRepository });
-    await productFactory.saveMany(5);
+    await productFactory.saveMany(20);
   }
 }

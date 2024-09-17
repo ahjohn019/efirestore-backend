@@ -8,11 +8,11 @@ export default setSeederFactory(Products, async (faker, data: any) => {
 
   const categoryRepository = await data.category.findOne({
     where: {
-      id: faker.number.int({ min: 1, max: 2 }),
+      id: faker.number.int({ min: 1, max: 3 }),
     },
   });
 
-  products.name = productFakerName;
+  products.title = productFakerName;
   products.sku = productFakerName.toUpperCase();
   products.description = faker.commerce.productDescription();
   products.price = parseFloat(faker.commerce.price());
