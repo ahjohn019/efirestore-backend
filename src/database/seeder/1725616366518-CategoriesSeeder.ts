@@ -18,13 +18,13 @@ export class CategoriesSeeder1725636366518 implements Seeder {
     await repository.insert([
       {
         name: 'Category One',
-        slug: 'CATEGORY-ONE',
+        slug: 'category_one',
         created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
         updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       },
       {
         name: 'Category Two',
-        slug: 'CATEGORY-TWO',
+        slug: 'category_two',
         created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
         updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       },

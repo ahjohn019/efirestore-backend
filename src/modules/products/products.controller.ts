@@ -9,6 +9,7 @@ import {
   UseGuards,
   UploadedFile,
   UseInterceptors,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductsService } from './products.service';
@@ -25,6 +26,11 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Post()
+  findAll(@Body() allProductDto: AllProductDto) {
+    return this.productsService.findAll(allProductDto);
+  }
+
+  @Post()
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
   @UseInterceptors(FileInterceptor('file'))
@@ -33,11 +39,6 @@ export class ProductsController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     return this.productsService.create(createProductDto, file);
-  }
-
-  @Get()
-  findAll(@Body() allProductDto: AllProductDto) {
-    return this.productsService.findAll(allProductDto);
   }
 
   @Get(':id')

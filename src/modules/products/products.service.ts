@@ -57,10 +57,13 @@ export class ProductsService {
   }
 
   async findAll(allProductDto: AllProductDto) {
-    return await Helper.calculatePagination<Products>(
+    const products = await Helper.calculatePagination<Products>(
       allProductDto,
       this.productsRepository,
+      allProductDto.condition,
     );
+
+    return products;
   }
 
   findOne(id: number) {

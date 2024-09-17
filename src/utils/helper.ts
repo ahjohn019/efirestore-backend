@@ -1,9 +1,10 @@
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere } from 'typeorm';
 
 export class Helper {
   static async calculatePagination<T>(
     payload: { total: number; page: number },
     repository: Repository<T>,
+    where?: FindOptionsWhere<T> | FindOptionsWhere<T>[],
   ) {
     const take = payload.total;
     const page = payload.page;
@@ -11,6 +12,7 @@ export class Helper {
     const [data, total] = await repository.findAndCount({
       take,
       skip: skip,
+      where,
     });
 
     let total_page = Math.max(Math.ceil(total / take), 1);
@@ -39,6 +41,6 @@ export class Helper {
     };
   }
   static convertUpperCase(name: string) {
-    return name.replace(/\s+/g, ' ').trim().replace(/ /g, '_').toUpperCase();
+    return name.replace(/\s+/g, ' ').trim().replace(/ /g, '_').toLowerCase();
   }
 }
