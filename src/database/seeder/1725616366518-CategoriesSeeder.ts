@@ -28,6 +28,12 @@ export class CategoriesSeeder1725636366518 implements Seeder {
         created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
         updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
       },
+      {
+        name: 'Flash Sales',
+        slug: 'flash_sales',
+        created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+        updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+      },
     ]);
   }
 }
