@@ -1,4 +1,9 @@
-import { IsNotEmpty, ValidateNested, IsObject } from 'class-validator';
+import {
+  IsNotEmpty,
+  ValidateNested,
+  IsObject,
+  IsOptional,
+} from 'class-validator';
 
 import { Type } from 'class-transformer';
 
@@ -20,8 +25,9 @@ export class AllProductDto {
   @IsNotEmpty()
   total: number;
 
+  @IsOptional()
   @IsObject()
   @ValidateNested()
   @Type(() => Condition)
-  condition: Condition;
+  condition?: Condition;
 }
