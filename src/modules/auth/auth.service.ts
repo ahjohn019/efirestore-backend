@@ -31,6 +31,7 @@ export class AuthService {
       access_token: await this.jwtService.signAsync(payload, {
         expiresIn: process.env.JWT_DURATION,
       }),
+      status: true,
     };
   }
 
