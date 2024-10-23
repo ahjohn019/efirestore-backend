@@ -12,9 +12,18 @@ export class UsersService {
     private usersRepository: Repository<Users>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<Users> {
+  async create(createUserDto: CreateUserDto): Promise<{
+    status: boolean;
+    statusCode: number;
+    data: Users;
+  }> {
     const user = this.usersRepository.create(createUserDto);
-    return this.usersRepository.save(user);
+
+    return {
+      statusCode: 200,
+      status: true,
+      data: await this.usersRepository.save(user),
+    };
   }
 
   findAll() {

@@ -14,6 +14,7 @@ import { AuthService } from './auth.service';
 import { signInDto } from '../auth/dto/signin.dto';
 import { forgetPasswordDto } from './dto/forgetPassword.dto';
 import { updatePasswordDto } from './dto/UpdatePassword.dto';
+import { checkResetPasswordExpiredDto } from './dto/checkResetPasswordExpired.dto';
 import { AuthGuard } from '../../commons/guards/auth';
 import { Users } from '../users/entities/users.entity';
 
@@ -43,5 +44,14 @@ export class AuthController {
   @Post('update-password')
   updatePassword(@Body() updatePasswordDto: updatePasswordDto) {
     return this.authService.updatePassword(updatePasswordDto);
+  }
+
+  @Post('check-reset-password-expired')
+  checkResetPasswordPageExpired(
+    @Body() checkResetPasswordExpiredDto: checkResetPasswordExpiredDto,
+  ) {
+    return this.authService.checkResetPasswordPageExpired(
+      checkResetPasswordExpiredDto,
+    );
   }
 }

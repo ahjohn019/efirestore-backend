@@ -4,4 +4,7 @@ export class forgetPasswordDto {
   @IsEmail()
   @IsNotEmpty()
   email: string;
+
+  @IsNotEmpty()
+  url: string;
 }

@@ -1,11 +1,17 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { MailerService } from '@nestjs-modules/mailer';
 import { forgetPasswordDto } from './dto/forgetPassword.dto';
 import { updatePasswordDto } from './dto/UpdatePassword.dto';
+import { checkResetPasswordExpiredDto } from './dto/checkResetPasswordExpired.dto';
 
+import * as dayjs from 'dayjs';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -19,13 +25,23 @@ export class AuthService {
 
   async signIn(email: string, pass: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
     const passwordMatch = await bcrypt.compare(pass, user.password);
 
     if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException('Invalid email or password');
     }
 
-    const payload = { username: user.name, email: user.email, role: user.role };
+    const payload = {
+      username: user.name,
+      email: user.email,
+      role: user.role,
+      status: true,
+    };
 
     return {
       access_token: await this.jwtService.signAsync(payload, {
@@ -54,8 +70,8 @@ export class AuthService {
     const generateEmailToken = await bcrypt.hash(user.email, 10);
 
     const emailLink =
-      process.env.APP_URL +
-      '/reset-password?token=' +
+      forgetPasswordDto.url +
+      '/resetPassword?token=' +
       generateEmailToken +
       '&id=' +
       user.id;
@@ -66,7 +82,7 @@ export class AuthService {
 
     this.sendEmail(forgetPasswordDto.email, emailLink);
 
-    return emailLink;
+    return { status: true, data: emailLink };
   }
 
   async updatePassword(updatePasswordDto: updatePasswordDto) {
@@ -82,6 +98,30 @@ export class AuthService {
       remember_token: null,
     });
 
-    return updatePassword;
+    return { status: true, data: updatePassword };
+  }
+
+  async checkResetPasswordPageExpired(
+    checkResetPasswordExpiredDto: checkResetPasswordExpiredDto,
+  ) {
+    const user = await this.usersService.findOne(
+      checkResetPasswordExpiredDto.id,
+    );
+
+    if (!user) {
+      throw new UnauthorizedException('User Not Found.');
+    }
+
+    const dateNow = dayjs().format('YYYY-MM-DD');
+    const dateUpdatedAt = dayjs(user.updated_at).format('YYYY-MM-DD');
+    const fetchDateNow = dayjs(dateNow);
+
+    const diffDays = fetchDateNow.diff(dateUpdatedAt, 'day', true);
+
+    if (diffDays >= 1 && user.remember_token) {
+      throw new ForbiddenException('Page Has Expired');
+    }
+
+    return { status: true };
   }
 }
