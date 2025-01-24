@@ -77,7 +77,7 @@ export class CartItemsService {
     if (createCartItemDto.quantity < 0) {
       findCartItemByProduct.quantity -= Math.abs(createCartItemDto.quantity);
     } else {
-      findCartItemByProduct.quantity += createCartItemDto.quantity;
+      findCartItemByProduct.quantity = createCartItemDto.quantity;
     }
 
     if (findCartItemByProduct.quantity <= 0) {
