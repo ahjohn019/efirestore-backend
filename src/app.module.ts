@@ -12,6 +12,8 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ImagesModule } from './modules/images/images.module';
+import { CartModule } from './modules/carts/carts.module';
+import { CartItemsModule } from './modules/cart_items/cart_items.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -24,6 +26,8 @@ import { ImagesModule } from './modules/images/images.module';
     ProductsModule,
     CategoriesModule,
     ImagesModule,
+    CartModule,
+    CartItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],

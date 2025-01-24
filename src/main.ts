@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
 import { HttpExceptionFilter } from './commons/filters/http-exception.filter';
 import { join } from 'path';
+import * as session from 'express-session';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
@@ -17,6 +18,15 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   app.useStaticAssets(join(__dirname, '..', 'public'));
+
+  app.use(
+    session({
+      secret: 'my-session',
+      resave: false,
+      saveUninitialized: true,
+      cookie: { secure: false },
+    }),
+  );
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   await app.listen(port, process.env.APP_URL);

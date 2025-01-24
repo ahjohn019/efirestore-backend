@@ -4,10 +4,13 @@ import {
   PrimaryGeneratedColumn,
   BeforeInsert,
   BeforeUpdate,
+  OneToOne,
+  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../enum/role.enum';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
+import { Carts } from '../../carts/entities/carts.entity';
 
 @Entity()
 export class Users {
@@ -34,6 +37,9 @@ export class Users {
 
   @Column({ type: 'datetime' })
   updated_at: Date;
+
+  @OneToOne(() => Carts, (cart) => cart.user)
+  cart: Carts;
 
   @BeforeInsert()
   setDefaultDates() {
