@@ -6,7 +6,6 @@ import { UpdateCartItemsDto } from './dto/update-cart_items.dto';
 import { ProductsService } from '../products/products.service';
 import { CartsService } from '../carts/carts.service';
 import { CartItems } from './entities/cart_items.entity';
-import { AuthGuard } from '../../commons/guards/auth';
 
 @Injectable()
 export class CartItemsService {
@@ -157,7 +156,7 @@ export class CartItemsService {
 
     // return failed message if cart item is empty
     if (findCartItemByProduct.length <= 0) {
-      return `Remove cartItem failed`;
+      throw new NotFoundException('Remove cart item failed');
     }
 
     // remove the cart item based on specific ids

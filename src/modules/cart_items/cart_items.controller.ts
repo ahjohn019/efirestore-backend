@@ -35,13 +35,6 @@ export class CartItemsController {
     return this.cartItemsService.findOne(+id);
   }
 
-  // @UseGuards(AuthGuard)
-  // @Get('users')
-  // cartItems(@Request() req) {
-  //   console.log('aaaaaaaaaaaaaaaaaaaaa');
-  //   return req.user;
-  // }
-
   @Put()
   update(@Body() updateCartItemDto: UpdateCartItemsDto) {
     return this.cartItemsService.update(updateCartItemDto);
