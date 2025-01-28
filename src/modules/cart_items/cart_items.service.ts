@@ -48,7 +48,7 @@ export class CartItemsService {
       createCartItemDto.quantity = initQuantity;
 
       const cartItems = this.cartsItemsRepository.create(createCartItemDto);
-      return this.cartsItemsRepository.save(cartItems);
+      return { status: true, data: this.cartsItemsRepository.save(cartItems) };
     }
 
     // find cart items & update carts items quantity
@@ -134,7 +134,7 @@ export class CartItemsService {
       cart_session_id: checkAuthUserCart.cart_session_id,
     });
 
-    return cartItemList;
+    return { status: true, data: cartItemList };
   }
 
   async update(updateCartItemDto: UpdateCartItemsDto) {
@@ -183,10 +183,13 @@ export class CartItemsService {
       cart_session_id: checkAuthUserCart.cart_session_id,
     });
 
-    return await this.cartsItemsRepository.find({
-      where: {
-        cart_session_id: checkAuthUserCart.cart_session_id,
-      },
-    });
+    return {
+      status: true,
+      data: await this.cartsItemsRepository.find({
+        where: {
+          cart_session_id: checkAuthUserCart.cart_session_id,
+        },
+      }),
+    };
   }
 }
