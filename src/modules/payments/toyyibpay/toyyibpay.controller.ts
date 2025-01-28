@@ -35,6 +35,13 @@ export class ToyyibpayController {
     return this.toyyibpayService.createCategory(req);
   }
 
+  @Post('/get-category')
+  @Roles(Role.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  getCategory(@Request() req) {
+    return this.toyyibpayService.getCategory(req);
+  }
+
   @Get()
   findAll() {
     return this.toyyibpayService.findAll();

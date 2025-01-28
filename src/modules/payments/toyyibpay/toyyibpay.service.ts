@@ -36,29 +36,58 @@ export class ToyyibpayService {
     return { status: true, data: response.data };
   }
 
-  async create(req: any) {
+  async getCategory(req: any) {
     const result = Object.assign(this.userSecretKey, req.body);
-
     const response = await firstValueFrom(
-      this.toyyibPayService.post('createBill', result, {
+      this.toyyibPayService.post('getCategoryDetails', result, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       }),
     );
 
-    const billCode = response.data[0]?.BillCode ?? null;
-
-    if (!billCode) {
-      throw new NotFoundException('Payment Url Not Found');
+    if (!response.data.CategoryName) {
+      throw new NotFoundException('Category Not Found.');
     }
 
-    const baseUrlPayment = this.baseUrl + billCode;
+    return { status: true, data: response.data };
+  }
 
-    return {
-      status: true,
-      data: baseUrlPayment,
-    };
+  async create(req: any) {
+    try {
+      const findCategory = await this.getCategory({
+        categoryCode: req.categoryCode,
+      });
+
+      if (!findCategory.data.CategoryName) {
+        throw new NotFoundException('Category Not Found.');
+      }
+
+      const result = Object.assign(this.userSecretKey, req.body);
+
+      const response = await firstValueFrom(
+        this.toyyibPayService.post('createBill', result, {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }),
+      );
+
+      const billCode = response.data[0]?.BillCode ?? null;
+
+      if (!billCode) {
+        throw new NotFoundException('Payment Url Not Found');
+      }
+
+      const baseUrlPayment = this.baseUrl + billCode;
+
+      return {
+        status: true,
+        data: baseUrlPayment,
+      };
+    } catch (error) {
+      throw error;
+    }
   }
 
   findAll() {
