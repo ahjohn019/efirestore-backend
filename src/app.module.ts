@@ -15,6 +15,7 @@ import { ImagesModule } from './modules/images/images.module';
 import { CartModule } from './modules/carts/carts.module';
 import { CartItemsModule } from './modules/cart_items/cart_items.module';
 import { ToyyibpayModule } from './modules/payments/toyyibpay/toyyibpay.module';
+import { StripeModule } from './modules/payments/stripe/stripe.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -30,6 +31,7 @@ import { ToyyibpayModule } from './modules/payments/toyyibpay/toyyibpay.module';
     CartModule,
     CartItemsModule,
     ToyyibpayModule,
+    StripeModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],
