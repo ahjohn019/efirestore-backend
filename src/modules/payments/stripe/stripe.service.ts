@@ -1,6 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { UpdateStripeDto } from './dto/update-stripe.dto';
+import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
@@ -21,16 +22,16 @@ export class StripeService {
     return { status: true, data: session };
   }
 
-  async checkoutGet(req) {
+  async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {
     const session = await this.stripe.checkout.sessions.retrieve(
-      req.body.checkout_id,
+      checkoutIdStripeDto.checkoutId,
     );
     return { status: true, data: session };
   }
 
-  async checkoutGetLineItems(req) {
+  async checkoutGetLineItems(checkoutIdStripeDto: CheckoutIdStripeDto) {
     const session = await this.stripe.checkout.sessions.listLineItems(
-      req.body.checkout_id,
+      checkoutIdStripeDto.checkoutId,
     );
     return { status: true, data: session };
   }
