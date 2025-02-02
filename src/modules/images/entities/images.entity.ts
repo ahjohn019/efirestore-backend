@@ -25,7 +25,10 @@ export class Images {
   category: string;
 
   @Column()
-  file_type: string;
+  mime_type: string;
+
+  @Column()
+  destination: string;
 
   @Column()
   entity_id: number;

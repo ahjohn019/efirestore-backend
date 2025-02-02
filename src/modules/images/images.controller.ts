@@ -7,39 +7,43 @@ import {
   Param,
   Delete,
   UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
+import { AllImageDto } from './dto/all-image.dto';
 import { CreateImageDto } from './dto/create-image.dto';
 import { UpdateImageDto } from './dto/update-image.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('images')
 export class ImagesController {
   constructor(private readonly imagesService: ImagesService) {}
 
-  @Post()
-  create(@Body() createImageDto: CreateImageDto) {
-    return this.imagesService.create(createImageDto);
+  @Post('upload')
+  @UseInterceptors(FilesInterceptor('files'))
+  uploadFiles(@UploadedFiles() files: Array<Express.Multer.File>) {
+    return this.imagesService.uploadFiles(files);
   }
 
   @Get()
-  findAll() {
-    return this.imagesService.findAll();
+  findAll(@Body() allImageDto: AllImageDto) {
+    return this.imagesService.findAll(allImageDto);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.imagesService.findOne(+id);
+  @Get('/bulk')
+  findBulk(@Body() data: { ids: number[] }) {
+    return this.imagesService.findBulk(data);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateImageDto: UpdateImageDto) {
-    return this.imagesService.update(+id, updateImageDto);
+  @UseInterceptors(FileInterceptor('file'))
+  update(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
+    return this.imagesService.update(+id, file);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.imagesService.remove(+id);
+  @Delete()
+  remove(@Body() data: { ids: number[] }) {
+    return this.imagesService.remove(data);
   }
 }

@@ -43,17 +43,17 @@ export class ProductsService {
 
     const savedProducts = await this.productsRepository.save(products);
 
-    const entities = {
-      category: createProductDto.image_category,
-      entity_id: savedProducts.id,
-      entity_type: products.constructor.name,
-    };
+    // const entities = {
+    //   category: createProductDto.image_category,
+    //   entity_id: savedProducts.id,
+    //   entity_type: products.constructor.name,
+    // };
 
-    const result = { ...file, ...entities };
+    // const result = { ...file, ...entities };
 
-    this.imagesService.upload(result);
+    // this.imagesService.upload(result);
 
-    return savedProducts;
+    return { status: true, data: savedProducts };
   }
 
   async findAll(allProductDto: AllProductDto) {

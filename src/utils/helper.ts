@@ -1,4 +1,5 @@
 import { Repository, FindOptionsWhere } from 'typeorm';
+import { unlink } from 'node:fs';
 
 export class Helper {
   static async calculatePagination<T>(
@@ -42,5 +43,11 @@ export class Helper {
   }
   static convertUpperCase(name: string) {
     return name.replace(/\s+/g, ' ').trim().replace(/ /g, '_').toLowerCase();
+  }
+
+  static unlinkFile(path: string) {
+    unlink(path, (err) => {
+      if (err) throw err;
+    });
   }
 }

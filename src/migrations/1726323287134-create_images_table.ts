@@ -28,18 +28,25 @@ export class CreateImagesTable1726323287134 implements MigrationInterface {
           {
             name: 'category',
             type: 'varchar',
+            isNullable: true,
           },
           {
-            name: 'file_type',
+            name: 'mime_type',
+            type: 'varchar',
+          },
+          {
+            name: 'destination',
             type: 'varchar',
           },
           {
             name: 'entity_id',
             type: 'int',
+            default: 0,
           },
           {
             name: 'entity_type',
             type: 'varchar',
+            isNullable: true,
           },
           {
             name: 'created_at',
