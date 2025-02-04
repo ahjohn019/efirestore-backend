@@ -25,7 +25,7 @@ export class ProductsService {
   @Inject(ImagesService)
   private readonly imagesService: ImagesService;
 
-  async create(createProductDto: CreateProductDto, file: Express.Multer.File) {
+  async create(createProductDto: CreateProductDto) {
     const categories = await this.categoriesRepository.findOne({
       where: {
         id: createProductDto.category_id,
@@ -42,16 +42,6 @@ export class ProductsService {
     });
 
     const savedProducts = await this.productsRepository.save(products);
-
-    // const entities = {
-    //   category: createProductDto.image_category,
-    //   entity_id: savedProducts.id,
-    //   entity_type: products.constructor.name,
-    // };
-
-    // const result = { ...file, ...entities };
-
-    // this.imagesService.upload(result);
 
     return { status: true, data: savedProducts };
   }

@@ -10,6 +10,7 @@ import { Images } from '../images/entities/images.entity';
 import { unlink, mkdirSync, existsSync } from 'node:fs';
 import { Helper } from '../../utils/helper';
 import * as path from 'path';
+import { CreateEntityImageDto } from './dto/create-entity-image.dto';
 
 @Injectable()
 export class ImagesService {
@@ -18,21 +19,16 @@ export class ImagesService {
     private imagesRepository: Repository<Images>,
   ) {}
 
-  async uploadFiles(files: Array<Express.Multer.File>) {
-    const maxSize = 5 * 1024 * 1024;
+  async uploadFiles(
+    files: Array<Express.Multer.File>,
+    createEntityImageDto: CreateEntityImageDto,
+  ) {
     const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
 
     // Check if directory exists, if not, create it
     if (!existsSync(uploadDir)) {
       mkdirSync(uploadDir, { recursive: true });
     }
-
-    files.forEach((file) => {
-      if (file.size > maxSize) {
-        Helper.unlinkFile(file.path);
-        throw new BadRequestException('File must not more than 5mb.');
-      }
-    });
 
     const fileList = files.map((file) => ({
       name: file.filename,
@@ -44,9 +40,10 @@ export class ImagesService {
       updated_at: new Date(),
     }));
 
-    await this.imagesRepository.save(fileList);
+    const result = { fileList, ...createEntityImageDto };
 
-    return { status: true, data: fileList };
+    await this.imagesRepository.save(result);
+    return { status: true, data: result };
   }
 
   async findAll(allImageDto: AllImageDto) {
