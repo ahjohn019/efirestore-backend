@@ -38,12 +38,13 @@ export class ImagesService {
       destination: file.destination,
       created_at: new Date(),
       updated_at: new Date(),
+      category: createEntityImageDto.category,
+      entity_id: createEntityImageDto.entity_id,
+      entity_type: createEntityImageDto.entity_type,
     }));
 
-    const result = { fileList, ...createEntityImageDto };
-
-    await this.imagesRepository.save(result);
-    return { status: true, data: result };
+    await this.imagesRepository.save(fileList);
+    return { status: true, data: fileList };
   }
 
   async findAll(allImageDto: AllImageDto) {
