@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Body,
 } from '@nestjs/common';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -10,7 +11,7 @@ import { Images } from '../images/entities/images.entity';
 import { unlink, mkdirSync, existsSync } from 'node:fs';
 import { Helper } from '../../utils/helper';
 import * as path from 'path';
-import { CreateEntityImageDto } from './dto/create-entity-image.dto';
+import { UpdateEntityImageDto } from './dto/update-entity-image.dto';
 
 @Injectable()
 export class ImagesService {
@@ -19,10 +20,7 @@ export class ImagesService {
     private imagesRepository: Repository<Images>,
   ) {}
 
-  async uploadFiles(
-    files: Array<Express.Multer.File>,
-    createEntityImageDto: CreateEntityImageDto,
-  ) {
+  async uploadFiles(files: Array<Express.Multer.File>) {
     const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
 
     // Check if directory exists, if not, create it
@@ -38,13 +36,31 @@ export class ImagesService {
       destination: file.destination,
       created_at: new Date(),
       updated_at: new Date(),
-      category: createEntityImageDto.category,
-      entity_id: createEntityImageDto.entity_id,
-      entity_type: createEntityImageDto.entity_type,
     }));
 
     await this.imagesRepository.save(fileList);
     return { status: true, data: fileList };
+  }
+
+  async updatedEntityFile(updateEntityImageDto: UpdateEntityImageDto) {
+    const findEntityFile = await this.imagesRepository.findOne({
+      where: { id: updateEntityImageDto.image_id },
+    });
+
+    if (!findEntityFile) {
+      throw new NotFoundException('File Not Found.');
+    }
+
+    const updatedEntityFile = await this.imagesRepository.update(
+      { id: updateEntityImageDto.image_id },
+      {
+        category: updateEntityImageDto.category,
+        entity_id: updateEntityImageDto.entity_id,
+        entity_type: updateEntityImageDto.entity_type,
+      },
+    );
+
+    return { status: true, data: updatedEntityFile };
   }
 
   async findAll(allImageDto: AllImageDto) {

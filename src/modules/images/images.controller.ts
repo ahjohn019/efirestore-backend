@@ -16,47 +16,28 @@ import {
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
 import { AllImageDto } from './dto/all-image.dto';
-import { CreateEntityImageDto } from './dto/create-entity-image.dto';
+import { UpdateEntityImageDto } from './dto/update-entity-image.dto';
 import { CreateImageDto } from './dto/create-image.dto';
 import { UpdateImageDto } from './dto/update-image.dto';
 import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { imageUploadInterceptor } from '../../shared/validation/file_validation';
 
 @Controller('images')
 export class ImagesController {
   constructor(private readonly imagesService: ImagesService) {}
 
   @Post('upload')
-  @UseInterceptors(
-    FilesInterceptor('files', 5, {
-      fileFilter: (req, file, cb) => {
-        const mimeTypeList = [
-          'image/jpg',
-          'image/jpeg',
-          'image/png',
-          'image/gif',
-        ];
-
-        if (!mimeTypeList.includes(file.mimetype)) {
-          return cb(
-            new BadRequestException(
-              'Only image files (JPG, PNG, GIF) are allowed!',
-            ),
-            false,
-          );
-        }
-        cb(null, true);
-      },
-      limits: {
-        fileSize: 5 * 1024 * 1024,
-      },
-    }),
-  )
+  @UseInterceptors(imageUploadInterceptor())
   uploadFiles(
     @UploadedFiles()
     files: Array<Express.Multer.File>,
-    @Body() createEntityImageDto: CreateEntityImageDto,
   ) {
-    return this.imagesService.uploadFiles(files, createEntityImageDto);
+    return this.imagesService.uploadFiles(files);
+  }
+
+  @Post('update-entity-file')
+  updatedEntityFile(@Body() updateEntityImageDto: UpdateEntityImageDto) {
+    return this.imagesService.updatedEntityFile(updateEntityImageDto);
   }
 
   @Get()
