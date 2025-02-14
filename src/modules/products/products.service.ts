@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AllProductDto } from './dto/all-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Products } from './entities/products.entity';
 import { Categories } from '../categories/entities/categories.entity';
 import { Images } from '../images/entities/images.entity';
@@ -54,6 +54,14 @@ export class ProductsService {
     );
 
     return products;
+  }
+
+  async findBulk(productIds: number[]) {
+    return await this.productsRepository.find({
+      where: {
+        id: In(productIds),
+      },
+    });
   }
 
   findOne(id: number) {

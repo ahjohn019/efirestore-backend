@@ -50,4 +50,15 @@ export class Helper {
       if (err) throw err;
     });
   }
+
+  static checkDuplicateIdsExists<T extends Record<string, any>>(
+    items: T[],
+    attribute: keyof T,
+  ): number[] {
+    const fetchIdList = items.map((item) => item[attribute]);
+
+    return fetchIdList.filter(
+      (item, index) => fetchIdList.indexOf(item) !== index,
+    );
+  }
 }

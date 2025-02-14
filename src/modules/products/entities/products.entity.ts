@@ -45,9 +45,6 @@ export class Products {
   @JoinColumn({ name: 'category_id' })
   categories: Categories;
 
-  // @ManyToOne(() => CartItems, (cart_items) => cart_items.products)
-  // cart_items: CartItems;
-
   @BeforeInsert()
   setDefaultDates() {
     const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');

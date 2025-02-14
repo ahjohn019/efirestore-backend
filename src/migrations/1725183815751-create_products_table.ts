@@ -28,7 +28,7 @@ export class CreateProductsTable1725183815751 implements MigrationInterface {
           },
           {
             name: 'price',
-            type: 'text',
+            type: 'double',
           },
           {
             name: 'category_id',

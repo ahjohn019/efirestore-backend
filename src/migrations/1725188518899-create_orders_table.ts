@@ -14,16 +14,22 @@ export class CreateOrdersTable1725188518899 implements MigrationInterface {
             generationStrategy: 'increment',
           },
           {
-            name: 'name',
+            name: 'title',
+            type: 'varchar',
+          },
+          {
+            name: 'status',
             type: 'varchar',
           },
           {
             name: 'subtotal',
             type: 'double',
+            default: 0,
           },
           {
             name: 'grand_total',
             type: 'double',
+            default: 0,
           },
           {
             name: 'shipping_address',
@@ -36,22 +42,30 @@ export class CreateOrdersTable1725188518899 implements MigrationInterface {
           {
             name: 'tracking_number',
             type: 'varchar',
+            isNullable: true,
+          },
+          {
+            name: 'remarks',
+            type: 'text',
+            isNullable: true,
           },
           {
             name: 'user_id',
             type: 'integer',
           },
           {
-            name: 'payment_id',
+            name: 'admin_id',
             type: 'integer',
           },
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),
