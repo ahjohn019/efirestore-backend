@@ -6,6 +6,7 @@ export class Helper {
     payload: { total: number; page: number },
     repository: Repository<T>,
     where?: FindOptionsWhere<T> | FindOptionsWhere<T>[],
+    relationItems?: (keyof T & string)[]
   ) {
     const take = payload.total;
     const page = payload.page;
@@ -14,6 +15,7 @@ export class Helper {
       take,
       skip: skip,
       where,
+      relations: relationItems
     });
 
     let total_page = Math.max(Math.ceil(total / take), 1);

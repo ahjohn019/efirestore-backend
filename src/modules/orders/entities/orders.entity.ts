@@ -5,9 +5,11 @@ import {
   BeforeInsert,
   BeforeUpdate,
   OneToMany,
+  ManyToOne,
+  JoinColumn
 } from 'typeorm';
+import { Users } from '../../users/entities/users.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { OrderItems } from '../../order_items/entities/order_items.entity';
 import * as dayjs from 'dayjs';
 
 @Entity()
@@ -39,12 +41,6 @@ export class Orders {
   @Column()
   remarks: string;
 
-  @Column()
-  user_id: number;
-
-  @Column()
-  admin_id: number;
-
   @CreateDateColumn({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
@@ -62,4 +58,62 @@ export class Orders {
     cascade: true,
   })
   items: OrderItems[];
+
+  @ManyToOne(() => Users, (users) => users.orders, {
+    eager: true,
+  })
+  @JoinColumn({ name: 'user_id' })
+  user: Users;
+
+  @ManyToOne(() => Users, (users) => users.orders, {
+    eager: true,
+  })
+  @JoinColumn({ name: 'admin_id' })
+  admin: Users;
 }
+
+@Entity()
+export class OrderItems {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  quantity: number;
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  unit_price: number;
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  total_price: number;
+
+  @Column()
+  product_id: number;
+
+  @Column()
+  order_id: number;
+
+  @Column({ type: 'datetime' })
+  created_at: Date;
+
+  @Column({ type: 'datetime' })
+  updated_at: Date;
+
+  @BeforeInsert()
+  setDefaultDates() {
+    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    this.created_at = new Date(currentDate);
+    this.updated_at = new Date(currentDate);
+  }
+
+  @BeforeUpdate()
+  updateTimestamp() {
+    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
+  }
+
+  @ManyToOne(() => Orders, (orders) => orders.items, {
+    eager: true,
+  })
+  @JoinColumn({ name: 'order_id' })
+  orders: Orders;
+}
+

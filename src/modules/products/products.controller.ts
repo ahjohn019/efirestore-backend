@@ -27,7 +27,7 @@ import { Role } from '../../enum/role.enum';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
-  @Post()
+  @Get()
   findAll(@Body() allProductDto: AllProductDto) {
     return this.productsService.findAll(allProductDto);
   }

@@ -10,7 +10,6 @@ import {
 import { IsNotEmpty, Validate } from 'class-validator';
 import * as dayjs from 'dayjs';
 import { Categories } from '../../categories/entities/categories.entity';
-import { CartItems } from '../../cart_items/entities/cart_items.entity';
 
 @Entity()
 export class Products {

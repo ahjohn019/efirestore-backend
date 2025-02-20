@@ -11,9 +11,7 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UsersService } from '../users/users.service';
 import { ProductsService } from '../products/products.service';
-import { OrderItemsService } from '../order_items/order_items.service';
-import { Orders } from './entities/orders.entity';
-import { OrderItems } from '../order_items/entities/order_items.entity';
+import { Orders, OrderItems } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 
 @Injectable()
@@ -21,6 +19,9 @@ export class OrdersService {
   constructor(
     @InjectRepository(Orders)
     private orderRepository: Repository<Orders>,
+
+    @InjectRepository(OrderItems)
+    private orderItemsRepository: Repository<Orders>,
   ) {}
 
   @Inject(UsersService)
@@ -28,9 +29,6 @@ export class OrdersService {
 
   @Inject(ProductsService)
   private readonly productsService: ProductsService;
-
-  @Inject(OrderItemsService)
-  private readonly orderItemsService: OrderItemsService;
 
   async create(createOrderDto: CreateOrderDto, user: { id: number }) {
     const findUser = await this.usersService.findOne(createOrderDto.user_id);
@@ -97,7 +95,7 @@ export class OrdersService {
         orderItemAmountTotalPrice.push(orderItemTotalPrice);
 
         // create order items
-        await this.orderItemsService.create(result);
+        await this.orderItemsRepository.save(result);
       }
     }
 
@@ -119,11 +117,16 @@ export class OrdersService {
     return await Helper.calculatePagination<Orders>(
       allOrderDto,
       this.orderRepository,
+      null,
+      ['items']
     );
   }
 
   async findOne(id: number) {
-    const findOrder = await this.orderRepository.findOne({where: {id}})
+    const findOrder = await this.orderRepository.findOne({
+      where: {id}, 
+      relations: ['items']
+    });
 
     if(!findOrder){
       throw new NotFoundException('Order Not Found.');

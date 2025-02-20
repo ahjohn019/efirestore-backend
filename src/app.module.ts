@@ -17,7 +17,6 @@ import { CartItemsModule } from './modules/cart_items/cart_items.module';
 import { ToyyibpayModule } from './modules/payments/toyyibpay/toyyibpay.module';
 import { StripeModule } from './modules/payments/stripe/stripe.module';
 import { OrdersModule } from './modules/orders/orders.module';
-import { OrderItemsModule } from './modules/order_items/order_items.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,8 +33,7 @@ import { OrderItemsModule } from './modules/order_items/order_items.module';
     CartItemsModule,
     ToyyibpayModule,
     StripeModule,
-    OrdersModule,
-    OrderItemsModule,
+    OrdersModule
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],

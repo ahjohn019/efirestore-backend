@@ -5,12 +5,14 @@ import {
   BeforeInsert,
   BeforeUpdate,
   OneToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../enum/role.enum';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 import { Carts } from '../../carts/entities/carts.entity';
+import { Orders } from '../../orders/entities/orders.entity';
 
 @Entity()
 export class Users {
@@ -57,4 +59,9 @@ export class Users {
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 10);
   }
+
+  @OneToMany(() => Orders, (orders) => orders.user, {
+    cascade: true,
+  })
+  orders: Orders;
 }
