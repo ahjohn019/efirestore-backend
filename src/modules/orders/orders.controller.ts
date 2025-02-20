@@ -10,8 +10,9 @@ import {
   Request,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
+import { AllOrderDto } from './dto/all-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderDto } from './dto/update-order.dto';
+import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Roles } from '../../commons/decorators/roles.decorator';
 import { AuthGuard } from '../../commons/guards/auth';
 import { RolesGuard } from '../../commons/guards/roles.guard';
@@ -31,8 +32,8 @@ export class OrdersController {
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  findAll() {
-    return this.ordersService.findAll();
+  findAll(@Body() allOrderDto: AllOrderDto) {
+    return this.ordersService.findAll(allOrderDto);
   }
 
   @Get(':id')
@@ -42,11 +43,11 @@ export class OrdersController {
     return this.ordersService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Patch('/update-status/:id')
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  update(@Param('id') id: string, @Body() updateOrderDto: UpdateOrderDto) {
-    return this.ordersService.update(+id, updateOrderDto);
+  updateOrderStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
+    return this.ordersService.updateOrderStatus(+id, updateOrderStatusDto);
   }
 
   @Delete(':id')

@@ -16,9 +16,7 @@ export class OrderItemsService {
     const saveOrderItem =
       await this.orderItemsRepository.save(createOrderItemDto);
 
-    console.log('saveOrderItem', saveOrderItem);
-
-    return 'This action adds a new orderItem';
+      return {status: true, data: saveOrderItem};
   }
 
   findAll() {
