@@ -6,6 +6,7 @@ import { UpdateCartDto } from './dto/update-carts.dto';
 import { ProductsService } from '../products/products.service';
 import { UsersService } from '../users/users.service';
 import { Carts, CartItems } from './entities/carts.entity';
+import { Helper } from '../../utils/helper';
 
 @Injectable()
 export class CartsService {
@@ -118,6 +119,7 @@ export class CartsService {
     createCartItemsDto.quantity = resultQuantity;
     createCartItemsDto.unit_total = unitTotal;
     createCartItemsDto.cart_session_id = createCart.data.cart_session_id;
+    createCartItemsDto.cart_id = createCart.data.id;
 
     const { user_id, ...createCartItemsNew } = createCartItemsDto;
 
@@ -138,5 +140,12 @@ export class CartsService {
 
     // update the cart total
     return this.updateCartTotal(user_id, cart_session_id);
+  }
+
+  async viewCartSummary(userId: number) {
+    return await this.cartsRepository.findOne({
+      where: { user_id: userId },
+      relations: ['cart_items', 'user'],
+    });
   }
 }

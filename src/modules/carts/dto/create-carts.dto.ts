@@ -30,4 +30,6 @@ export class CreateCartItemsDto {
 
   @IsNotEmpty()
   user_id: number;
+
+  cart_id: number;
 }

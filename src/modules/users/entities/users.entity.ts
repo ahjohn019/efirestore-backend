@@ -40,9 +40,6 @@ export class Users {
   @Column({ type: 'datetime' })
   updated_at: Date;
 
-  @OneToOne(() => Carts, (cart) => cart.user)
-  cart: Carts;
-
   @BeforeInsert()
   setDefaultDates() {
     const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');

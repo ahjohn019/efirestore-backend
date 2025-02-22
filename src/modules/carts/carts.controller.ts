@@ -7,7 +7,8 @@ import {
   Param,
   Delete,
   Session,
-  UseGuards
+  UseGuards,
+  Request,
 } from '@nestjs/common';
 import { CartsService } from './carts.service';
 import { CreateCartDto, CreateCartItemsDto } from './dto/create-carts.dto';
@@ -28,8 +29,9 @@ export class CartsController {
     return this.cartsService.createCartItems(createCartItemsDto);
   }
 
-  // @Get('/:cart-session-id')
-  // viewCartSummary(@Param('cart-session-id') cartSessionId: string){
-  //   return this.cartsService.viewCartSummary(cartSessionId);
-  // }
+  @Get()
+  @UseGuards(AuthGuard)
+  viewCartSummary(@Request() req) {
+    return this.cartsService.viewCartSummary(req.user.id);
+  }
 }

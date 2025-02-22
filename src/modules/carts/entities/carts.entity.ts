@@ -46,7 +46,7 @@ export class Carts {
   @OneToMany(() => CartItems, (cart_items) => cart_items.cart)
   cart_items: CartItems[];
 
-  @OneToOne(() => Users, (users) => users.cart)
+  @OneToOne(() => Users, { cascade: true })
   @JoinColumn({ name: 'user_id' })
   user: Users;
 
@@ -87,6 +87,9 @@ export class CartItems {
   cart_session_id: string;
 
   @Column()
+  cart_id: number;
+
+  @Column()
   product_id: number;
 
   @Column({ type: 'datetime' })
@@ -97,9 +100,8 @@ export class CartItems {
 
   @ManyToOne(() => Carts, (cart) => cart.cart_items, {
     nullable: true,
-    eager: true,
   })
-  @JoinColumn({ name: 'cart_session_id' })
+  @JoinColumn({ name: 'cart_id' })
   cart: Carts;
 
   @BeforeInsert()

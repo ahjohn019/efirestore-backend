@@ -34,6 +34,10 @@ export class CreateCartItemsTable1730357649284 implements MigrationInterface {
             type: 'double',
           },
           {
+            name: 'cart_id',
+            type: 'integer',
+          },
+          {
             name: 'created_at',
             type: 'datetime',
             default: 'now()',
