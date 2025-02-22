@@ -21,7 +21,6 @@ export class CreateCartItemsDto {
   @IsNotEmpty()
   quantity: number;
 
-  @IsNotEmpty()
   unit_price: number;
 
   unit_total: number;

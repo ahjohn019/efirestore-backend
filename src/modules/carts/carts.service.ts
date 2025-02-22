@@ -6,7 +6,7 @@ import { UpdateCartDto } from './dto/update-carts.dto';
 import { ProductsService } from '../products/products.service';
 import { UsersService } from '../users/users.service';
 import { Carts, CartItems } from './entities/carts.entity';
-import { Helper } from '../../utils/helper';
+import { DeleteCartItemDto } from './dto/delete-cart-item.dto';
 
 @Injectable()
 export class CartsService {
@@ -52,21 +52,19 @@ export class CartsService {
 
     if (baseQuantity < 0) {
       calculateQuantity -= Math.abs(baseQuantity);
+    } else if (baseQuantity <= 0) {
+      calculateQuantity = 1;
     } else {
       calculateQuantity = baseQuantity;
-    }
-
-    if (baseQuantity <= 0) {
-      calculateQuantity = 1;
     }
 
     return calculateQuantity;
   }
 
-  async updateCartTotal(userId: number, cartSessionId: string) {
+  async updateCartTotal(userId: number, cartId: number) {
     // retrieve the current cart items
     const fetchCartItems = await this.cartItemsRepository.find({
-      where: { cart_session_id: cartSessionId },
+      where: { cart_id: cartId },
     });
 
     // sum the cart total data
@@ -92,11 +90,15 @@ export class CartsService {
       },
     );
 
-    return { status: true, data: updateSelectedCart };
+    const resultCartUpdated = await this.cartsRepository.findOne({
+      where: { id: cartId },
+    });
+
+    return { status: true, data: resultCartUpdated };
   }
 
   async createCartItems(createCartItemsDto: CreateCartItemsDto) {
-    const { product_id, unit_price, cart_session_id } = createCartItemsDto;
+    const { product_id, cart_session_id } = createCartItemsDto;
 
     // find and create new cart
     const createCart = await this.findAndCreateCart(createCartItemsDto.user_id);
@@ -114,9 +116,10 @@ export class CartsService {
       createCartItemsDto.quantity,
     );
 
-    const unitTotal = unit_price * resultQuantity;
+    const unitTotal = findProduct.price * resultQuantity;
 
     createCartItemsDto.quantity = resultQuantity;
+    createCartItemsDto.unit_price = findProduct.price;
     createCartItemsDto.unit_total = unitTotal;
     createCartItemsDto.cart_session_id = createCart.data.cart_session_id;
     createCartItemsDto.cart_id = createCart.data.id;
@@ -139,7 +142,7 @@ export class CartsService {
     }
 
     // update the cart total
-    return this.updateCartTotal(user_id, cart_session_id);
+    return this.updateCartTotal(user_id, createCartItemsDto.cart_id);
   }
 
   async viewCartSummary(userId: number) {
@@ -147,5 +150,63 @@ export class CartsService {
       where: { user_id: userId },
       relations: ['cart_items', 'user'],
     });
+  }
+
+  async deleteCartItem(
+    deleteCartItemDto: DeleteCartItemDto,
+    request: { id: number },
+  ) {
+    const findCartItem = await this.cartItemsRepository.findOne({
+      where: {
+        cart_id: deleteCartItemDto.cart_id,
+        product_id: deleteCartItemDto.product_id,
+      },
+    });
+
+    if (!findCartItem) {
+      throw new NotFoundException('Cart item not found.');
+    }
+
+    const deleteCartItem = await this.cartItemsRepository.remove(findCartItem);
+    const updateCartTotal = await this.updateCartTotal(
+      request.id,
+      findCartItem.cart_id,
+    );
+
+    if (updateCartTotal.data.quantity <= 0) {
+      const findCart = await this.cartsRepository.findOne({
+        where: {
+          id: deleteCartItemDto.cart_id,
+          user_id: request.id,
+        },
+      });
+
+      await this.cartsRepository.remove(findCart);
+    }
+
+    return { status: true, data: deleteCartItem };
+  }
+
+  async deleteCart(request: { id: number }) {
+    const findCart = await this.cartsRepository.findOne({
+      where: {
+        user_id: request.id,
+      },
+    });
+
+    if (!findCart) {
+      throw new NotFoundException('Cart not found.');
+    }
+
+    const findCartItem = await this.cartItemsRepository.find({
+      where: {
+        cart_id: findCart.id,
+      },
+    });
+
+    await this.cartItemsRepository.remove(findCartItem);
+    await this.cartsRepository.remove(findCart);
+
+    return { status: true };
   }
 }
