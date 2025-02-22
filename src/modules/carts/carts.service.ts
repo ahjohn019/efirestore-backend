@@ -77,15 +77,17 @@ export class CartsService {
       { unit_total: 0, quantity: 0 },
     );
 
+    const { unit_total, quantity } = cartTotal;
+
     // update the subtotal and grand total to the main cart, by the user id
     const updateSelectedCart = await this.cartsRepository.update(
       {
         user_id: userId,
       },
       {
-        subtotal: cartTotal.unit_total,
-        grand_total: cartTotal.unit_total,
-        quantity: cartTotal.quantity,
+        subtotal: unit_total,
+        grand_total: unit_total,
+        quantity,
       },
     );
 
