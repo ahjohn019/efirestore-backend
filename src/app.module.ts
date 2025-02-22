@@ -13,7 +13,6 @@ import { ProductsModule } from './modules/products/products.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ImagesModule } from './modules/images/images.module';
 import { CartModule } from './modules/carts/carts.module';
-import { CartItemsModule } from './modules/cart_items/cart_items.module';
 import { ToyyibpayModule } from './modules/payments/toyyibpay/toyyibpay.module';
 import { StripeModule } from './modules/payments/stripe/stripe.module';
 import { OrdersModule } from './modules/orders/orders.module';
@@ -30,7 +29,6 @@ import { OrdersModule } from './modules/orders/orders.module';
     CategoriesModule,
     ImagesModule,
     CartModule,
-    CartItemsModule,
     ToyyibpayModule,
     StripeModule,
     OrdersModule

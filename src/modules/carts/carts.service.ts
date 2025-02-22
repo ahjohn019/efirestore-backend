@@ -34,6 +34,7 @@ export class CartsService {
       if (!findCartUser) {
         throw new NotFoundException('User Not Found.');
       }
+
       const createCart = await this.cartsRepository.save({
         user_id: userId,
         cart_session_id: (Math.random() + 1).toString(36).substring(2),
@@ -61,17 +62,44 @@ export class CartsService {
     return calculateQuantity;
   }
 
-  async createCartItems(createCartItemsDto: CreateCartItemsDto) {
-    // create new cart
-    const { product_id, unit_price, cart_session_id } = createCartItemsDto;
+  async updateCartTotal(userId: number, cartSessionId: string){
+    // retrieve the current cart items
+    const fetchCartItems = await this.cartItemsRepository.find({
+      where: { cart_session_id: cartSessionId }
+    });
 
+    // map the unit total into list
+    const mapCartItemsUnitTotal = fetchCartItems.map((cart) => cart.unit_total);
+
+    // map the unit total to cart total
+    const cartTotal = mapCartItemsUnitTotal.reduce((acc, item) => acc + item , 0);
+
+    // update the subtotal and grand total to the main cart, by the user id
+    const updateSelectedCart = await this.cartsRepository.update({
+      user_id: userId
+    }, {
+      subtotal: cartTotal,
+      grand_total: cartTotal
+    });
+
+    return { status: true, data: updateSelectedCart }
+  }
+
+  async createCartItems(createCartItemsDto: CreateCartItemsDto) {
+    const { product_id, unit_price, cart_session_id } = createCartItemsDto;
+    
+    // find and create new cart
     const createCart = await this.findAndCreateCart(createCartItemsDto.user_id);
+
+    // find product exists
     const findProduct = await this.productsService.findOne(product_id);
 
+    // if product not exists, return error messages
     if (!findProduct) {
       throw new NotFoundException('Product Not Found.');
     }
 
+    // calculate the cart quantity
     const resultQuantity = await this.calculateCartQuantity(
       createCartItemsDto.quantity,
     );
@@ -84,75 +112,22 @@ export class CartsService {
 
     const { user_id, ...createCartItemsNew } = createCartItemsDto;
 
-    // find if product id and cart session id is same, update the data
+    // find the product id and cart session id is same
     const findProductInSession = await this.cartItemsRepository.findOne({
       where: { product_id: product_id, cart_session_id: cart_session_id },
     });
 
+    // if product in session update data, else create data
     if (findProductInSession) {
       await this.cartItemsRepository.update(
         findProductInSession.id,
         createCartItemsNew,
       );
+    } else {
+      await this.cartItemsRepository.save(createCartItemsDto);
     }
 
-    await this.cartItemsRepository.save(createCartItemsDto);
-  }
-
-  ///////////////////////////////////////////////////// old code
-  async create(createCartDto: CreateCartDto) {
-    const cart = await this.cartsRepository.create(createCartDto);
-
-    return this.cartsRepository.save(cart);
-  }
-
-  findAll() {
-    return `This action returns all cart`;
-  }
-
-  findOne(id: number) {
-    return this.cartsRepository.findOne({
-      where: {
-        id: id,
-      },
-    });
-  }
-
-  findCartSession(session: string) {
-    return this.cartsRepository.findOne({
-      where: {
-        cart_session_id: session,
-      },
-    });
-  }
-
-  findCartUserId(user_id: number) {
-    return this.cartsRepository.findOne({
-      where: {
-        user_id: user_id,
-      },
-    });
-  }
-
-  async update(id: number, updateCartDto: UpdateCartDto) {
-    const cartsEntity = await this.findOne(id);
-    await this.cartsRepository.save(Object.assign(cartsEntity, updateCartDto));
-
-    return cartsEntity;
-
-    // return `This action updates a #${id} cart`;
-  }
-
-  async updateByUserId(user_id: number, updateCartDto: UpdateCartDto) {
-    const cartsEntity = await this.findCartUserId(user_id);
-    await this.cartsRepository.save(Object.assign(cartsEntity, updateCartDto));
-
-    return cartsEntity;
-
-    // return `This action updates a #${id} cart`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} cart`;
+    // update the cart total
+    return this.updateCartTotal(user_id, cart_session_id);
   }
 }
