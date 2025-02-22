@@ -118,11 +118,14 @@ export class CartsService {
 
     const unitTotal = findProduct.price * resultQuantity;
 
-    createCartItemsDto.quantity = resultQuantity;
-    createCartItemsDto.unit_price = findProduct.price;
-    createCartItemsDto.unit_total = unitTotal;
-    createCartItemsDto.cart_session_id = createCart.data.cart_session_id;
-    createCartItemsDto.cart_id = createCart.data.id;
+    createCartItemsDto = {
+      ...createCartItemsDto,
+      quantity: resultQuantity,
+      unit_price: findProduct.price,
+      unit_total: unitTotal,
+      cart_session_id: createCart.data.cart_session_id,
+      cart_id: createCart.data.id,
+    };
 
     const { user_id, ...createCartItemsNew } = createCartItemsDto;
 
