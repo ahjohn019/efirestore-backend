@@ -79,7 +79,7 @@ export class CartsService {
     const { unit_total, quantity } = cartTotal;
 
     // update the subtotal and grand total to the main cart, by the user id
-    const updateSelectedCart = await this.cartsRepository.update(
+    await this.cartsRepository.update(
       {
         user_id: userId,
       },
@@ -191,24 +191,18 @@ export class CartsService {
   }
 
   async deleteCart(request: { id: number }) {
-    const findCart = await this.cartsRepository.findOne({
-      where: {
-        user_id: request.id,
-      },
+    const findCart = await this.cartsRepository
+      .findOneOrFail({
+        where: { user_id: request.id },
+      })
+      .catch(() => {
+        throw new NotFoundException('Cart not found.');
+      });
+
+    await this.cartItemsRepository.delete({
+      cart_id: findCart.id,
     });
-
-    if (!findCart) {
-      throw new NotFoundException('Cart not found.');
-    }
-
-    const findCartItem = await this.cartItemsRepository.find({
-      where: {
-        cart_id: findCart.id,
-      },
-    });
-
-    await this.cartItemsRepository.remove(findCartItem);
-    await this.cartsRepository.remove(findCart);
+    await this.cartsRepository.delete(findCart.id);
 
     return { status: true };
   }
