@@ -62,32 +62,39 @@ export class CartsService {
     return calculateQuantity;
   }
 
-  async updateCartTotal(userId: number, cartSessionId: string){
+  async updateCartTotal(userId: number, cartSessionId: string) {
     // retrieve the current cart items
     const fetchCartItems = await this.cartItemsRepository.find({
-      where: { cart_session_id: cartSessionId }
+      where: { cart_session_id: cartSessionId },
     });
 
-    // map the unit total into list
-    const mapCartItemsUnitTotal = fetchCartItems.map((cart) => cart.unit_total);
-
-    // map the unit total to cart total
-    const cartTotal = mapCartItemsUnitTotal.reduce((acc, item) => acc + item , 0);
+    // sum the cart total data
+    const cartTotal = fetchCartItems.reduce(
+      (acc, item) => ({
+        unit_total: acc.unit_total + item.unit_total,
+        quantity: acc.quantity + item.quantity,
+      }),
+      { unit_total: 0, quantity: 0 },
+    );
 
     // update the subtotal and grand total to the main cart, by the user id
-    const updateSelectedCart = await this.cartsRepository.update({
-      user_id: userId
-    }, {
-      subtotal: cartTotal,
-      grand_total: cartTotal
-    });
+    const updateSelectedCart = await this.cartsRepository.update(
+      {
+        user_id: userId,
+      },
+      {
+        subtotal: cartTotal.unit_total,
+        grand_total: cartTotal.unit_total,
+        quantity: cartTotal.quantity,
+      },
+    );
 
-    return { status: true, data: updateSelectedCart }
+    return { status: true, data: updateSelectedCart };
   }
 
   async createCartItems(createCartItemsDto: CreateCartItemsDto) {
     const { product_id, unit_price, cart_session_id } = createCartItemsDto;
-    
+
     // find and create new cart
     const createCart = await this.findAndCreateCart(createCartItemsDto.user_id);
 
