@@ -27,7 +27,7 @@ export class CreateCartItemsTable1730357649284 implements MigrationInterface {
           },
           {
             name: 'unit_price',
-            type: 'int',
+            type: 'double',
           },
           {
             name: 'unit_total',
@@ -36,10 +36,12 @@ export class CreateCartItemsTable1730357649284 implements MigrationInterface {
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

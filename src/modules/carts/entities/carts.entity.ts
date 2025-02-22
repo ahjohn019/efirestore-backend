@@ -7,10 +7,10 @@ import {
   OneToMany,
   OneToOne,
   JoinColumn,
+  ManyToOne,
 } from 'typeorm';
-import { IsNotEmpty, Validate } from 'class-validator';
+import { IsNotEmpty } from 'class-validator';
 import * as dayjs from 'dayjs';
-import { CartItems } from '../../cart_items/entities/cart_items.entity';
 import { Users } from '../../users/entities/users.entity';
 
 @Entity()
@@ -44,7 +44,7 @@ export class Carts {
   user_id: number;
 
   @OneToMany(() => CartItems, (cart_items) => cart_items.cart)
-  cart_items: CartItems;
+  cart_items: CartItems[];
 
   @OneToOne(() => Users, (users) => users.cart)
   @JoinColumn({ name: 'user_id' })
@@ -54,6 +54,53 @@ export class Carts {
   setCartSessionId() {
     this.cart_session_id = (Math.random() + 5).toString(36).substring(2);
   }
+
+  @BeforeInsert()
+  setDefaultDates() {
+    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    this.created_at = new Date(currentDate);
+    this.updated_at = new Date(currentDate);
+  }
+
+  @BeforeUpdate()
+  updateTimestamp() {
+    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
+  }
+}
+@Entity()
+export class CartItems {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @IsNotEmpty()
+  @Column()
+  quantity: number;
+
+  @IsNotEmpty()
+  @Column('decimal', { precision: 10, scale: 2 })
+  unit_price: number;
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  unit_total: number;
+
+  @Column()
+  cart_session_id: string;
+
+  @Column()
+  product_id: number;
+
+  @Column({ type: 'datetime' })
+  created_at: Date;
+
+  @Column({ type: 'datetime' })
+  updated_at: Date;
+
+  @ManyToOne(() => Carts, (cart) => cart.cart_items, {
+    nullable: true,
+    eager: true,
+  })
+  @JoinColumn({ name: 'cart_session_id' })
+  cart: Carts;
 
   @BeforeInsert()
   setDefaultDates() {

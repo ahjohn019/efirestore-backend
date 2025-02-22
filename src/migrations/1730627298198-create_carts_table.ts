@@ -20,26 +20,32 @@ export class CreateCartsTable1730627298198 implements MigrationInterface {
           {
             name: 'quantity',
             type: 'int',
+            default: 0,
           },
           {
             name: 'subtotal',
             type: 'double',
+            default: 0,
           },
           {
             name: 'grand_total',
             type: 'double',
+            default: 0,
           },
           {
             name: 'cart_session_id',
             type: 'varchar',
+            isNullable: true,
           },
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

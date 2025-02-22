@@ -9,22 +9,21 @@ import {
   Session,
 } from '@nestjs/common';
 import { CartsService } from './carts.service';
-import { CreateCartDto } from './dto/create-carts.dto';
+import { CreateCartDto, CreateCartItemsDto } from './dto/create-carts.dto';
 import { UpdateCartDto } from './dto/update-carts.dto';
 
 @Controller('cart')
 export class CartsController {
   constructor(private readonly cartsService: CartsService) {}
 
-  @Get('get-session')
-  getSession(@Session() session: Record<string, any>) {
-    return session.visits;
+  @Post('find-cart/:id')
+  findAndCreateCart(@Param('id') userId: number) {
+    return this.cartsService.findAndCreateCart(userId);
   }
 
-  @Post('post-session')
-  postSession(@Session() session: Record<string, any>) {
-    session.visits = session.visits ? session.visits + 1 : 1;
-    return session.visits;
+  @Post('create-cart-items')
+  createCartItems(@Body() createCartItemsDto: CreateCartItemsDto) {
+    return this.cartsService.createCartItems(createCartItemsDto);
   }
 
   @Post()
