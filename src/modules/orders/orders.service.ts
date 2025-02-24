@@ -7,7 +7,7 @@ import {
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, OrderItemDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { UsersService } from '../users/users.service';
 import { ProductsService } from '../products/products.service';
@@ -31,18 +31,22 @@ export class OrdersService {
   private readonly productsService: ProductsService;
 
   async create(createOrderDto: CreateOrderDto, user: { id: number }) {
-    const findUser = await this.usersService.findOne(createOrderDto.user_id);
-    createOrderDto.admin_id = user.id;
-    const items: OrderItems[] = createOrderDto.items;
-    const orderItemAmountTotalPrice = [];
+    // const findUser = await this.usersService.findOne(createOrderDto.user_id);
+    const findUser = await this.usersService.findByEmail(createOrderDto.customer_email);
 
     if (!findUser) {
       throw new NotFoundException('User Not Found.');
     }
 
+    createOrderDto.user_id = findUser.id;
+    createOrderDto.admin_id = user.id;
+
+    const orderItems: OrderItemDto[] = createOrderDto.items;
+    const orderItemAmountTotalPrice = [];
+
     // find product duplicate
     const checkDuplicateProductIds = Helper.checkDuplicateIdsExists(
-      items,
+      orderItems,
       'product_id',
     );
 
@@ -71,7 +75,7 @@ export class OrdersService {
 
     // if order items exists , create order item lists
     if (createOrderDto.items.length > 0) {
-      for (const item of items) {
+      for (const item of orderItems) {
         // check if product exists on store
         const checkProductExists = await this.productsService.findOne(
           item.product_id,
@@ -86,7 +90,7 @@ export class OrdersService {
         const orderItemTotalPrice = item.quantity * item.unit_price;
 
         // combine order item total price with the item lists
-        const result = {
+        const result: OrderItemDto = {
           total_price: orderItemTotalPrice,
           ...item,
         };

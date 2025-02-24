@@ -70,6 +70,13 @@ export class Orders {
   })
   @JoinColumn({ name: 'admin_id' })
   admin: Users;
+
+  @Column()
+  user_id: number;
+
+  @Column()
+  admin_id: number;
+  total_price: number;
 }
 
 @Entity()

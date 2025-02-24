@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { UpdateStripeDto } from './dto/update-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
@@ -36,19 +36,35 @@ export class StripeService {
     return { status: true, data: session };
   }
 
-  findAll() {
-    return `This action returns all stripe`;
-  }
+  async postWebhook(request: {headers: string, rawBody: Buffer}){
+    const signature = request.headers['stripe-signature'];
+    const event = this.stripe.webhooks.constructEvent(request.rawBody, signature, this.configService.get<string>('STRIPE_ENDPOINT_SECRET'));
 
-  findOne(id: number) {
-    return `This action returns a #${id} stripe`;
-  }
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const fetchCheckoutId = event.data?.object?.id || null;
+        const checkoutSuccessPayload = {
+          "checkoutId" : fetchCheckoutId
+        };
+        const checkoutGetData = await this.checkoutGet(checkoutSuccessPayload);
 
-  update(id: number, updateStripeDto: UpdateStripeDto) {
-    return `This action updates a #${id} stripe`;
-  }
+        const { id, status, customer_details } = checkoutGetData.data;
 
-  remove(id: number) {
-    return `This action removes a #${id} stripe`;
+        const fullAddress = customer_details.address.line1 + " " + customer_details.address.line2 + " " + customer_details.address.postal_code + " " + customer_details.address.city + " " + customer_details.address.state + " " + customer_details.address.country;
+
+        const saveOrderPayload = {
+          "title": "Order " + id,
+          "status": status,
+          "shipping_address": fullAddress,
+          "billing_address": fullAddress
+        }
+
+
+        console.log('checkoutGetDataCompleted', checkoutGetData);
+        break;
+    
+      default:
+        throw new NotFoundException('Event type not found.');
+    }
   }
 }
