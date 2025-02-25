@@ -4,14 +4,47 @@ import {
   Validate,
   MaxLength,
   IsArray,
+  IsIn,
   ArrayNotEmpty,
+  IsEnum
 } from 'class-validator';
 import { PaymentMethodType } from '../../../../enum/stripe-payment-method.enum';
-  
+import { PaymentMode } from '../../../../enum/stripe-payment-mode.enum';
 
+class ProductDataDto {
+  name: string;
+  meta_key: Record<string, any>
+}
+class LineItemsPriceDataDto {
+  currency: string;
+  product_data: ProductDataDto;
+  unit_amount: number;
+}
+class LineItemsDto {
+  price_data: LineItemsPriceDataDto;
+  quantity: number;
+}
 export class CreateStripeDto {
     @IsNotEmpty()
     @IsArray()
     @ArrayNotEmpty()
-    payment_method_types: PaymentMethodType;
+    @IsEnum(PaymentMethodType, { each: true })
+    payment_method_types: PaymentMethodType[];
+
+    @ArrayNotEmpty()
+    @IsArray()
+    line_items?: LineItemsDto[];
+
+    @IsEmail()
+    customer_email: string;
+
+    @IsNotEmpty()
+    @IsEnum(PaymentMode)
+    mode: PaymentMode;
+
+    @IsNotEmpty()
+    success_url: string;
+
+    @IsNotEmpty()
+    cancel_url: string;
 }

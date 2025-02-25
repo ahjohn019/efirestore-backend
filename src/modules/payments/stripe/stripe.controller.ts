@@ -3,20 +3,12 @@ import {
   Get,
   Post,
   Body,
-  Patch,
-  Param,
-  Delete,
   UseGuards,
-  RawBodyRequest,
   Request,
 } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import { CreateStripeDto } from './dto/create-stripe.dto';
-import { UpdateStripeDto } from './dto/update-stripe.dto';
-import { RolesGuard } from '../../../commons/guards/roles.guard';
-import { Roles } from '../../../commons/decorators/roles.decorator';
-import { Role } from '../../../enum/role.enum';
 import { AuthGuard } from '../../../commons/guards/auth';
 
 @Controller('stripe')
@@ -25,8 +17,8 @@ export class StripeController {
 
   @Post('/checkout')
   @UseGuards(AuthGuard)
-  checkout(@Body() createStripeDto: CreateStripeDto, @Request() req) {
-    return this.stripeService.checkout(createStripeDto, req);
+  checkout(@Body() createStripeDto: CreateStripeDto) {
+    return this.stripeService.checkout(createStripeDto);
   }
 
   @Post('/checkout/get')
