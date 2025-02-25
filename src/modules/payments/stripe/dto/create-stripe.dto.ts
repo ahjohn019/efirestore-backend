@@ -4,10 +4,12 @@ import {
   Validate,
   MaxLength,
   IsArray,
-  IsIn,
+  IsInt,
   ArrayNotEmpty,
-  IsEnum
+  IsEnum,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PaymentMethodType } from '../../../../enum/stripe-payment-method.enum';
 import { PaymentMode } from '../../../../enum/stripe-payment-mode.enum';
 
@@ -21,11 +23,16 @@ class LineItemsPriceDataDto {
   unit_amount: number;
 }
 class LineItemsDto {
+  @IsNotEmpty()
+  @ValidateNested()
+  @Type(() => LineItemsPriceDataDto)
   price_data: LineItemsPriceDataDto;
+
+  @IsNotEmpty()
+  @IsInt()
   quantity: number;
 }
 export class CreateStripeDto {
-    @IsNotEmpty()
     @IsArray()
     @ArrayNotEmpty()
     @IsEnum(PaymentMethodType, { each: true })
@@ -33,7 +40,9 @@ export class CreateStripeDto {
 
     @ArrayNotEmpty()
     @IsArray()
-    line_items?: LineItemsDto[];
+    @ValidateNested()
+    @Type(() => LineItemsDto)
+    line_items: LineItemsDto[];
 
     @IsEmail()
     customer_email: string;

@@ -3,9 +3,8 @@ import { CreateStripeDto } from './dto/create-stripe.dto';
 import { UpdateStripeDto } from './dto/update-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
-import { create } from 'domain';
 
 @Injectable()
 export class StripeService {
@@ -25,6 +24,11 @@ export class StripeService {
 
   async checkout(createStripeDto: CreateStripeDto) {
     const findUserByEmail = await this.usersService.findByEmail(createStripeDto.customer_email);
+
+    if(!findUserByEmail){
+      throw new NotFoundException('User not found.');
+    }
+
     const session = await this.stripe.checkout.sessions.create(createStripeDto);
     return { status: true, data: session };
   }
