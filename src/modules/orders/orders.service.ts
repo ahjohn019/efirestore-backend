@@ -13,6 +13,7 @@ import { UsersService } from '../users/users.service';
 import { ProductsService } from '../products/products.service';
 import { Orders, OrderItems } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
+import { Product } from '../../utils/product';
 
 @Injectable()
 export class OrdersService {
@@ -44,25 +45,19 @@ export class OrdersService {
     const orderItems: OrderItemDto[] = createOrderDto.items;
     const orderItemAmountTotalPrice = [];
 
-    // find product duplicate
+    // find duplicate product ids
+    const orderItemIds = orderItems.map((item) => item.product_id);
+
     const checkDuplicateProductIds = Helper.checkDuplicateIdsExists(
-      orderItems,
-      'product_id',
+      orderItemIds
     );
 
-    // find duplicate products with id lists
-    const findDuplicateProducts = await this.productsService.findBulk(
-      checkDuplicateProductIds,
-    );
+    // find duplicate product
+    const findDuplicateProduct = await Product.findDuplicateProductSkus(this.productsService, checkDuplicateProductIds);
 
-    // check if duplicate product exists return error
-    if (findDuplicateProducts.length !== 0) {
-      const fetchProductSku = findDuplicateProducts.map((item) => item.sku);
-
-      const skuDuplicateList = fetchProductSku.join(', ');
-
+    if(findDuplicateProduct){
       throw new ConflictException(
-        `SKU : ${skuDuplicateList} cannot be repeated on current item lists, please resubmit again.`,
+          `SKU : ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`,
       );
     }
 

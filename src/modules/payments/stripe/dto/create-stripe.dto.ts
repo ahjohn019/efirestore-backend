@@ -15,7 +15,7 @@ import { PaymentMode } from '../../../../enum/stripe-payment-mode.enum';
 
 class ProductDataDto {
   name: string;
-  meta_key: Record<string, any>
+  metadata: Record<string, any>
 }
 class LineItemsPriceDataDto {
   currency: string;

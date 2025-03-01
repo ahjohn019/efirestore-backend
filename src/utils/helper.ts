@@ -53,14 +53,13 @@ export class Helper {
     });
   }
 
-  static checkDuplicateIdsExists<T extends Record<string, any>>(
-    items: T[],
-    attribute: keyof T,
-  ): number[] {
-    const fetchIdList = items.map((item) => item[attribute]);
-
-    return fetchIdList.filter(
-      (item, index) => fetchIdList.indexOf(item) !== index,
+  static checkDuplicateIdsExists(idList: number[]) {
+    const idLists = idList.filter(
+      (item, index) => idList.indexOf(item) !== index,
     );
+    
+    const uniqueDuplicateIds = [...new Set(idLists)];
+
+    return uniqueDuplicateIds;
   }
 }

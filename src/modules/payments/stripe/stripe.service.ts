@@ -1,10 +1,12 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
-import { UpdateStripeDto } from './dto/update-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { UsersService } from '../../users/users.service';
+import { ProductsService } from 'src/modules/products/products.service';
+import { Product } from '../../../utils/product';
+import { Helper } from '../../../utils/helper';
 
 @Injectable()
 export class StripeService {
@@ -22,11 +24,29 @@ export class StripeService {
   @Inject(UsersService)
   private readonly usersService: UsersService;
 
+  @Inject(ProductsService)
+  private readonly productsService: ProductsService;
+
   async checkout(createStripeDto: CreateStripeDto) {
     const findUserByEmail = await this.usersService.findByEmail(createStripeDto.customer_email);
+    const findLineItemIds = createStripeDto?.line_items.map((lineItem) => lineItem.price_data?.product_data?.metadata?.id) ?? [];
+    const findDuplicateIds = Helper.checkDuplicateIdsExists(findLineItemIds);
+
+    const findDuplicateProduct = await Product.findDuplicateProductSkus(this.productsService, findDuplicateIds);
+    const findProductIdsNotExists = await Product.findProductIdsNotExists(this.productsService, findLineItemIds);
 
     if(!findUserByEmail){
       throw new NotFoundException('User not found.');
+    }
+
+    if(findDuplicateProduct){
+      throw new ConflictException(
+          `SKU : ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`,
+      );
+    }
+
+    if(findProductIdsNotExists){
+      throw new NotFoundException(`Product Ids ${findProductIdsNotExists} not found.`);
     }
 
     const session = await this.stripe.checkout.sessions.create(createStripeDto);
