@@ -1,22 +1,35 @@
-import { ValidatorConstraint, ValidatorConstraintInterface, ValidationArguments } from 'class-validator';
-import { Product } from '../../../utils/product'; // Assuming Product helper is in this path
-import { Helper } from '../../../utils/helper'; // Assuming Helper is in this path
+import {
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+  ValidationArguments,
+} from 'class-validator';
+import { Product } from '../../../utils/product';
+import { Helper } from '../../../utils/helper';
+import { ProductsService } from '../../../modules/products/products.service';
 
 @ValidatorConstraint({ async: true })
 export class IsDuplicateProducts implements ValidatorConstraintInterface {
-  
+  private findDuplicateProducts: string;
+
+  constructor(private readonly productsService: ProductsService) {}
+
   async validate(value: any, args: ValidationArguments) {
-    // console.log('value', value.map((lineItem) => lineItem.price_data?.product_data?.metadata?.id ?? []));
-    console.log('value', value.lineItemIds);
-    console.log('args', args);
+    const lineItemIds = value.map(
+      (lineItem) => lineItem.price_data?.product_data?.metadata?.id ?? [],
+    );
+    const findDuplicateIds = Helper.checkDuplicateIdsExists(lineItemIds);
 
+    this.findDuplicateProducts = await Product.findDuplicateProductSkus(
+      this.productsService,
+      findDuplicateIds,
+    );
 
-
-
-    return true;
+    return (
+      !this.findDuplicateProducts || this.findDuplicateProducts.length === 0
+    );
   }
 
   defaultMessage(args: ValidationArguments) {
-    return 'Duplicate products are not allowed in line_items';
+    return `SKU: ${this.findDuplicateProducts} cannot be repeated on current item lists, please resubmit again.`;
   }
 }

@@ -1,4 +1,10 @@
-import { Injectable, Inject, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
@@ -27,21 +33,23 @@ export class StripeService {
   @Inject(ProductsService)
   private readonly productsService: ProductsService;
 
-  async customValidation(createStripeDto: CreateStripeDto){
-    const findLineItemIds = createStripeDto?.line_items.map((lineItem) => lineItem.price_data?.product_data?.metadata?.id) ?? [];
-    const findDuplicateIds = Helper.checkDuplicateIdsExists(findLineItemIds);
+  async customValidation(createStripeDto: CreateStripeDto) {
+    const findLineItemIds =
+      createStripeDto?.line_items.map(
+        (lineItem) => lineItem.price_data?.product_data?.metadata?.id,
+      ) ?? [];
 
-    const findDuplicateProduct = await Product.findDuplicateProductSkus(this.productsService, findDuplicateIds);
-    const findProductIdsNotExists = await Product.findProductIdsNotExists(this.productsService, findLineItemIds);
+    const findProductIdsNotExists = await Product.findProductIdsNotExists(
+      this.productsService,
+      findLineItemIds,
+    );
 
     const errors = [];
 
-    if(findDuplicateProduct){
-      errors.push({"sku" : `SKU: ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`});
-    }
-
-    if(findProductIdsNotExists){
-      errors.push({"product_ids" : `Product Ids ${findProductIdsNotExists} not found.`});
+    if (findProductIdsNotExists) {
+      errors.push({
+        product_ids: `Product Ids ${findProductIdsNotExists} not found.`,
+      });
     }
 
     return errors;
@@ -72,33 +80,47 @@ export class StripeService {
     return { status: true, data: session };
   }
 
-  async postWebhook(request: {headers: string, rawBody: Buffer}){
+  async postWebhook(request: { headers: string; rawBody: Buffer }) {
     const signature = request.headers['stripe-signature'];
-    const event = this.stripe.webhooks.constructEvent(request.rawBody, signature, this.configService.get<string>('STRIPE_ENDPOINT_SECRET'));
+    const event = this.stripe.webhooks.constructEvent(
+      request.rawBody,
+      signature,
+      this.configService.get<string>('STRIPE_ENDPOINT_SECRET'),
+    );
 
     switch (event.type) {
       case 'checkout.session.completed':
         const fetchCheckoutId = event.data?.object?.id || null;
         const checkoutSuccessPayload = {
-          "checkoutId" : fetchCheckoutId
+          checkoutId: fetchCheckoutId,
         };
         const checkoutGetData = await this.checkoutGet(checkoutSuccessPayload);
 
         const { id, status, customer_details } = checkoutGetData.data;
 
-        const fullAddress = customer_details.address.line1 + " " + customer_details.address.line2 + " " + customer_details.address.postal_code + " " + customer_details.address.city + " " + customer_details.address.state + " " + customer_details.address.country;
+        const fullAddress =
+          customer_details.address.line1 +
+          ' ' +
+          customer_details.address.line2 +
+          ' ' +
+          customer_details.address.postal_code +
+          ' ' +
+          customer_details.address.city +
+          ' ' +
+          customer_details.address.state +
+          ' ' +
+          customer_details.address.country;
 
         const saveOrderPayload = {
-          "title": "Order " + id,
-          "status": status,
-          "shipping_address": fullAddress,
-          "billing_address": fullAddress
-        }
-
+          title: 'Order ' + id,
+          status: status,
+          shipping_address: fullAddress,
+          billing_address: fullAddress,
+        };
 
         console.log('checkoutGetDataCompleted', checkoutGetData);
         break;
-    
+
       default:
         throw new NotFoundException('Event type not found.');
     }
