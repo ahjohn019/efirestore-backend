@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
@@ -27,30 +27,35 @@ export class StripeService {
   @Inject(ProductsService)
   private readonly productsService: ProductsService;
 
-  async checkout(createStripeDto: CreateStripeDto) {
-    const findUserByEmail = await this.usersService.findByEmail(createStripeDto.customer_email);
+  async customValidation(createStripeDto: CreateStripeDto){
     const findLineItemIds = createStripeDto?.line_items.map((lineItem) => lineItem.price_data?.product_data?.metadata?.id) ?? [];
     const findDuplicateIds = Helper.checkDuplicateIdsExists(findLineItemIds);
 
     const findDuplicateProduct = await Product.findDuplicateProductSkus(this.productsService, findDuplicateIds);
     const findProductIdsNotExists = await Product.findProductIdsNotExists(this.productsService, findLineItemIds);
 
-    if(!findUserByEmail){
-      throw new NotFoundException('User not found.');
-    }
+    const errors = [];
 
     if(findDuplicateProduct){
-      throw new ConflictException(
-          `SKU : ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`,
-      );
+      errors.push({"sku" : `SKU: ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`});
     }
 
     if(findProductIdsNotExists){
-      throw new NotFoundException(`Product Ids ${findProductIdsNotExists} not found.`);
+      errors.push({"product_ids" : `Product Ids ${findProductIdsNotExists} not found.`});
     }
 
-    const session = await this.stripe.checkout.sessions.create(createStripeDto);
-    return { status: true, data: session };
+    return errors;
+  }
+
+  async checkout(createStripeDto: CreateStripeDto) {
+    const errors = await this.customValidation(createStripeDto);
+
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+
+    // const session = await this.stripe.checkout.sessions.create(createStripeDto);
+    // return { status: true, data: session };
   }
 
   async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {

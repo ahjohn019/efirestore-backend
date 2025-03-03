@@ -9,10 +9,11 @@ import {
   IsEnum,
   ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { PaymentMethodType } from '../../../../enum/stripe-payment-method.enum';
 import { PaymentMode } from '../../../../enum/stripe-payment-mode.enum';
-
+import { IsUserEmail } from 'src/shared/validation/user/is_user_email';
+import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_products';
 class ProductDataDto {
   name: string;
   metadata: Record<string, any>
@@ -42,9 +43,11 @@ export class CreateStripeDto {
     @IsArray()
     @ValidateNested()
     @Type(() => LineItemsDto)
+    @Validate(IsDuplicateProducts)
     line_items: LineItemsDto[];
 
     @IsEmail()
+    @Validate(IsUserEmail, ['customer_email'])
     customer_email: string;
 
     @IsNotEmpty()
