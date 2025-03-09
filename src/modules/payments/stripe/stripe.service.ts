@@ -9,10 +9,6 @@ import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../../users/users.service';
-import { ProductsService } from 'src/modules/products/products.service';
-import { Product } from '../../../utils/product';
-import { Helper } from '../../../utils/helper';
 
 @Injectable()
 export class StripeService {
@@ -27,43 +23,9 @@ export class StripeService {
     );
   }
 
-  @Inject(UsersService)
-  private readonly usersService: UsersService;
-
-  @Inject(ProductsService)
-  private readonly productsService: ProductsService;
-
-  async customValidation(createStripeDto: CreateStripeDto) {
-    const findLineItemIds =
-      createStripeDto?.line_items.map(
-        (lineItem) => lineItem.price_data?.product_data?.metadata?.id,
-      ) ?? [];
-
-    const findProductIdsNotExists = await Product.findProductIdsNotExists(
-      this.productsService,
-      findLineItemIds,
-    );
-
-    const errors = [];
-
-    if (findProductIdsNotExists) {
-      errors.push({
-        product_ids: `Product Ids ${findProductIdsNotExists} not found.`,
-      });
-    }
-
-    return errors;
-  }
-
   async checkout(createStripeDto: CreateStripeDto) {
-    const errors = await this.customValidation(createStripeDto);
-
-    if (errors.length > 0) {
-      throw new BadRequestException(errors);
-    }
-
-    // const session = await this.stripe.checkout.sessions.create(createStripeDto);
-    // return { status: true, data: session };
+    const session = await this.stripe.checkout.sessions.create(createStripeDto);
+    return { status: true, data: session };
   }
 
   async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {

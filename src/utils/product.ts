@@ -23,15 +23,14 @@ export class Product {
     productsService: ProductsService,
     productIds: number[],
   ) {
-    const findProducts = await productsService.findBulk(productIds);
+    const findDuplicateProducts = await productsService.findBulk(productIds);
 
-    const productDbIds = findProducts.map((item) => item.id);
+    const productDbIds = findDuplicateProducts.map((item) => item.id);
     const findProductIdsNotExists = productIds.filter(
       (item) => !productDbIds.includes(item),
     );
-    const joinProductIdsNotExists = findProductIdsNotExists.join(', ');
 
-    return joinProductIdsNotExists;
+    return findProductIdsNotExists;
   }
 
   static async convertToProductIds(module: string, value: any) {

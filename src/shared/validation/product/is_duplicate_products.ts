@@ -15,7 +15,7 @@ export class IsDuplicateProducts implements ValidatorConstraintInterface {
 
   async validate(value: any, args: ValidationArguments) {
     const lineItemIds = await Product.convertToProductIds(
-      'CreateStripeDto',
+      args.targetName,
       value,
     );
 

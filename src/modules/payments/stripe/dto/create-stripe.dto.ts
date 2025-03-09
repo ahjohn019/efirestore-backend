@@ -14,9 +14,10 @@ import { PaymentMethodType } from '../../../../enum/stripe-payment-method.enum';
 import { PaymentMode } from '../../../../enum/stripe-payment-mode.enum';
 import { IsUserEmail } from 'src/shared/validation/user/is_user_email';
 import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_products';
+import { IsProductExists } from 'src/shared/validation/product/is_product_exists';
 class ProductDataDto {
   name: string;
-  metadata: Record<string, any>
+  metadata: Record<string, any>;
 }
 class LineItemsPriceDataDto {
   currency: string;
@@ -34,29 +35,30 @@ class LineItemsDto {
   quantity: number;
 }
 export class CreateStripeDto {
-    @IsArray()
-    @ArrayNotEmpty()
-    @IsEnum(PaymentMethodType, { each: true })
-    payment_method_types: PaymentMethodType[];
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsEnum(PaymentMethodType, { each: true })
+  payment_method_types: PaymentMethodType[];
 
-    @ArrayNotEmpty()
-    @IsArray()
-    @ValidateNested()
-    @Type(() => LineItemsDto)
-    @Validate(IsDuplicateProducts)
-    line_items: LineItemsDto[];
+  @ArrayNotEmpty()
+  @IsArray()
+  @ValidateNested()
+  @Type(() => LineItemsDto)
+  @Validate(IsDuplicateProducts)
+  @Validate(IsProductExists)
+  line_items: LineItemsDto[];
 
-    @IsEmail()
-    @Validate(IsUserEmail, ['customer_email'])
-    customer_email: string;
+  @IsEmail()
+  @Validate(IsUserEmail, ['customer_email'])
+  customer_email: string;
 
-    @IsNotEmpty()
-    @IsEnum(PaymentMode)
-    mode: PaymentMode;
+  @IsNotEmpty()
+  @IsEnum(PaymentMode)
+  mode: PaymentMode;
 
-    @IsNotEmpty()
-    success_url: string;
+  @IsNotEmpty()
+  success_url: string;
 
-    @IsNotEmpty()
-    cancel_url: string;
+  @IsNotEmpty()
+  cancel_url: string;
 }
