@@ -14,9 +14,11 @@ export class IsDuplicateProducts implements ValidatorConstraintInterface {
   constructor(private readonly productsService: ProductsService) {}
 
   async validate(value: any, args: ValidationArguments) {
-    const lineItemIds = value.map(
-      (lineItem) => lineItem.price_data?.product_data?.metadata?.id ?? [],
+    const lineItemIds = await Product.convertToProductIds(
+      'CreateStripeDto',
+      value,
     );
+
     const findDuplicateIds = Helper.checkDuplicateIdsExists(lineItemIds);
 
     this.findDuplicateProducts = await Product.findDuplicateProductSkus(
