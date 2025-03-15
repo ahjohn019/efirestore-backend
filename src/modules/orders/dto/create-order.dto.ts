@@ -7,10 +7,10 @@ import {
   ArrayNotEmpty,
   IsInt,
   Min,
-  IsNumber
+  IsNumber,
 } from 'class-validator';
 
-export class OrderItemDto{
+export class OrderItemDto {
   @IsInt()
   @Min(1)
   quantity: number;
@@ -49,23 +49,15 @@ export class CreateOrderDto {
   @IsNotEmpty()
   status: string;
 
-  subtotal: number;
-  grand_total: number;
-
   @IsNotEmpty()
   shipping_address: string;
 
   @IsNotEmpty()
   billing_address: string;
 
-  tracking_number: string;
-
   @IsNotEmpty()
   @IsEmail()
   customer_email: string;
-
-  admin_id: number;
-  user_id: number;
 
   @IsNotEmpty()
   @IsArray()
@@ -74,4 +66,12 @@ export class CreateOrderDto {
 
   created_at: Date;
   updated_at: Date;
+
+  subtotal: number;
+  grand_total: number;
+
+  admin_id: number;
+  user_id: number;
+
+  tracking_number: string;
 }

@@ -32,8 +32,9 @@ export class OrdersService {
   private readonly productsService: ProductsService;
 
   async create(createOrderDto: CreateOrderDto, user: { id: number }) {
-    // const findUser = await this.usersService.findOne(createOrderDto.user_id);
-    const findUser = await this.usersService.findByEmail(createOrderDto.customer_email);
+    const { customer_email, items } = createOrderDto;
+
+    const findUser = await this.usersService.findByEmail(customer_email);
 
     if (!findUser) {
       throw new NotFoundException('User Not Found.');
@@ -42,22 +43,24 @@ export class OrdersService {
     createOrderDto.user_id = findUser.id;
     createOrderDto.admin_id = user.id;
 
-    const orderItems: OrderItemDto[] = createOrderDto.items;
+    const orderItems: OrderItemDto[] = items;
     const orderItemAmountTotalPrice = [];
 
     // find duplicate product ids
     const orderItemIds = orderItems.map((item) => item.product_id);
 
-    const checkDuplicateProductIds = Helper.checkDuplicateIdsExists(
-      orderItemIds
-    );
+    const checkDuplicateProductIds =
+      Helper.checkDuplicateIdsExists(orderItemIds);
 
     // find duplicate product
-    const findDuplicateProduct = await Product.findDuplicateProductSkus(this.productsService, checkDuplicateProductIds);
+    const findDuplicateProduct = await Product.findDuplicateProductSkus(
+      this.productsService,
+      checkDuplicateProductIds,
+    );
 
-    if(findDuplicateProduct){
+    if (findDuplicateProduct) {
       throw new ConflictException(
-          `SKU : ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`,
+        `SKU : ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`,
       );
     }
 
@@ -69,7 +72,7 @@ export class OrdersService {
     }
 
     // if order items exists , create order item lists
-    if (createOrderDto.items.length > 0) {
+    if (items.length > 0) {
       for (const item of orderItems) {
         // check if product exists on store
         const checkProductExists = await this.productsService.findOne(
@@ -109,7 +112,7 @@ export class OrdersService {
       grand_total: sumOrderItemTotalPrice,
     });
 
-    return {status: true, data: updateOrder};
+    return { status: true, data: updateOrder };
   }
 
   async findAll(allOrderDto: AllOrderDto) {
@@ -117,31 +120,34 @@ export class OrdersService {
       allOrderDto,
       this.orderRepository,
       null,
-      ['items']
+      ['items'],
     );
   }
 
   async findOne(id: number) {
     const findOrder = await this.orderRepository.findOne({
-      where: {id}, 
-      relations: ['items']
+      where: { id },
+      relations: ['items'],
     });
 
-    if(!findOrder){
+    if (!findOrder) {
       throw new NotFoundException('Order Not Found.');
     }
 
-    return {status: true, data: findOrder};
+    return { status: true, data: findOrder };
   }
 
-  async updateOrderStatus(id: number, updateOrderStatusDto: UpdateOrderStatusDto) {
+  async updateOrderStatus(
+    id: number,
+    updateOrderStatusDto: UpdateOrderStatusDto,
+  ) {
     const findOrder = await this.findOne(id);
 
     const updateOrder = await this.orderRepository.update(findOrder.data.id, {
       status: updateOrderStatusDto.status,
     });
 
-    return {status: true, data: updateOrder};
+    return { status: true, data: updateOrder };
   }
 
   async remove(id: number) {

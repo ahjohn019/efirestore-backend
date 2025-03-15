@@ -34,7 +34,7 @@ export class StripeController {
   }
 
   @Post('/webhook')
-  postWebhook(@Request() request){
+  postWebhook(@Request() request) {
     return this.stripeService.postWebhook(request);
   }
 }

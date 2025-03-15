@@ -17,9 +17,6 @@ export class ProductsService {
 
     @InjectRepository(Products)
     private productsRepository: Repository<Products>,
-
-    @InjectRepository(Images)
-    private imagesRepository: Repository<Images>,
   ) {}
 
   @Inject(ImagesService)
