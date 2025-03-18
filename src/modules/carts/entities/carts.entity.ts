@@ -12,12 +12,10 @@ import {
 import { IsNotEmpty } from 'class-validator';
 import * as dayjs from 'dayjs';
 import { Users } from '../../users/entities/users.entity';
+import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity()
-export class Carts {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class Carts extends BaseEntity {
   @IsNotEmpty()
   @Column()
   quantity: number;
@@ -68,10 +66,7 @@ export class Carts {
   }
 }
 @Entity()
-export class CartItems {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class CartItems extends BaseEntity {
   @IsNotEmpty()
   @Column()
   quantity: number;
@@ -103,16 +98,4 @@ export class CartItems {
   })
   @JoinColumn({ name: 'cart_id' })
   cart: Carts;
-
-  @BeforeInsert()
-  setDefaultDates() {
-    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    this.created_at = new Date(currentDate);
-    this.updated_at = new Date(currentDate);
-  }
-
-  @BeforeUpdate()
-  updateTimestamp() {
-    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-  }
 }

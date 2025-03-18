@@ -6,14 +6,15 @@ import {
   BeforeUpdate,
   OneToMany,
   ManyToOne,
-  JoinColumn
+  JoinColumn,
 } from 'typeorm';
 import { Users } from '../../users/entities/users.entity';
 import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import * as dayjs from 'dayjs';
+import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity()
-export class Orders {
+export class Orders extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -80,7 +81,7 @@ export class Orders {
 }
 
 @Entity()
-export class OrderItems {
+export class OrderItems extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -123,4 +124,3 @@ export class OrderItems {
   @JoinColumn({ name: 'order_id' })
   orders: Orders;
 }
-

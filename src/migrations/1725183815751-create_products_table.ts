@@ -38,10 +38,12 @@ export class CreateProductsTable1725183815751 implements MigrationInterface {
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

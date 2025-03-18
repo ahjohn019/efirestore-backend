@@ -8,14 +8,11 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { IsNotEmpty, Validate } from 'class-validator';
-import * as dayjs from 'dayjs';
 import { Categories } from '../../categories/entities/categories.entity';
+import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity()
-export class Products {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class Products extends BaseEntity {
   @IsNotEmpty()
   @Column()
   title: string;
@@ -43,16 +40,4 @@ export class Products {
   })
   @JoinColumn({ name: 'category_id' })
   categories: Categories;
-
-  @BeforeInsert()
-  setDefaultDates() {
-    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    this.created_at = new Date(currentDate);
-    this.updated_at = new Date(currentDate);
-  }
-
-  @BeforeUpdate()
-  updateTimestamp() {
-    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-  }
 }

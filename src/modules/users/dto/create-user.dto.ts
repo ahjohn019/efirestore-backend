@@ -39,6 +39,8 @@ export class CreateUserDetailsDto {
   identity_card_number: string;
 
   gender: Gender;
+
+  user_id: number;
 }
 
 export class CreateUserDto {

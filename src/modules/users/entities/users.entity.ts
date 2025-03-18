@@ -7,6 +7,8 @@ import {
   OneToOne,
   OneToMany,
   JoinColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Role } from '../../../enum/role.enum';
 import { Gender } from '../../../enum/gender.enum';
@@ -14,12 +16,10 @@ import { AddressType } from '../../../enum/address-type.enum';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 import { Orders } from '../../orders/entities/orders.entity';
+import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity()
-export class UserDetails {
-  @PrimaryGeneratedColumn()
-  id: number;
-
+export class UserDetails extends BaseEntity {
   @Column()
   user_id: number;
 
@@ -64,7 +64,7 @@ export class UserDetails {
 }
 
 @Entity()
-export class Users {
+export class Users extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -82,24 +82,6 @@ export class Users {
 
   @Column({ nullable: true })
   remember_token: string;
-
-  @Column({ type: 'datetime' })
-  created_at: Date;
-
-  @Column({ type: 'datetime' })
-  updated_at: Date;
-
-  @BeforeInsert()
-  setDefaultDates() {
-    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    this.created_at = new Date(currentDate);
-    this.updated_at = new Date(currentDate);
-  }
-
-  @BeforeUpdate()
-  updateTimestamp() {
-    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-  }
 
   @BeforeInsert()
   async hashPassword() {

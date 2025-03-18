@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../../commons/guards/auth';
 import { RolesGuard } from '../../commons/guards/roles.guard';
@@ -23,6 +23,11 @@ export class UsersController {
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
+  }
+
+  @Post('/user-details/create')
+  createUserDetails(@Body() createUserDetailsDto: CreateUserDetailsDto) {
+    return this.usersService.createUsersDetails(createUserDetailsDto);
   }
 
   @Post()

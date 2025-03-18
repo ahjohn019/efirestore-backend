@@ -51,10 +51,12 @@ export class CreateImagesTable1726323287134 implements MigrationInterface {
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

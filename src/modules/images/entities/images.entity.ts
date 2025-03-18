@@ -6,9 +6,10 @@ import {
   BeforeUpdate,
 } from 'typeorm';
 import * as dayjs from 'dayjs';
+import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity()
-export class Images {
+export class Images extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
