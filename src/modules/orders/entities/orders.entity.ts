@@ -1,23 +1,9 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  BeforeInsert,
-  BeforeUpdate,
-  OneToMany,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { Users } from '../../users/entities/users.entity';
-import { CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import * as dayjs from 'dayjs';
 import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity()
 export class Orders extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
-
   @Column()
   title: string;
 
@@ -41,19 +27,6 @@ export class Orders extends BaseEntity {
 
   @Column()
   remarks: string;
-
-  @CreateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-  })
-  created_at: Date;
-
-  @UpdateDateColumn({
-    type: 'timestamp',
-    default: () => 'CURRENT_TIMESTAMP(6)',
-    onUpdate: 'CURRENT_TIMESTAMP(6)',
-  })
-  updated_at: Date;
 
   @OneToMany(() => OrderItems, (orderItems) => orderItems.orders, {
     cascade: true,
@@ -82,9 +55,6 @@ export class Orders extends BaseEntity {
 
 @Entity()
 export class OrderItems extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
-
   @Column()
   quantity: number;
 
@@ -99,24 +69,6 @@ export class OrderItems extends BaseEntity {
 
   @Column()
   order_id: number;
-
-  @Column({ type: 'datetime' })
-  created_at: Date;
-
-  @Column({ type: 'datetime' })
-  updated_at: Date;
-
-  @BeforeInsert()
-  setDefaultDates() {
-    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    this.created_at = new Date(currentDate);
-    this.updated_at = new Date(currentDate);
-  }
-
-  @BeforeUpdate()
-  updateTimestamp() {
-    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-  }
 
   @ManyToOne(() => Orders, (orders) => orders.items, {
     eager: true,
