@@ -9,6 +9,7 @@ import {
 import { StripeService } from './stripe.service';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import { CreateStripeDto } from './dto/create-stripe.dto';
+import { CustomerStripeDto } from './dto/customer-stripe.dto';
 import { AuthGuard } from '../../../commons/guards/auth';
 
 @Controller('stripe')
@@ -31,6 +32,12 @@ export class StripeController {
   @UseGuards(AuthGuard)
   checkoutGetLineItems(@Body() checkoutIdStripeDto: CheckoutIdStripeDto) {
     return this.stripeService.checkoutGetLineItems(checkoutIdStripeDto);
+  }
+
+  @Post('/customer/create')
+  @UseGuards(AuthGuard)
+  createCustomer(@Body() customerStripeDto: CustomerStripeDto) {
+    return this.stripeService.createCustomer(customerStripeDto);
   }
 
   @Post('/webhook')

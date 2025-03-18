@@ -1,22 +1,25 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  ConflictException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
 import { UsersService } from '../../users/users.service';
+import { CustomerStripeDto } from './dto/customer-stripe.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { StripeUsers } from './entities/stripe.entity';
 
 @Injectable()
 export class StripeService {
   private stripe: Stripe;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+
+    @InjectRepository(StripeUsers)
+    private stripeUsersRepository: Repository<StripeUsers>,
+  ) {
     this.stripe = new Stripe(
       this.configService.get<string>('STRIPE_PAYMENT_DEV_SECRET_KEY'),
       {
@@ -55,6 +58,36 @@ export class StripeService {
     return { status: true, data: fetchProduct.metadata };
   }
 
+  async createCustomer(customerStripeDto: CustomerStripeDto) {
+    const checkUserByEmail = await this.usersService.findByEmail(
+      customerStripeDto.email,
+    );
+
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { user_id: checkUserByEmail.id },
+    });
+
+    if (checkStripeUserExist) {
+      throw new NotFoundException('Stripe user already exists.');
+    }
+
+    if (!checkUserByEmail) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const stripeCreateCustomerResponse =
+      await this.stripe.customers.create(customerStripeDto);
+
+    const payload = {
+      user_id: checkUserByEmail.id,
+      stripe_account_id: stripeCreateCustomerResponse.id,
+    };
+
+    const response = await this.stripeUsersRepository.save(payload);
+
+    return { status: true, data: response };
+  }
+
   async productDetailList(getProductIdList: string[]) {
     const productDetailList = [];
 
@@ -84,7 +117,12 @@ export class StripeService {
         };
         const checkoutGetData = await this.checkoutGet(checkoutSuccessPayload);
 
-        const { id, status, customer_details } = checkoutGetData.data;
+        const { id, status, customer_details, amount_subtotal, amount_total } =
+          checkoutGetData.data;
+
+        const findUserByEmail = await this.usersService.findByEmail(
+          customer_details.email,
+        );
 
         const { line1, line2, postal_code, city, state, country } =
           customer_details.address;
@@ -107,13 +145,9 @@ export class StripeService {
             unit_price: item.price.unit_amount,
             quantity: item.quantity,
             product_id: productDetailList[index].data.id,
-            total_price: 0
+            total_price: item.amount_subtotal,
           };
         });
-
-        const findUserByEmail = await this.usersService.findByEmail(
-          customer_details.email,
-        );
 
         const saveOrderPayload = {
           title: 'Order ' + id,
@@ -122,18 +156,14 @@ export class StripeService {
           billing_address: fullAddress,
           customer_email: customer_details.email,
           items: orderLineItems,
-          subtotal: 0,
-          grand_total: 0,
-          admin_id: 0,
+          subtotal: amount_subtotal,
+          grand_total: amount_total,
+          admin_id: null,
           created_at: new Date(),
           updated_at: new Date(),
-          user_id: findUserByEmail.id,
+          user_id: findUserByEmail.id ?? null,
           tracking_number: '',
         };
-
-        if (!findUserByEmail) {
-          throw new NotFoundException('User not found.');
-        }
 
         this.ordersService.create(saveOrderPayload, null);
 

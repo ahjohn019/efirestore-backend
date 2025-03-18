@@ -26,7 +26,9 @@ export class OrdersController {
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
   create(@Body() createOrderDto: CreateOrderDto, @Request() req) {
-    return this.ordersService.create(createOrderDto, req.user);
+    const adminId = req.user.id ?? null;
+
+    return this.ordersService.create(createOrderDto, adminId);
   }
 
   @Get()
@@ -46,7 +48,10 @@ export class OrdersController {
   @Patch('/update-status/:id')
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  updateOrderStatus(@Param('id') id: string, @Body() updateOrderStatusDto: UpdateOrderStatusDto) {
+  updateOrderStatus(
+    @Param('id') id: string,
+    @Body() updateOrderStatusDto: UpdateOrderStatusDto,
+  ) {
     return this.ordersService.updateOrderStatus(+id, updateOrderStatusDto);
   }
 

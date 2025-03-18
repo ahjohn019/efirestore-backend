@@ -9,10 +9,59 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../enum/role.enum';
+import { Gender } from '../../../enum/gender.enum';
+import { AddressType } from '../../../enum/address-type.enum';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
-import { Carts } from '../../carts/entities/carts.entity';
 import { Orders } from '../../orders/entities/orders.entity';
+
+@Entity()
+export class UserDetails {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column()
+  user_id: number;
+
+  @Column()
+  first_name: string;
+
+  @Column()
+  last_name: string;
+
+  @Column()
+  address_one: string;
+
+  @Column()
+  address_two: string;
+
+  @Column()
+  postal_code: string;
+
+  @Column()
+  city: string;
+
+  @Column()
+  state: string;
+
+  @Column()
+  country: string;
+
+  @Column({ type: 'enum', enum: AddressType })
+  address_type: string;
+
+  @Column({ default: 0 })
+  is_default: number;
+
+  @Column()
+  phone_number: string;
+
+  @Column()
+  identity_card_number: string;
+
+  @Column({ type: 'enum', enum: Gender })
+  gender: string;
+}
 
 @Entity()
 export class Users {

@@ -56,6 +56,7 @@ export class CreateOrdersTable1725188518899 implements MigrationInterface {
           {
             name: 'admin_id',
             type: 'integer',
+            isNullable: true,
           },
           {
             name: 'created_at',

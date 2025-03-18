@@ -31,7 +31,7 @@ export class OrdersService {
   @Inject(ProductsService)
   private readonly productsService: ProductsService;
 
-  async create(createOrderDto: CreateOrderDto, user: { id: number }) {
+  async create(createOrderDto: CreateOrderDto, adminId: number) {
     const { customer_email, items } = createOrderDto;
 
     const findUser = await this.usersService.findByEmail(customer_email);
@@ -41,7 +41,7 @@ export class OrdersService {
     }
 
     createOrderDto.user_id = findUser.id;
-    createOrderDto.admin_id = user.id;
+    createOrderDto.admin_id = adminId;
 
     const orderItems: OrderItemDto[] = items;
     const orderItemAmountTotalPrice = [];

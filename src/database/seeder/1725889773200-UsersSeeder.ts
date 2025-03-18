@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { Seeder, SeederFactoryManager } from 'typeorm-extension';
-import { Users } from '../../modules/users/entities/users.entity';
+import { Users, UserDetails } from '../../modules/users/entities/users.entity';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 
@@ -16,6 +16,7 @@ export class UsersSeeder1725889773200 implements Seeder {
     await dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
 
     const repository = dataSource.getRepository(Users);
+
     await repository.insert([
       {
         name: 'Admin One',
