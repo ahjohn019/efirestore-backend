@@ -41,6 +41,8 @@ export class CreateUserDetailsDto {
   gender: Gender;
 
   user_id: number;
+
+  stripe_verification: number;
 }
 
 export class CreateUserDto {

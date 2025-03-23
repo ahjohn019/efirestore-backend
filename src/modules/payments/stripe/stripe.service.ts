@@ -13,6 +13,7 @@ import { StripeUsers } from './entities/stripe.entity';
 @Injectable()
 export class StripeService {
   private stripe: Stripe;
+  private stripeEndpointSecret: string;
 
   constructor(
     private readonly configService: ConfigService,
@@ -26,6 +27,9 @@ export class StripeService {
         apiVersion: '2025-01-27.acacia',
       },
     );
+    this.stripeEndpointSecret = this.configService.get<string>(
+      'STRIPE_ENDPOINT_SECRET',
+    );
   }
 
   @Inject(OrdersService)
@@ -34,6 +38,11 @@ export class StripeService {
   @Inject(UsersService)
   private readonly usersService: UsersService;
 
+  /**
+   * Create Stripe Checkout
+   * @param createStripeDto
+   * @returns
+   */
   async checkout(createStripeDto: CreateStripeDto) {
     const checkUserByEmail = await this.usersService.findByEmail(
       createStripeDto.customer_email,
@@ -60,6 +69,11 @@ export class StripeService {
     return { status: true, data: session };
   }
 
+  /**
+   * Get Stripe Checkout Information
+   * @param checkoutIdStripeDto
+   * @returns
+   */
   async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {
     const session = await this.stripe.checkout.sessions.retrieve(
       checkoutIdStripeDto.checkoutId,
@@ -69,6 +83,11 @@ export class StripeService {
     return { status: true, data: session };
   }
 
+  /**
+   * Get Stripe Checkout Line Items
+   * @param checkoutIdStripeDto
+   * @returns
+   */
   async checkoutGetLineItems(checkoutIdStripeDto: CheckoutIdStripeDto) {
     const session = await this.stripe.checkout.sessions.listLineItems(
       checkoutIdStripeDto.checkoutId,
@@ -76,11 +95,21 @@ export class StripeService {
     return { status: true, data: session };
   }
 
+  /**
+   * Fetch Stripe Product
+   * @param productId
+   * @returns
+   */
   async fetchProduct(productId: string) {
     const fetchProduct = await this.stripe.products.retrieve(productId);
     return { status: true, data: fetchProduct.metadata };
   }
 
+  /**
+   * Create Stripe Customer Data
+   * @param customerStripeDto
+   * @returns
+   */
   async createCustomer(customerStripeDto: CustomerStripeDto) {
     const checkUserByEmail = await this.usersService.findByEmail(
       customerStripeDto.email,
@@ -111,6 +140,11 @@ export class StripeService {
     return { status: true, data: response };
   }
 
+  /**
+   * Check stripe customer exists
+   * @param id
+   * @returns
+   */
   async checkCustomer(id: number) {
     const checkStripeUserExist = await this.stripeUsersRepository.findOne({
       where: { user_id: id },
@@ -123,6 +157,26 @@ export class StripeService {
     return { status: true, data: response };
   }
 
+  async updateCustomer(stripeId: string) {
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { stripe_account_id: stripeId },
+    });
+
+    if (!checkStripeUserExist) {
+      throw new NotFoundException('Stripe user not exist.');
+    }
+
+    const stripeCreateCustomerResponse = await this.stripe.customers.update(
+      stripeId,
+      {},
+    );
+  }
+
+  /**
+   * Fetch Stripe Product Details List
+   * @param getProductIdList
+   * @returns
+   */
   async productDetailList(getProductIdList: string[]) {
     const productDetailList = [];
 
@@ -136,6 +190,11 @@ export class StripeService {
     return productDetailList;
   }
 
+  /**
+   * Fetch Stripe Customer Addresses
+   * @param customer
+   * @returns
+   */
   async customerAddresses(customer: Stripe.Customer) {
     const { line1, line2, postal_code, city, state, country } =
       customer.address;
@@ -159,12 +218,17 @@ export class StripeService {
     };
   }
 
+  /**
+   * Check if session completed, save the checkout data into order database
+   * @param request
+   * @returns
+   */
   async postWebhook(request: { headers: string; rawBody: Buffer }) {
     const signature = request.headers['stripe-signature'];
     const event = this.stripe.webhooks.constructEvent(
       request.rawBody,
       signature,
-      this.configService.get<string>('STRIPE_ENDPOINT_SECRET'),
+      this.stripeEndpointSecret,
     );
 
     switch (event.type) {

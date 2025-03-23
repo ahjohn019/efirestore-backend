@@ -75,6 +75,11 @@ export class UserDetails1742276679209 implements MigrationInterface {
             type: 'varchar',
           },
           {
+            name: 'stripe_verification',
+            type: 'int',
+            default: 0,
+          },
+          {
             name: 'gender',
             type: 'enum',
             enum: ['male', 'female'],
