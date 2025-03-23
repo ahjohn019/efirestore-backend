@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
@@ -20,6 +25,11 @@ export class StripeService {
 
     @InjectRepository(StripeUsers)
     private stripeUsersRepository: Repository<StripeUsers>,
+
+    private readonly ordersService: OrdersService,
+
+    @Inject(forwardRef(() => UsersService))
+    private readonly usersService: UsersService,
   ) {
     this.stripe = new Stripe(
       this.configService.get<string>('STRIPE_PAYMENT_DEV_SECRET_KEY'),
@@ -31,12 +41,6 @@ export class StripeService {
       'STRIPE_ENDPOINT_SECRET',
     );
   }
-
-  @Inject(OrdersService)
-  private readonly ordersService: OrdersService;
-
-  @Inject(UsersService)
-  private readonly usersService: UsersService;
 
   /**
    * Create Stripe Checkout

@@ -1,8 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
+import { StripeService } from 'src/modules/payments/stripe/stripe.service';
 
 @Injectable()
 export class UsersService {
@@ -12,6 +18,9 @@ export class UsersService {
 
     @InjectRepository(UserDetails)
     private userDetailsRepository: Repository<UserDetails>,
+
+    @Inject(forwardRef(() => StripeService))
+    private readonly stripeService: StripeService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<{

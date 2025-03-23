@@ -3,17 +3,18 @@ import {
   Inject,
   NotFoundException,
   ConflictException,
+  forwardRef,
 } from '@nestjs/common';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
 import { CreateOrderDto, OrderItemDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { UsersService } from '../users/users.service';
 import { ProductsService } from '../products/products.service';
 import { Orders, OrderItems } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 import { Product } from '../../utils/product';
+import { Users } from '../users/entities/users.entity';
 
 @Injectable()
 export class OrdersService {
@@ -23,18 +24,27 @@ export class OrdersService {
 
     @InjectRepository(OrderItems)
     private orderItemsRepository: Repository<Orders>,
+
+    @InjectRepository(Users)
+    private usersRepository: Repository<Users>,
+
+    private readonly productsService: ProductsService,
   ) {}
 
-  @Inject(UsersService)
-  private readonly usersService: UsersService;
-
-  @Inject(ProductsService)
-  private readonly productsService: ProductsService;
-
+  /**
+   * Create orders
+   * @param createOrderDto
+   * @param adminId
+   * @returns
+   */
   async create(createOrderDto: CreateOrderDto, adminId: number) {
     const { customer_email, items } = createOrderDto;
 
-    const findUser = await this.usersService.findByEmail(customer_email);
+    const findUser = await this.usersRepository.findOne({
+      where: {
+        email: customer_email,
+      },
+    });
 
     if (!findUser) {
       throw new NotFoundException('User Not Found.');
@@ -115,6 +125,11 @@ export class OrdersService {
     return { status: true, data: updateOrder };
   }
 
+  /**
+   * Find all orders by pagination
+   * @param allOrderDto
+   * @returns
+   */
   async findAll(allOrderDto: AllOrderDto) {
     return await Helper.calculatePagination<Orders>(
       allOrderDto,
@@ -124,6 +139,11 @@ export class OrdersService {
     );
   }
 
+  /**
+   * Find specific order
+   * @param id
+   * @returns
+   */
   async findOne(id: number) {
     const findOrder = await this.orderRepository.findOne({
       where: { id },
@@ -137,6 +157,12 @@ export class OrdersService {
     return { status: true, data: findOrder };
   }
 
+  /**
+   * Update order status
+   * @param id
+   * @param updateOrderStatusDto
+   * @returns
+   */
   async updateOrderStatus(
     id: number,
     updateOrderStatusDto: UpdateOrderStatusDto,
@@ -150,6 +176,11 @@ export class OrdersService {
     return { status: true, data: updateOrder };
   }
 
+  /**
+   * Remove specific order
+   * @param id
+   * @returns
+   */
   async remove(id: number) {
     return await this.orderRepository.delete(id);
   }

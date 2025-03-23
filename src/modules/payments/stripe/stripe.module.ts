@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common'; // Import forwardRef
 import { StripeService } from './stripe.service';
 import { StripeController } from './stripe.controller';
 import { UsersModule } from 'src/modules/users/users.module';
@@ -9,14 +9,16 @@ import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_
 import { IsProductExists } from 'src/shared/validation/product/is_product_exists';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StripeUsers } from './entities/stripe.entity';
+
 @Module({
   imports: [
-    UsersModule,
+    forwardRef(() => OrdersModule),
+    forwardRef(() => UsersModule),
     ProductsModule,
-    OrdersModule,
     TypeOrmModule.forFeature([StripeUsers]),
   ],
   controllers: [StripeController],
   providers: [StripeService, IsUserEmail, IsDuplicateProducts, IsProductExists],
+  exports: [StripeService],
 })
 export class StripeModule {}

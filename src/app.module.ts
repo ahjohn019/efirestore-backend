@@ -31,7 +31,7 @@ import { OrdersModule } from './modules/orders/orders.module';
     CartModule,
     ToyyibpayModule,
     StripeModule,
-    OrdersModule
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],
