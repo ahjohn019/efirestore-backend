@@ -12,7 +12,7 @@ import { StripeUsers } from './entities/stripe.entity';
 
 @Module({
   imports: [
-    forwardRef(() => OrdersModule),
+    OrdersModule,
     forwardRef(() => UsersModule),
     ProductsModule,
     TypeOrmModule.forFeature([StripeUsers]),
