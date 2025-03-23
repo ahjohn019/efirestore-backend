@@ -40,6 +40,12 @@ export class StripeController {
     return this.stripeService.createCustomer(customerStripeDto);
   }
 
+  @Post('/customer')
+  @UseGuards(AuthGuard)
+  checkCustomer(@Body() body: { id: number }) {
+    return this.stripeService.checkCustomer(body.id);
+  }
+
   @Post('/webhook')
   postWebhook(@Request() request) {
     return this.stripeService.postWebhook(request);

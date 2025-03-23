@@ -35,14 +35,37 @@ export class StripeService {
   private readonly usersService: UsersService;
 
   async checkout(createStripeDto: CreateStripeDto) {
-    const session = await this.stripe.checkout.sessions.create(createStripeDto);
+    const checkUserByEmail = await this.usersService.findByEmail(
+      createStripeDto.customer_email,
+    );
+
+    if (!checkUserByEmail) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { user_id: checkUserByEmail.id },
+    });
+
+    const { customer_email, ...newCreateStripeDto } = createStripeDto;
+
+    const createStripeDtoResult = {
+      ...newCreateStripeDto,
+      customer: checkStripeUserExist?.stripe_account_id ?? null,
+    };
+
+    const session = await this.stripe.checkout.sessions.create(
+      createStripeDtoResult,
+    );
     return { status: true, data: session };
   }
 
   async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {
     const session = await this.stripe.checkout.sessions.retrieve(
       checkoutIdStripeDto.checkoutId,
+      { expand: ['customer'] },
     );
+
     return { status: true, data: session };
   }
 
@@ -88,6 +111,18 @@ export class StripeService {
     return { status: true, data: response };
   }
 
+  async checkCustomer(id: number) {
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { user_id: id },
+    });
+
+    const response = await this.stripe.customers.retrieve(
+      checkStripeUserExist.stripe_account_id,
+    );
+
+    return { status: true, data: response };
+  }
+
   async productDetailList(getProductIdList: string[]) {
     const productDetailList = [];
 
@@ -99,6 +134,29 @@ export class StripeService {
     );
 
     return productDetailList;
+  }
+
+  async customerAddresses(customer: Stripe.Customer) {
+    const { line1, line2, postal_code, city, state, country } =
+      customer.address;
+
+    const {
+      line1: shippingLine1,
+      line2: shippingLine2,
+      postal_code: shippingPostalCode,
+      city: shippingCity,
+      state: shippingState,
+      country: shippingCountry,
+    } = customer.shipping.address;
+
+    const fullAddress = `${line1} ${line2} ${postal_code} ${city} ${state} ${country}`;
+
+    const shippingFullAddress = `${shippingLine1} ${shippingLine2} ${shippingPostalCode} ${shippingCity} ${shippingState} ${shippingCountry}`;
+
+    return {
+      fullAddress: fullAddress,
+      shippingFullAddress: shippingFullAddress,
+    };
   }
 
   async postWebhook(request: { headers: string; rawBody: Buffer }) {
@@ -117,17 +175,22 @@ export class StripeService {
         };
         const checkoutGetData = await this.checkoutGet(checkoutSuccessPayload);
 
-        const { id, status, customer_details, amount_subtotal, amount_total } =
-          checkoutGetData.data;
+        const {
+          id,
+          status,
+          customer,
+          customer_details,
+          amount_subtotal,
+          amount_total,
+        } = checkoutGetData.data;
 
-        const findUserByEmail = await this.usersService.findByEmail(
-          customer_details.email,
-        );
+        const fullAddress = (
+          await this.customerAddresses(customer as Stripe.Customer)
+        ).fullAddress;
 
-        const { line1, line2, postal_code, city, state, country } =
-          customer_details.address;
-
-        const fullAddress = `${line1} ${line2} ${postal_code} ${city} ${state} ${country}`;
+        const shippingFullAddress = (
+          await this.customerAddresses(customer as Stripe.Customer)
+        ).shippingFullAddress;
 
         const getLineItems = await this.checkoutGetLineItems({
           checkoutId: checkoutGetData.data.id,
@@ -149,10 +212,14 @@ export class StripeService {
           };
         });
 
+        const findUserByEmail = await this.usersService.findByEmail(
+          customer_details.email,
+        );
+
         const saveOrderPayload = {
           title: 'Order ' + id,
           status: status,
-          shipping_address: fullAddress,
+          shipping_address: shippingFullAddress,
           billing_address: fullAddress,
           customer_email: customer_details.email,
           items: orderLineItems,
@@ -165,10 +232,12 @@ export class StripeService {
           tracking_number: '',
         };
 
-        this.ordersService.create(saveOrderPayload, null);
+        const createOrderSuccess = await this.ordersService.create(
+          saveOrderPayload,
+          null,
+        );
 
-        console.log('customerEmail', findUserByEmail);
-
+        return { status: true, data: createOrderSuccess };
         break;
 
       default:
