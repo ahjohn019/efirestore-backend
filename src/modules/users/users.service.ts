@@ -54,22 +54,22 @@ export class UsersService {
       user_id: id,
     });
 
-    return this.syncWithStripeDetails(userDetailsResponse);
+    const { stripe_verification, is_default } = userDetailsResponse;
+
+    if (stripe_verification && is_default) {
+      return this.syncWithStripeDetails(userDetailsResponse);
+    }
+
+    return { status: true, data: userDetailsResponse };
   }
 
   private async syncWithStripeDetails(userDetailsResponse: CreateUserDetailsDto){
     const {
       first_name,
       last_name,
-      stripe_verification,
       address_type,
-      is_default,
       user_id
     } = userDetailsResponse;
-
-    if (!(stripe_verification && is_default)) {
-      return { status: true, data: userDetailsResponse };
-    }
 
     const findUser = await this.findOne(user_id);
     const { email } = findUser;
