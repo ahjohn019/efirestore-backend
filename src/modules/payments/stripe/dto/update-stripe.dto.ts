@@ -4,9 +4,11 @@ import { IsEmail, IsNotEmpty } from 'class-validator';
 import { CreateStripeDto } from './create-stripe.dto';
 import { CustomerStripeAddressDto } from './customer-stripe.dto';
 
-export class UpdateStripeDto extends PartialType(CreateStripeDto) {
+export class UpdateStripeDto {
   @IsNotEmpty()
-  user_id: number;
+  metadata: {
+    user_id: number;
+  };
 
   @IsNotEmpty()
   name: string;

@@ -10,7 +10,6 @@ import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
 import { StripeCustomerService } from 'src/modules/payments/stripe/customer/customer.service';
-import { UpdateResult } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -53,10 +52,69 @@ export class UsersService {
       user_id: findUser.id,
     });
 
-    return {
-      status: true,
-      data: response,
-    };
+    const {
+      stripe_verification,
+      city,
+      country,
+      address_one,
+      address_two,
+      postal_code,
+      state,
+      is_default,
+    } = response;
+
+    if (stripe_verification && is_default) {
+      const findStripeVerificationByUserid =
+        await this.stripeCustomerService.show(user_id);
+
+      const userAddress = {
+        address: {
+          city,
+          country,
+          line1: address_one,
+          line2: address_two,
+          postal_code,
+          state,
+        },
+      };
+
+      const shippingAddress = {
+        shipping: {
+          ...userAddress,
+          name: response.first_name + ' ' + response.last_name,
+          phone: response.phone_number,
+        },
+      };
+
+      const payload = {
+        name: response.first_name + ' ' + response.last_name,
+        email: findUser.email,
+        ...userAddress,
+        ...shippingAddress,
+      };
+
+      if (!findStripeVerificationByUserid) {
+        const response = await this.stripeCustomerService.create(payload);
+      } else {
+        const userId = {
+          metadata: {
+            user_id: findUser.id,
+          },
+        };
+
+        const response = await this.stripeCustomerService.update({
+          ...payload,
+          ...userId,
+        });
+
+        console.log(response);
+      }
+    }
+
+    // return {
+    //   status: true,
+    //   data: response,
+    // };
   }
 
   async updateUsersDetails(updateUserDetailsDto: UpdateUserDetailsDto) {
@@ -68,7 +126,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    const findUserDetails = await this.userDetailsRepository.update(
+    const updateUserDetails = await this.userDetailsRepository.update(
       {
         id,
         user_id,
@@ -78,7 +136,7 @@ export class UsersService {
 
     return {
       status: true,
-      data: findUserDetails,
+      data: updateUserDetails,
     };
   }
 

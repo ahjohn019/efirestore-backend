@@ -50,7 +50,7 @@ export class StripeCustomerService extends BaseStripeService {
     }
 
     const stripeCreateCustomerResponse =
-      await this.stripe.customers.create(customerStripeDto);
+      await this.createCustomerStripe(customerStripeDto);
 
     const payload = {
       user_id: checkUserByEmail.id,
@@ -63,6 +63,15 @@ export class StripeCustomerService extends BaseStripeService {
   }
 
   /**
+   * Create Stripe Customer Api
+   * @param customerStripeDto
+   * @returns
+   */
+  async createCustomerStripe(customerStripeDto: CustomerStripeDto) {
+    return await this.stripe.customers.create(customerStripeDto);
+  }
+
+  /**
    * Check stripe customer exists
    * @param id
    * @returns
@@ -71,6 +80,10 @@ export class StripeCustomerService extends BaseStripeService {
     const checkStripeUserExist = await this.stripeUsersRepository.findOne({
       where: { user_id: id },
     });
+
+    if (!checkStripeUserExist) {
+      throw new NotFoundException('Stripe user not exist.');
+    }
 
     const response = await this.stripe.customers.retrieve(
       checkStripeUserExist.stripe_account_id,
@@ -86,7 +99,7 @@ export class StripeCustomerService extends BaseStripeService {
    */
   async update(updateStripeDto: UpdateStripeDto) {
     const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: updateStripeDto.user_id },
+      where: { user_id: updateStripeDto.metadata.user_id },
     });
 
     if (!checkStripeUserExist) {
