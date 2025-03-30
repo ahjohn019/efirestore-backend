@@ -7,6 +7,7 @@ import { StripeModule } from '../payments/stripe/stripe.module';
 import { OrdersModule } from '../orders/orders.module';
 import { StripeCustomerService } from '../payments/stripe/customer/customer.service';
 import { StripeUsers } from '../payments/stripe/entities/stripe.entity';
+import { UserDetailsStripeService } from './stripe/user-details.service';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { StripeUsers } from '../payments/stripe/entities/stripe.entity';
     forwardRef(() => StripeModule),
   ],
   controllers: [UsersController],
-  providers: [UsersService, StripeCustomerService],
-  exports: [UsersService],
+  providers: [UsersService, StripeCustomerService, UserDetailsStripeService],
+  exports: [UsersService, UserDetailsStripeService],
 })
 export class UsersModule {}

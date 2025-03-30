@@ -1,15 +1,13 @@
 import {
   Injectable,
-  NotFoundException,
-  Inject,
-  forwardRef,
+  NotFoundException
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateUserDto, CreateUserDetailsDto, stripeUserAddressInterface } from './dto/create-user.dto';
+import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
 import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
-import { StripeCustomerService } from 'src/modules/payments/stripe/customer/customer.service';
+import { UserDetailsStripeService } from 'src/modules/users/stripe/user-details.service';
 
 @Injectable()
 export class UsersService {
@@ -20,8 +18,7 @@ export class UsersService {
     @InjectRepository(UserDetails)
     private userDetailsRepository: Repository<UserDetails>,
 
-    @Inject(forwardRef(() => StripeCustomerService))
-    private readonly stripeCustomerService: StripeCustomerService,
+    private readonly userDetailsStripeService: UserDetailsStripeService
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<{
@@ -57,89 +54,10 @@ export class UsersService {
     const { stripe_verification, is_default } = userDetailsResponse;
 
     if (stripe_verification && is_default) {
-      return this.syncWithStripeDetails(userDetailsResponse);
+      return this.userDetailsStripeService.syncWithStripeDetails(userDetailsResponse);
     }
 
     return { status: true, data: userDetailsResponse };
-  }
-
-  private async syncWithStripeDetails(userDetailsResponse: CreateUserDetailsDto){
-    const {
-      first_name,
-      last_name,
-      address_type,
-      user_id
-    } = userDetailsResponse;
-
-    const findUser = await this.findOne(user_id);
-    const { email } = findUser;
-
-    const findStripeVerificationByUserid =
-      await this.stripeCustomerService.show(user_id);
-
-    const userAddressPayload = this.createUserAddressPayload(userDetailsResponse);
-
-    const shippingAddressPayload = this.createShippingAddressPayload(userDetailsResponse, userAddressPayload);
-
-    const name = first_name + ' ' + last_name;
-
-    const fetchStripePayload = {
-      name,
-      email,
-      ...userAddressPayload,
-      ...(address_type === "shipping" ? shippingAddressPayload : {}),
-    };
-
-    if (!findStripeVerificationByUserid.data) {
-      const response = await this.stripeCustomerService.create(fetchStripePayload);
-      return { status: true, data: response};
-    } 
-
-    const userId = {
-      metadata: {
-        user_id: findUser.id,
-      },
-    };
-
-    const response = await this.stripeCustomerService.update({
-      ...fetchStripePayload,
-      ...userId
-    });
-
-    return {
-      status: true,
-      data: response,
-    };
-  }
-
-  private createUserAddressPayload(userDetailsResponse: CreateUserDetailsDto){
-    const { city, country, address_one, address_two, postal_code, state } = userDetailsResponse;
-
-    return {
-      address: {
-        city,
-        country,
-        line1: address_one,
-        line2: address_two,
-        postal_code,
-        state,
-      }
-    }
-  }
-
-  private createShippingAddressPayload(
-    userDetailsResponse: CreateUserDetailsDto, 
-    userAddress: stripeUserAddressInterface
-  ){
-    const {first_name, last_name, phone_number} = userDetailsResponse;
-
-    return {
-      shipping: {
-        ...userAddress,
-        name: first_name + " " + last_name,
-        phone: phone_number,
-      }
-    };
   }
 
   async updateUsersDetails(updateUserDetailsDto: UpdateUserDetailsDto) {
