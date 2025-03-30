@@ -17,9 +17,6 @@ import { BaseEntity } from '../../base/entities/base.entity';
 // Users Entity
 @Entity()
 export class Users extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number;
-
   @Column()
   name: string;
 
@@ -54,9 +51,6 @@ export class Users extends BaseEntity {
 // UserDetails Entity
 @Entity()
 export class UserDetails extends BaseEntity {
-  @PrimaryGeneratedColumn()
-  id: number; // Add an id for the UserDetails entity
-
   @Column()
   user_id: number; // Foreign key for the Users entity
 

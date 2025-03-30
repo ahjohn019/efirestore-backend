@@ -8,21 +8,21 @@ import { Repository } from 'typeorm';
 import { BaseStripeService } from '../base-stripe.service';
 import { CustomerStripeDto } from '../dto/customer-stripe.dto';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from 'src/modules/users/users.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { StripeUsers } from 'src/modules/payments/stripe/entities/stripe.entity';
 import { UpdateStripeDto } from '../dto/update-stripe.dto';
+import { Users } from 'src/modules/users/entities/users.entity';
 
 @Injectable()
 export class StripeCustomerService extends BaseStripeService {
   constructor(
     protected configService: ConfigService,
 
-    @Inject(forwardRef(() => UsersService))
-    protected usersService: UsersService,
-
     @InjectRepository(StripeUsers)
     private stripeUsersRepository: Repository<StripeUsers>,
+
+    @InjectRepository(Users)
+    private usersRepository: Repository<Users>,
   ) {
     super(configService);
   }
@@ -33,9 +33,9 @@ export class StripeCustomerService extends BaseStripeService {
    * @returns
    */
   async create(customerStripeDto: CustomerStripeDto) {
-    const checkUserByEmail = await this.usersService.findByEmail(
-      customerStripeDto.email,
-    );
+    const checkUserByEmail = await this.usersRepository.findOne({
+      where: { email: customerStripeDto.email },
+    });
 
     const checkStripeUserExist = await this.stripeUsersRepository.findOne({
       where: { user_id: checkUserByEmail.id },
@@ -81,9 +81,11 @@ export class StripeCustomerService extends BaseStripeService {
       where: { user_id: id },
     });
 
-    const response = checkStripeUserExist ? await this.stripe.customers.retrieve(
-      checkStripeUserExist.stripe_account_id,
-    ) : null;
+    const response = checkStripeUserExist
+      ? await this.stripe.customers.retrieve(
+          checkStripeUserExist.stripe_account_id,
+        )
+      : null;
 
     return { status: true, data: response };
   }
@@ -98,10 +100,12 @@ export class StripeCustomerService extends BaseStripeService {
       where: { user_id: updateStripeDto.metadata.user_id },
     });
 
-    const stripeUpdateCustomerResponse = checkStripeUserExist ? await this.stripe.customers.update(
-      checkStripeUserExist.stripe_account_id,
-      updateStripeDto,
-    ) : null;
+    const stripeUpdateCustomerResponse = checkStripeUserExist
+      ? await this.stripe.customers.update(
+          checkStripeUserExist.stripe_account_id,
+          updateStripeDto,
+        )
+      : null;
 
     return { status: true, data: stripeUpdateCustomerResponse };
   }

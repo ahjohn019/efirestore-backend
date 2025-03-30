@@ -1,7 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common'; // Import forwardRef
+import { Module } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { StripeController } from './stripe.controller';
-import { UsersModule } from 'src/modules/users/users.module';
 import { ProductsModule } from 'src/modules/products/products.module';
 import { OrdersModule } from 'src/modules/orders/orders.module';
 import { IsUserEmail } from 'src/shared/validation/user/is_user_email';
@@ -11,13 +10,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { StripeUsers } from './entities/stripe.entity';
 import { StripeCustomerController } from './customer/customer.controller';
 import { StripeCustomerService } from './customer/customer.service';
+import { Users } from 'src/modules/users/entities/users.entity';
 
 @Module({
   imports: [
     OrdersModule,
-    forwardRef(() => UsersModule),
     ProductsModule,
-    TypeOrmModule.forFeature([StripeUsers]),
+    TypeOrmModule.forFeature([StripeUsers, Users]),
   ],
   controllers: [StripeController, StripeCustomerController],
   providers: [

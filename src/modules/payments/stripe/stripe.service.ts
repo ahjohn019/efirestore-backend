@@ -16,6 +16,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StripeUsers } from './entities/stripe.entity';
 import { BaseStripeService } from './base-stripe.service';
+import { Users } from 'src/modules/users/entities/users.entity';
 
 @Injectable()
 export class StripeService extends BaseStripeService {
@@ -27,8 +28,8 @@ export class StripeService extends BaseStripeService {
 
     private readonly ordersService: OrdersService,
 
-    @Inject(forwardRef(() => UsersService))
-    protected usersService: UsersService,
+    @InjectRepository(Users)
+    private usersRepository: Repository<Users>,
   ) {
     super(configService);
   }
@@ -39,9 +40,13 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async checkout(createStripeDto: CreateStripeDto) {
-    const checkUserByEmail = await this.usersService.findByEmail(
-      createStripeDto.customer_email,
-    );
+    // const checkUserByEmail = await this.usersService.findByEmail(
+    //   createStripeDto.customer_email,
+    // );
+
+    const checkUserByEmail = await this.usersRepository.findOne({
+      where: { email: createStripeDto.customer_email },
+    });
 
     if (!checkUserByEmail) {
       throw new NotFoundException('User not found.');
@@ -204,9 +209,9 @@ export class StripeService extends BaseStripeService {
           };
         });
 
-        const findUserByEmail = await this.usersService.findByEmail(
-          customer_details.email,
-        );
+        const checkUserByEmail = await this.usersRepository.findOne({
+          where: { email: customer_details.email },
+        });
 
         const saveOrderPayload = {
           title: 'Order ' + id,
@@ -220,7 +225,7 @@ export class StripeService extends BaseStripeService {
           admin_id: null,
           created_at: new Date(),
           updated_at: new Date(),
-          user_id: findUserByEmail.id ?? null,
+          user_id: checkUserByEmail.id ?? null,
           tracking_number: '',
         };
 

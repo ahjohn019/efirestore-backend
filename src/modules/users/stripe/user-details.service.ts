@@ -14,7 +14,6 @@ export class UserDetailsStripeService {
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
 
-    @Inject(forwardRef(() => StripeCustomerService))
     private readonly stripeCustomerService: StripeCustomerService,
   ) {}
 

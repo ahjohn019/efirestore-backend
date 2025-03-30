@@ -1,25 +1,36 @@
 import {
-    ValidationArguments,
-    ValidatorConstraint,
-    ValidatorConstraintInterface
+  ValidationArguments,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
 } from 'class-validator';
-import { UsersService } from '../../../modules/users/users.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Users } from 'src/modules/users/entities/users.entity';
 
 @ValidatorConstraint({ name: 'IsUserEmail', async: true })
 export class IsUserEmail implements ValidatorConstraintInterface {
-    constructor(private readonly usersService: UsersService) {}
+  constructor(
+    @InjectRepository(Users)
+    private usersRepository: Repository<Users>,
+  ) {}
 
-    async validate(value: string, args?: ValidationArguments){
-        const { object } = args;
-        const customerEmail = object.hasOwnProperty('customer_email') ? object['customer_email'] : null;
-        const findUserByEmail = await this.usersService.findByEmail(customerEmail);
-        if(!findUserByEmail) return false;
+  async validate(value: string, args?: ValidationArguments) {
+    const { object } = args;
+    const customerEmail = object.hasOwnProperty('customer_email')
+      ? object['customer_email']
+      : null;
 
-        return true;
-    }
+    const findUserByEmail = await this.usersRepository.findOne({
+      where: { email: customerEmail },
+    });
 
-    defaultMessage?(validationArguments?: ValidationArguments): string {
-        const field = validationArguments.property;
-        return `${field} not found.`;
-    }
+    if (!findUserByEmail) return false;
+
+    return true;
+  }
+
+  defaultMessage?(validationArguments?: ValidationArguments): string {
+    const field = validationArguments.property;
+    return `${field} not found.`;
+  }
 }

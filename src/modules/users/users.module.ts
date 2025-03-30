@@ -12,7 +12,7 @@ import { UserDetailsStripeService } from './stripe/user-details.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Users, UserDetails, StripeUsers]),
-    forwardRef(() => StripeModule),
+    StripeModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, StripeCustomerService, UserDetailsStripeService],

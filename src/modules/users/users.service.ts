@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
 import { UpdateUserDetailsDto } from './dto/update-user.dto';
@@ -18,7 +15,7 @@ export class UsersService {
     @InjectRepository(UserDetails)
     private userDetailsRepository: Repository<UserDetails>,
 
-    private readonly userDetailsStripeService: UserDetailsStripeService
+    private readonly userDetailsStripeService: UserDetailsStripeService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<{
@@ -54,7 +51,9 @@ export class UsersService {
     const { stripe_verification, is_default } = userDetailsResponse;
 
     if (stripe_verification && is_default) {
-      return this.userDetailsStripeService.syncWithStripeDetails(userDetailsResponse);
+      return this.userDetailsStripeService.syncWithStripeDetails(
+        userDetailsResponse,
+      );
     }
 
     return { status: true, data: userDetailsResponse };
