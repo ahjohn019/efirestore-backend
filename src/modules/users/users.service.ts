@@ -5,7 +5,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
+import { CreateUserDto, CreateUserDetailsDto, stripeUserAddressInterface } from './dto/create-user.dto';
 import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
@@ -43,78 +43,103 @@ export class UsersService {
 
     const findUser = await this.findOne(user_id);
 
+    const { id } = findUser;
+
     if (!findUser) {
       throw new NotFoundException('User not found');
     }
 
-    const response = await this.userDetailsRepository.save({
+    const userDetailsResponse = await this.userDetailsRepository.save({
       ...createUserDetailsDto,
-      user_id: findUser.id,
+      user_id: id,
     });
 
+    return this.syncWithStripeDetails(userDetailsResponse);
+  }
+
+  private async syncWithStripeDetails(userDetailsResponse: CreateUserDetailsDto){
     const {
+      first_name,
+      last_name,
       stripe_verification,
-      city,
-      country,
-      address_one,
-      address_two,
-      postal_code,
-      state,
+      address_type,
       is_default,
-    } = response;
+      user_id
+    } = userDetailsResponse;
 
-    if (stripe_verification && is_default) {
-      const findStripeVerificationByUserid =
-        await this.stripeCustomerService.show(user_id);
-
-      const userAddress = {
-        address: {
-          city,
-          country,
-          line1: address_one,
-          line2: address_two,
-          postal_code,
-          state,
-        },
-      };
-
-      const shippingAddress = {
-        shipping: {
-          ...userAddress,
-          name: response.first_name + ' ' + response.last_name,
-          phone: response.phone_number,
-        },
-      };
-
-      const payload = {
-        name: response.first_name + ' ' + response.last_name,
-        email: findUser.email,
-        ...userAddress,
-        ...shippingAddress,
-      };
-
-      if (!findStripeVerificationByUserid) {
-        const response = await this.stripeCustomerService.create(payload);
-      } else {
-        const userId = {
-          metadata: {
-            user_id: findUser.id,
-          },
-        };
-
-        const response = await this.stripeCustomerService.update({
-          ...payload,
-          ...userId,
-        });
-
-        console.log(response);
-      }
+    if (!(stripe_verification && is_default)) {
+      return { status: true, data: userDetailsResponse };
     }
 
-    // return {
-    //   status: true,
-    //   data: response,
-    // };
+    const findUser = await this.findOne(user_id);
+    const { email } = findUser;
+
+    const findStripeVerificationByUserid =
+      await this.stripeCustomerService.show(user_id);
+
+    const userAddressPayload = this.createUserAddressPayload(userDetailsResponse);
+
+    const shippingAddressPayload = this.createShippingAddressPayload(userDetailsResponse, userAddressPayload);
+
+    const name = first_name + ' ' + last_name;
+
+    const fetchStripePayload = {
+      name,
+      email,
+      ...userAddressPayload,
+      ...(address_type === "shipping" ? shippingAddressPayload : {}),
+    };
+
+    if (!findStripeVerificationByUserid.data) {
+      const response = await this.stripeCustomerService.create(fetchStripePayload);
+      return { status: true, data: response};
+    } 
+
+    const userId = {
+      metadata: {
+        user_id: findUser.id,
+      },
+    };
+
+    const response = await this.stripeCustomerService.update({
+      ...fetchStripePayload,
+      ...userId
+    });
+
+    return {
+      status: true,
+      data: response,
+    };
+  }
+
+  private createUserAddressPayload(userDetailsResponse: CreateUserDetailsDto){
+    const { city, country, address_one, address_two, postal_code, state } = userDetailsResponse;
+
+    return {
+      address: {
+        city,
+        country,
+        line1: address_one,
+        line2: address_two,
+        postal_code,
+        state,
+      }
+    }
+  }
+
+  private createShippingAddressPayload(
+    userDetailsResponse: CreateUserDetailsDto, 
+    userAddress: stripeUserAddressInterface
+  ){
+    const {first_name, last_name, phone_number} = userDetailsResponse;
+
+    return {
+      shipping: {
+        ...userAddress,
+        name: first_name + " " + last_name,
+        phone: phone_number,
+      }
+    };
   }
 
   async updateUsersDetails(updateUserDetailsDto: UpdateUserDetailsDto) {

@@ -81,13 +81,9 @@ export class StripeCustomerService extends BaseStripeService {
       where: { user_id: id },
     });
 
-    if (!checkStripeUserExist) {
-      throw new NotFoundException('Stripe user not exist.');
-    }
-
-    const response = await this.stripe.customers.retrieve(
+    const response = checkStripeUserExist ? await this.stripe.customers.retrieve(
       checkStripeUserExist.stripe_account_id,
-    );
+    ) : null;
 
     return { status: true, data: response };
   }
@@ -102,14 +98,10 @@ export class StripeCustomerService extends BaseStripeService {
       where: { user_id: updateStripeDto.metadata.user_id },
     });
 
-    if (!checkStripeUserExist) {
-      throw new NotFoundException('Stripe user not exist.');
-    }
-
-    const stripeUpdateCustomerResponse = await this.stripe.customers.update(
+    const stripeUpdateCustomerResponse = checkStripeUserExist ? await this.stripe.customers.update(
       checkStripeUserExist.stripe_account_id,
       updateStripeDto,
-    );
+    ) : null;
 
     return { status: true, data: stripeUpdateCustomerResponse };
   }

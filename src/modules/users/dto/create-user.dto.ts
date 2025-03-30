@@ -60,3 +60,14 @@ export class CreateUserDto {
   @Validate(MatchPasswords, ['password'])
   password_confirmation: string;
 }
+
+export class stripeUserAddressInterface {
+  address:{
+    city: string;
+    country: string;
+    line1: string;
+    line2: string;
+    postal_code: string;
+    state: string;
+  }
+}

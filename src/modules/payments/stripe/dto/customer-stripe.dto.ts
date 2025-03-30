@@ -32,7 +32,7 @@ export class CustomerStripeDto {
   address: CustomerStripeAddressDto;
 
   @IsNotEmpty()
-  shipping: {
+  shipping?: {
     address: CustomerStripeAddressDto;
     name: string;
     phone: string;
