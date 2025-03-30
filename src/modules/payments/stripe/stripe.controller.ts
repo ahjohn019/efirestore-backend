@@ -34,18 +34,6 @@ export class StripeController {
     return this.stripeService.checkoutGetLineItems(checkoutIdStripeDto);
   }
 
-  @Post('/customer/create')
-  @UseGuards(AuthGuard)
-  createCustomer(@Body() customerStripeDto: CustomerStripeDto) {
-    return this.stripeService.createCustomer(customerStripeDto);
-  }
-
-  @Post('/customer')
-  @UseGuards(AuthGuard)
-  checkCustomer(@Body() body: { id: number }) {
-    return this.stripeService.checkCustomer(body.id);
-  }
-
   @Post('/webhook')
   postWebhook(@Request() request) {
     return this.stripeService.postWebhook(request);

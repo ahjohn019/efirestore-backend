@@ -1,4 +1,27 @@
 import { PartialType } from '@nestjs/mapped-types';
-import { CreateStripeDto } from './create-stripe.dto';
+import { IsEmail, IsNotEmpty } from 'class-validator';
 
-export class UpdateStripeDto extends PartialType(CreateStripeDto) {}
+import { CreateStripeDto } from './create-stripe.dto';
+import { CustomerStripeAddressDto } from './customer-stripe.dto';
+
+export class UpdateStripeDto extends PartialType(CreateStripeDto) {
+  @IsNotEmpty()
+  user_id: number;
+
+  @IsNotEmpty()
+  name: string;
+
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  address: CustomerStripeAddressDto;
+
+  @IsNotEmpty()
+  shipping: {
+    address: CustomerStripeAddressDto;
+    name: string;
+    phone: string;
+  };
+}

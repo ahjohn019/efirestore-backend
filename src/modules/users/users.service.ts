@@ -6,9 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
+import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
-import { StripeService } from 'src/modules/payments/stripe/stripe.service';
+import { StripeCustomerService } from 'src/modules/payments/stripe/customer/customer.service';
+import { UpdateResult } from 'typeorm';
 
 @Injectable()
 export class UsersService {
@@ -19,8 +21,8 @@ export class UsersService {
     @InjectRepository(UserDetails)
     private userDetailsRepository: Repository<UserDetails>,
 
-    @Inject(forwardRef(() => StripeService))
-    private readonly stripeService: StripeService,
+    @Inject(forwardRef(() => StripeCustomerService))
+    private readonly stripeCustomerService: StripeCustomerService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<{
@@ -38,41 +40,45 @@ export class UsersService {
   }
 
   async createUsersDetails(createUserDetailsDto: CreateUserDetailsDto) {
-    const findUser = await this.usersRepository.findOne({
-      where: {
-        id: createUserDetailsDto.user_id,
-      },
-    });
+    const { user_id } = createUserDetailsDto;
 
-    let response = null;
+    const findUser = await this.findOne(user_id);
 
     if (!findUser) {
       throw new NotFoundException('User not found');
     }
 
-    const findUserDetails = await this.userDetailsRepository.findOne({
-      where: {
-        user_id: createUserDetailsDto.user_id,
-      },
+    const response = await this.userDetailsRepository.save({
+      ...createUserDetailsDto,
+      user_id: findUser.id,
     });
-
-    if (findUserDetails) {
-      response = await this.userDetailsRepository.update(
-        { user_id: createUserDetailsDto.user_id },
-        createUserDetailsDto,
-      );
-
-      return {
-        status: true,
-        data: response,
-      };
-    }
-
-    response = await this.userDetailsRepository.save(createUserDetailsDto);
 
     return {
       status: true,
       data: response,
+    };
+  }
+
+  async updateUsersDetails(updateUserDetailsDto: UpdateUserDetailsDto) {
+    const { id, user_id } = updateUserDetailsDto;
+
+    const findUser = await this.findOne(user_id);
+
+    if (!findUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    const findUserDetails = await this.userDetailsRepository.update(
+      {
+        id,
+        user_id,
+      },
+      updateUserDetailsDto,
+    );
+
+    return {
+      status: true,
+      data: findUserDetails,
     };
   }
 
@@ -85,6 +91,7 @@ export class UsersService {
       where: {
         id: id,
       },
+      relations: ['user_details'],
     });
   }
 

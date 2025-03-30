@@ -7,9 +7,11 @@ import {
   Param,
   Delete,
   UseGuards,
+  Put,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
+import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../../commons/guards/auth';
 import { RolesGuard } from '../../commons/guards/roles.guard';
@@ -28,6 +30,11 @@ export class UsersController {
   @Post('/user-details/create')
   createUserDetails(@Body() createUserDetailsDto: CreateUserDetailsDto) {
     return this.usersService.createUsersDetails(createUserDetailsDto);
+  }
+
+  @Put('/user-details/update')
+  updateUserDetails(@Body() updateUserDetailsDto: UpdateUserDetailsDto) {
+    return this.usersService.updateUsersDetails(updateUserDetailsDto);
   }
 
   @Post()

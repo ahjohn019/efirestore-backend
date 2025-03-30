@@ -1,0 +1,103 @@
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { BaseStripeService } from '../base-stripe.service';
+import { CustomerStripeDto } from '../dto/customer-stripe.dto';
+import { ConfigService } from '@nestjs/config';
+import { UsersService } from 'src/modules/users/users.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { StripeUsers } from 'src/modules/payments/stripe/entities/stripe.entity';
+import { UpdateStripeDto } from '../dto/update-stripe.dto';
+
+@Injectable()
+export class StripeCustomerService extends BaseStripeService {
+  constructor(
+    protected configService: ConfigService,
+
+    @Inject(forwardRef(() => UsersService))
+    protected usersService: UsersService,
+
+    @InjectRepository(StripeUsers)
+    private stripeUsersRepository: Repository<StripeUsers>,
+  ) {
+    super(configService);
+  }
+
+  /**
+   * Create Stripe Customer Data
+   * @param customerStripeDto
+   * @returns
+   */
+  async create(customerStripeDto: CustomerStripeDto) {
+    const checkUserByEmail = await this.usersService.findByEmail(
+      customerStripeDto.email,
+    );
+
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { user_id: checkUserByEmail.id },
+    });
+
+    if (checkStripeUserExist) {
+      throw new NotFoundException('Stripe user already exists.');
+    }
+
+    if (!checkUserByEmail) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const stripeCreateCustomerResponse =
+      await this.stripe.customers.create(customerStripeDto);
+
+    const payload = {
+      user_id: checkUserByEmail.id,
+      stripe_account_id: stripeCreateCustomerResponse.id,
+    };
+
+    const response = await this.stripeUsersRepository.save(payload);
+
+    return { status: true, data: response };
+  }
+
+  /**
+   * Check stripe customer exists
+   * @param id
+   * @returns
+   */
+  async show(id: number) {
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { user_id: id },
+    });
+
+    const response = await this.stripe.customers.retrieve(
+      checkStripeUserExist.stripe_account_id,
+    );
+
+    return { status: true, data: response };
+  }
+
+  /**
+   * Update stripe customer data
+   * @param updateStripeDto
+   * @returns
+   */
+  async update(updateStripeDto: UpdateStripeDto) {
+    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+      where: { user_id: updateStripeDto.user_id },
+    });
+
+    if (!checkStripeUserExist) {
+      throw new NotFoundException('Stripe user not exist.');
+    }
+
+    const stripeUpdateCustomerResponse = await this.stripe.customers.update(
+      checkStripeUserExist.stripe_account_id,
+      updateStripeDto,
+    );
+
+    return { status: true, data: stripeUpdateCustomerResponse };
+  }
+}

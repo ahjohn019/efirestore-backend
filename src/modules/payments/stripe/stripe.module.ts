@@ -9,6 +9,8 @@ import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_
 import { IsProductExists } from 'src/shared/validation/product/is_product_exists';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { StripeUsers } from './entities/stripe.entity';
+import { StripeCustomerController } from './customer/customer.controller';
+import { StripeCustomerService } from './customer/customer.service';
 
 @Module({
   imports: [
@@ -17,8 +19,14 @@ import { StripeUsers } from './entities/stripe.entity';
     ProductsModule,
     TypeOrmModule.forFeature([StripeUsers]),
   ],
-  controllers: [StripeController],
-  providers: [StripeService, IsUserEmail, IsDuplicateProducts, IsProductExists],
-  exports: [StripeService],
+  controllers: [StripeController, StripeCustomerController],
+  providers: [
+    StripeService,
+    StripeCustomerService,
+    IsUserEmail,
+    IsDuplicateProducts,
+    IsProductExists,
+  ],
+  exports: [StripeService, StripeCustomerService],
 })
 export class StripeModule {}

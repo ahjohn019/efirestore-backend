@@ -5,6 +5,7 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
+import { UpdateStripeDto } from './dto/update-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
@@ -14,14 +15,12 @@ import { CustomerStripeDto } from './dto/customer-stripe.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StripeUsers } from './entities/stripe.entity';
+import { BaseStripeService } from './base-stripe.service';
 
 @Injectable()
-export class StripeService {
-  private stripe: Stripe;
-  private stripeEndpointSecret: string;
-
+export class StripeService extends BaseStripeService {
   constructor(
-    private readonly configService: ConfigService,
+    protected configService: ConfigService,
 
     @InjectRepository(StripeUsers)
     private stripeUsersRepository: Repository<StripeUsers>,
@@ -29,17 +28,9 @@ export class StripeService {
     private readonly ordersService: OrdersService,
 
     @Inject(forwardRef(() => UsersService))
-    private readonly usersService: UsersService,
+    protected usersService: UsersService,
   ) {
-    this.stripe = new Stripe(
-      this.configService.get<string>('STRIPE_PAYMENT_DEV_SECRET_KEY'),
-      {
-        apiVersion: '2025-01-27.acacia',
-      },
-    );
-    this.stripeEndpointSecret = this.configService.get<string>(
-      'STRIPE_ENDPOINT_SECRET',
-    );
+    super(configService);
   }
 
   /**
@@ -107,73 +98,6 @@ export class StripeService {
   async fetchProduct(productId: string) {
     const fetchProduct = await this.stripe.products.retrieve(productId);
     return { status: true, data: fetchProduct.metadata };
-  }
-
-  /**
-   * Create Stripe Customer Data
-   * @param customerStripeDto
-   * @returns
-   */
-  async createCustomer(customerStripeDto: CustomerStripeDto) {
-    const checkUserByEmail = await this.usersService.findByEmail(
-      customerStripeDto.email,
-    );
-
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: checkUserByEmail.id },
-    });
-
-    if (checkStripeUserExist) {
-      throw new NotFoundException('Stripe user already exists.');
-    }
-
-    if (!checkUserByEmail) {
-      throw new NotFoundException('User not found.');
-    }
-
-    const stripeCreateCustomerResponse =
-      await this.stripe.customers.create(customerStripeDto);
-
-    const payload = {
-      user_id: checkUserByEmail.id,
-      stripe_account_id: stripeCreateCustomerResponse.id,
-    };
-
-    const response = await this.stripeUsersRepository.save(payload);
-
-    return { status: true, data: response };
-  }
-
-  /**
-   * Check stripe customer exists
-   * @param id
-   * @returns
-   */
-  async checkCustomer(id: number) {
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: id },
-    });
-
-    const response = await this.stripe.customers.retrieve(
-      checkStripeUserExist.stripe_account_id,
-    );
-
-    return { status: true, data: response };
-  }
-
-  async updateCustomer(stripeId: string) {
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { stripe_account_id: stripeId },
-    });
-
-    if (!checkStripeUserExist) {
-      throw new NotFoundException('Stripe user not exist.');
-    }
-
-    const stripeCreateCustomerResponse = await this.stripe.customers.update(
-      stripeId,
-      {},
-    );
   }
 
   /**
