@@ -9,11 +9,11 @@ export class Product {
       checkDuplicateProductIds,
     );
 
-    if (findDuplicateProducts.length <= 0) {
+    if (findDuplicateProducts.data.length <= 0) {
       return null;
     }
 
-    const fetchProductSku = findDuplicateProducts.map((item) => item.sku);
+    const fetchProductSku = findDuplicateProducts.data.map((item) => item.sku);
     const skuDuplicateList = fetchProductSku.join(', ');
 
     return skuDuplicateList;
@@ -25,7 +25,7 @@ export class Product {
   ) {
     const findDuplicateProducts = await productsService.findBulk(productIds);
 
-    const productDbIds = findDuplicateProducts.map((item) => item.id);
+    const productDbIds = findDuplicateProducts.data.map((item) => item.id);
     const findProductIdsNotExists = productIds.filter(
       (item) => !productDbIds.includes(item),
     );

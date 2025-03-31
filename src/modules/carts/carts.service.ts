@@ -121,17 +121,19 @@ export class CartsService extends BaseService {
       throw new NotFoundException('Product Not Found.');
     }
 
+    const { price } = findProduct.data;
+
     // calculate the cart quantity
     const resultQuantity = await this.calculateCartQuantity(
       createCartItemsDto.quantity,
     );
 
-    const unitTotal = findProduct.price * resultQuantity;
+    const unitTotal = price * resultQuantity;
 
     createCartItemsDto = {
       ...createCartItemsDto,
       quantity: resultQuantity,
-      unit_price: findProduct.price,
+      unit_price: price,
       unit_total: unitTotal,
       cart_session_id: createCart.data.cart_session_id,
       cart_id: createCart.data.id,
