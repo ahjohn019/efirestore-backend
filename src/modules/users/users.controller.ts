@@ -17,6 +17,7 @@ import { AuthGuard } from '../../commons/guards/auth';
 import { RolesGuard } from '../../commons/guards/roles.guard';
 import { Roles } from '../../commons/decorators/roles.decorator';
 import { Role } from '../../enum/role.enum';
+import { AllUserDto } from './dto/all-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -45,8 +46,8 @@ export class UsersController {
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  findAll() {
-    return this.usersService.findAll();
+  findAll(@Body() allProductDto: AllUserDto) {
+    return this.usersService.findAll(allProductDto);
   }
 
   @Get(':id')

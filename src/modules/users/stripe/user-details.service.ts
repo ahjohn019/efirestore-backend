@@ -49,9 +49,7 @@ export class UserDetailsStripeService extends BaseService {
       };
 
       if (!findStripeVerificationByUserid.data) {
-        const response =
-          await this.stripeCustomerService.create(fetchStripePayload);
-        return { status: true, data: response };
+        return await this.stripeCustomerService.create(fetchStripePayload);
       }
 
       const userId = {
@@ -60,14 +58,12 @@ export class UserDetailsStripeService extends BaseService {
         },
       };
 
-      const response = await this.stripeCustomerService.update({
+      return await this.stripeCustomerService.update({
         ...fetchStripePayload,
         ...userId,
       });
-
-      return this.createSuccessResponse(response);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      return error.message;
     }
   }
 

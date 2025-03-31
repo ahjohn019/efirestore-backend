@@ -8,6 +8,7 @@ import { StripeCustomerService } from '../payments/stripe/customer/customer.serv
 import { ConfigService } from '@nestjs/config';
 import { StripeUsers } from '../payments/stripe/entities/stripe.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { Helper } from 'src/utils/helper';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -32,10 +33,7 @@ describe('UsersService', () => {
           provide: getRepositoryToken(StripeUsers),
           useClass: Repository,
         },
-        {
-          provide: UserDetailsStripeService,
-          useValue: {},
-        },
+        UserDetailsStripeService,
         {
           provide: StripeCustomerService,
           useValue: {},
@@ -154,6 +152,205 @@ describe('UsersService', () => {
       status: 'success',
       code: 200,
       data: { id: 3 },
+    });
+  });
+
+  const createUserDetailsPayloadInit = (
+    stripe_verification: number,
+    is_default: number,
+  ) => {
+    return {
+      first_name: 'aaaaa',
+      last_name: 'b',
+      address_one: 'address_one',
+      address_two: 'address_two',
+      postal_code: '43500',
+      city: 'kl',
+      state: 'kl',
+      country: 'malaysia',
+      address_type: 'shipping',
+      is_default,
+      phone_number: '0192140567',
+      identity_card_number: '950630145678',
+      gender: 'male',
+      stripe_verification,
+      user_id: 1,
+    };
+  };
+
+  it('Check create user details - stripe verification and is default', async () => {
+    const userDetailsPayload: any = createUserDetailsPayloadInit(1, 1);
+
+    const saveUserDetailsSpy = jest
+      .spyOn(userDetailsRepository, 'save')
+      .mockResolvedValue(userDetailsPayload);
+
+    const syncWithStripeDetailsSpy = jest
+      .spyOn(userDetailsStripeService, 'syncWithStripeDetails')
+      .mockResolvedValue(userDetailsPayload);
+
+    const resultUserDetailsTest =
+      await service.createUsersDetails(userDetailsPayload);
+    const { result, userDetailsPayloadResult } = resultUserDetailsTest;
+
+    const { user_id, ...noUserIdPayload } = userDetailsPayload;
+
+    expect(result).toEqual(userDetailsPayloadResult);
+
+    expect(saveUserDetailsSpy).toHaveBeenCalledWith(noUserIdPayload);
+
+    expect(syncWithStripeDetailsSpy).toHaveBeenCalledWith(userDetailsPayload);
+  });
+
+  it('Check create user details - without stripe verification', async () => {
+    const randomIsDefault = Math.floor(Math.random() * 1);
+
+    const userDetailsPayload: any = createUserDetailsPayloadInit(
+      0,
+      randomIsDefault,
+    );
+
+    const saveUserDetailsSpy = jest
+      .spyOn(userDetailsRepository, 'save')
+      .mockResolvedValue(userDetailsPayload);
+
+    const result = await service.createUsersDetails(userDetailsPayload);
+
+    const { user_id, ...noUserIdPayload } = userDetailsPayload;
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: userDetailsPayload,
+    });
+
+    expect(saveUserDetailsSpy).toHaveBeenCalledWith(noUserIdPayload);
+  });
+
+  it('Check update user details - stripe verification and is default', async () => {
+    const id = 3;
+
+    const userDetailsPayload: any = {
+      id,
+      first_name: 'a23a',
+      last_name: 'b',
+      address_one: 'address_one',
+      address_two: 'address_two',
+      postal_code: '43500',
+      city: 'kl',
+      state: 'kl',
+      country: 'malaysia',
+      address_type: 'shipping',
+      is_default: 1,
+      phone_number: '0192140567',
+      identity_card_number: '950630145678',
+      gender: 'male',
+      stripe_verification: 1,
+      user_id: 1,
+    };
+
+    jest
+      .spyOn(userDetailsRepository, 'update')
+      .mockResolvedValue(userDetailsPayload);
+
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      data: userDetailsPayload,
+      status: 'success',
+      code: 200,
+    });
+
+    jest
+      .spyOn(userDetailsStripeService, 'syncWithStripeDetails')
+      .mockResolvedValue(userDetailsPayload);
+
+    const result = await service.updateUsersDetails(userDetailsPayload);
+
+    expect(result).toEqual(userDetailsPayload);
+  });
+
+  it('Check update user details - without stripe verification', async () => {
+    const id = 3;
+    const is_default = Math.floor(Math.random() * 1);
+
+    const userDetailsPayload: any = {
+      id,
+      first_name: 'a23a',
+      last_name: 'b',
+      address_one: 'address_one',
+      address_two: 'address_two',
+      postal_code: '43500',
+      city: 'kl',
+      state: 'kl',
+      country: 'malaysia',
+      address_type: 'shipping',
+      is_default,
+      phone_number: '0192140567',
+      identity_card_number: '950630145678',
+      gender: 'male',
+      stripe_verification: 0,
+      user_id: 1,
+    };
+
+    jest
+      .spyOn(userDetailsRepository, 'update')
+      .mockResolvedValue(userDetailsPayload);
+
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      data: userDetailsPayload,
+      status: 'success',
+      code: 200,
+    });
+
+    const result = await service.updateUsersDetails(userDetailsPayload);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: userDetailsPayload,
+    });
+  });
+
+  it('Check remove user exists', async () => {
+    const id = 3;
+    const deletePayload = { affected: 1, raw: {} };
+
+    jest.spyOn(usersRepository, 'delete').mockResolvedValue(deletePayload);
+
+    const result = await service.remove(id);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: deletePayload,
+    });
+  });
+
+  it('check find all users exists', async () => {
+    const mockPaginationResponse = {
+      data: [
+        { id: 1, name: 'User1' },
+        { id: 2, name: 'User2' },
+      ],
+      total_page: 1,
+      current_page: 1,
+      next_page: 1,
+      previous_page: 1,
+      total_data: 2,
+    };
+
+    jest
+      .spyOn(Helper, 'calculatePagination')
+      .mockResolvedValue(mockPaginationResponse);
+
+    const result = await service.findAll({
+      page: 1,
+      take: 20,
+    });
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: mockPaginationResponse,
     });
   });
 });

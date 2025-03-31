@@ -5,7 +5,9 @@ import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
 import { UserDetailsStripeService } from 'src/modules/users/stripe/user-details.service';
-import { BaseService } from 'src/modules/base/base.service'
+import { BaseService } from 'src/modules/base/base.service';
+import { Helper } from '../../utils/helper';
+import { AllUserDto } from './dto/all-user.dto';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -18,7 +20,7 @@ export class UsersService extends BaseService {
 
     private readonly userDetailsStripeService: UserDetailsStripeService,
   ) {
-    super()
+    super();
   }
 
   async create(createUserDto: CreateUserDto) {
@@ -48,7 +50,7 @@ export class UsersService extends BaseService {
       const { stripe_verification, is_default } = userDetailsResponse;
 
       if (stripe_verification && is_default) {
-        return this.userDetailsStripeService.syncWithStripeDetails(
+        return await this.userDetailsStripeService.syncWithStripeDetails(
           userDetailsResponse,
         );
       }
@@ -76,14 +78,34 @@ export class UsersService extends BaseService {
         updateUserDetailsDto,
       );
 
+      const findAfterUpdatedUser = await this.findOne(user_id);
+
+      const { stripe_verification, is_default } = findAfterUpdatedUser.data;
+
+      if (stripe_verification && is_default) {
+        return await this.userDetailsStripeService.syncWithStripeDetails(
+          findAfterUpdatedUser.data,
+        );
+      }
+
       return this.createSuccessResponse(updateUserDetails);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
   }
 
-  findAll() {
-    return `This action returns all users`;
+  async findAll(allUserDto: AllUserDto) {
+    try {
+      const findAllResponse = await Helper.calculatePagination<Users>(
+        allUserDto,
+        this.usersRepository,
+        null,
+      );
+
+      return this.createSuccessResponse(findAllResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async findOne(id: number) {
@@ -119,7 +141,7 @@ export class UsersService extends BaseService {
     try {
       const findPassword = this.usersRepository.findOne({
         where: {
-          password: password
+          password: password,
         },
       });
 
@@ -133,7 +155,7 @@ export class UsersService extends BaseService {
     try {
       const findToken = this.usersRepository.findOne({
         where: {
-          remember_token: token
+          remember_token: token,
         },
       });
 
@@ -146,7 +168,9 @@ export class UsersService extends BaseService {
   async update(id: number, updateUserDto: any) {
     try {
       const userEntity = await this.findOne(id);
-      const updateResponse = await this.usersRepository.save(Object.assign(userEntity, updateUserDto));
+      const updateResponse = await this.usersRepository.save(
+        Object.assign(userEntity, updateUserDto),
+      );
 
       return this.createSuccessResponse(updateResponse);
     } catch (error) {
@@ -154,7 +178,12 @@ export class UsersService extends BaseService {
     }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  async remove(id: number) {
+    try {
+      const removeUserResponse = await this.usersRepository.delete(id);
+      return this.createSuccessResponse(removeUserResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 }
