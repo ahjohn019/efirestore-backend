@@ -7,6 +7,7 @@ import { UserDetailsStripeService } from './stripe/user-details.service';
 import { StripeCustomerService } from '../payments/stripe/customer/customer.service';
 import { ConfigService } from '@nestjs/config';
 import { StripeUsers } from '../payments/stripe/entities/stripe.entity';
+import { CreateUserDto } from './dto/create-user.dto';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -33,17 +34,11 @@ describe('UsersService', () => {
         },
         {
           provide: UserDetailsStripeService,
-          useValue: {
-            // Mock methods used by UsersService, if any
-            someMethod: jest.fn(),
-          },
+          useValue: {},
         },
         {
           provide: StripeCustomerService,
-          useValue: {
-            // Mock methods used by UsersService, if any
-            someMethod: jest.fn(),
-          },
+          useValue: {},
         },
         {
           provide: ConfigService,
@@ -76,8 +71,8 @@ describe('UsersService', () => {
     expect(service).toBeDefined();
   });
 
-  it('should find one user', async () => {
-    const mockUser = {
+  it('check find one user exists', async () => {
+    const mockUser: any = {
       id: 1,
       name: 'Test User',
       email: 'test@example.com',
@@ -86,16 +81,46 @@ describe('UsersService', () => {
       remember_token: null,
       created_at: new Date(),
       updated_at: new Date(),
-      user_details: [],
     };
 
     const findOneSpy = jest
       .spyOn(usersRepository, 'findOne')
-      .mockResolvedValue(mockUser as Users);
+      .mockResolvedValue(mockUser);
 
     const result = await service.findOne(mockUser.id);
 
-    console.log('result', result);
     expect(result).toEqual(mockUser);
+    expect(findOneSpy).toHaveBeenCalledWith({
+      where: { id: mockUser.id },
+      relations: ['user_details'],
+    });
+  });
+
+  it('check create user exists', async () => {
+    const createUser: any = {
+      name: 'aaaaa',
+      email: 'test1222@test.com',
+      password: '123123',
+      password_confirmation: '123123',
+    };
+
+    const createSpy = jest
+      .spyOn(usersRepository, 'create')
+      .mockReturnValue(createUser);
+
+    const saveSpy = jest
+      .spyOn(usersRepository, 'save')
+      .mockResolvedValue(createUser);
+
+    const result = await service.create(createUser);
+
+    expect(result).toEqual({
+      status: true,
+      statusCode: 200,
+      data: createUser,
+    });
+
+    expect(createSpy).toHaveBeenCalledWith(createUser);
+    expect(saveSpy).toHaveBeenCalledWith(createUser);
   });
 });
