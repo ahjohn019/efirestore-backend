@@ -89,7 +89,9 @@ describe('UsersService', () => {
 
     const result = await service.findOne(mockUser.id);
 
-    expect(result).toEqual(mockUser);
+    console.log('result', result);
+
+    expect(result).toEqual({ data: mockUser, status: true });
     expect(findOneSpy).toHaveBeenCalledWith({
       where: { id: mockUser.id },
       relations: ['user_details'],
@@ -156,6 +158,10 @@ describe('UsersService', () => {
 
     console.log('result', result);
 
-    expect(updateSpy).toHaveBeenCalledWith(updateUser);
+    expect(updateSpy).toHaveBeenCalledWith({
+      ...updateUser,
+      status: true,
+      data: { id: 3 },
+    });
   });
 });

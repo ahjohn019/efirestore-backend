@@ -94,7 +94,7 @@ export class AuthService {
       10,
     );
 
-    const updatePassword = await this.usersService.update(user.id, {
+    const updatePassword = await this.usersService.update(user.data.id, {
       password: generatePasswordHash,
       remember_token: null,
     });
@@ -109,17 +109,19 @@ export class AuthService {
       checkResetPasswordExpiredDto.id,
     );
 
+    const { updated_at, remember_token } = user.data;
+
     if (!user) {
       throw new UnauthorizedException('User Not Found.');
     }
 
     const dateNow = dayjs().format('YYYY-MM-DD');
-    const dateUpdatedAt = dayjs(user.updated_at).format('YYYY-MM-DD');
+    const dateUpdatedAt = dayjs(updated_at).format('YYYY-MM-DD');
     const fetchDateNow = dayjs(dateNow);
 
     const diffDays = fetchDateNow.diff(dateUpdatedAt, 'day', true);
 
-    if (diffDays >= 1 && user.remember_token) {
+    if (diffDays >= 1 && remember_token) {
       throw new ForbiddenException('Page Has Expired');
     }
 

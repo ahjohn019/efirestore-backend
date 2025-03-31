@@ -17,7 +17,7 @@ export class CurrentPasswordMatched implements ValidatorConstraintInterface {
 
     const currentPasswordMatch = await bcrypt.compare(
       value,
-      existUser.password,
+      existUser.data.password,
     );
 
     return currentPasswordMatch;

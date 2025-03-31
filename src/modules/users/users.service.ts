@@ -37,7 +37,7 @@ export class UsersService {
 
     const findUser = await this.findOne(user_id);
 
-    const { id } = findUser;
+    const { id } = findUser.data;
 
     if (!findUser) {
       throw new NotFoundException('User not found');
@@ -86,13 +86,15 @@ export class UsersService {
     return `This action returns all users`;
   }
 
-  findOne(id: number) {
-    return this.usersRepository.findOne({
+  async findOne(id: number) {
+    const findUser = await this.usersRepository.findOne({
       where: {
         id,
       },
       relations: ['user_details'],
     });
+
+    return { status: true, data: findUser };
   }
 
   findByEmail(email: string) {
