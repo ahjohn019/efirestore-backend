@@ -7,64 +7,68 @@ import {
   CreateUserDetailsDto,
   stripeUserAddressInterface,
 } from 'src/modules/users/dto/create-user.dto';
+import { BaseService } from 'src/modules/base/base.service';
 
 @Injectable()
-export class UserDetailsStripeService {
+export class UserDetailsStripeService extends BaseService {
   constructor(
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
 
     private readonly stripeCustomerService: StripeCustomerService,
-  ) {}
+  ) {
+    super();
+  }
 
   async syncWithStripeDetails(userDetailsResponse: CreateUserDetailsDto) {
-    const { first_name, last_name, address_type, user_id } =
-      userDetailsResponse;
+    try {
+      const { first_name, last_name, address_type, user_id } =
+        userDetailsResponse;
 
-    const findUser = await this.usersRepository.findOne({
-      where: { id: user_id },
-    });
+      const findUser = await this.usersRepository.findOne({
+        where: { id: user_id },
+      });
 
-    const { email, id } = findUser;
+      const { email, id } = findUser;
 
-    const findStripeVerificationByUserid =
-      await this.stripeCustomerService.show(user_id);
+      const findStripeVerificationByUserid =
+        await this.stripeCustomerService.show(user_id);
 
-    const userAddressPayload =
-      this.createUserAddressPayload(userDetailsResponse);
-    const shippingAddressPayload =
-      this.createShippingAddressPayload(userDetailsResponse);
+      const userAddressPayload =
+        this.createUserAddressPayload(userDetailsResponse);
+      const shippingAddressPayload =
+        this.createShippingAddressPayload(userDetailsResponse);
 
-    const name = first_name + ' ' + last_name;
+      const name = first_name + ' ' + last_name;
 
-    const fetchStripePayload = {
-      name,
-      email,
-      ...userAddressPayload,
-      ...(address_type === 'shipping' ? shippingAddressPayload : {}),
-    };
+      const fetchStripePayload = {
+        name,
+        email,
+        ...userAddressPayload,
+        ...(address_type === 'shipping' ? shippingAddressPayload : {}),
+      };
 
-    if (!findStripeVerificationByUserid.data) {
-      const response =
-        await this.stripeCustomerService.create(fetchStripePayload);
-      return { status: true, data: response };
+      if (!findStripeVerificationByUserid.data) {
+        const response =
+          await this.stripeCustomerService.create(fetchStripePayload);
+        return { status: true, data: response };
+      }
+
+      const userId = {
+        metadata: {
+          user_id: id,
+        },
+      };
+
+      const response = await this.stripeCustomerService.update({
+        ...fetchStripePayload,
+        ...userId,
+      });
+
+      return this.createSuccessResponse(response);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    const userId = {
-      metadata: {
-        user_id: id,
-      },
-    };
-
-    const response = await this.stripeCustomerService.update({
-      ...fetchStripePayload,
-      ...userId,
-    });
-
-    return {
-      status: true,
-      data: response,
-    };
   }
 
   private createUserAddressPayload(userDetailsResponse: CreateUserDetailsDto) {
