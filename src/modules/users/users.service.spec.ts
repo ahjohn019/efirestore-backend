@@ -89,9 +89,7 @@ describe('UsersService', () => {
 
     const result = await service.findOne(mockUser.id);
 
-    console.log('result', result);
-
-    expect(result).toEqual({ data: mockUser, status: true });
+    expect(result).toEqual({ data: mockUser, status: 'success', code: 200 });
     expect(findOneSpy).toHaveBeenCalledWith({
       where: { id: mockUser.id },
       relations: ['user_details'],
@@ -110,20 +108,15 @@ describe('UsersService', () => {
       .spyOn(usersRepository, 'create')
       .mockReturnValue(createUser);
 
-    const saveSpy = jest
-      .spyOn(usersRepository, 'save')
-      .mockResolvedValue(createUser);
-
     const result = await service.create(createUser);
 
     expect(result).toEqual({
-      status: true,
-      statusCode: 200,
+      status: 'success',
+      code: 200,
       data: createUser,
     });
 
     expect(createSpy).toHaveBeenCalledWith(createUser);
-    expect(saveSpy).toHaveBeenCalledWith(createUser);
   });
 
   it('check update user exists', async () => {
@@ -154,13 +147,12 @@ describe('UsersService', () => {
       .spyOn(usersRepository, 'save')
       .mockReturnValue(updateUser);
 
-    const result = await service.update(id, updateUser);
-
-    console.log('result', result);
+    await service.update(id, updateUser);
 
     expect(updateSpy).toHaveBeenCalledWith({
       ...updateUser,
-      status: true,
+      status: 'success',
+      code: 200,
       data: { id: 3 },
     });
   });

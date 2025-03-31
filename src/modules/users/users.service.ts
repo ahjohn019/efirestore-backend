@@ -5,9 +5,10 @@ import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
 import { Users, UserDetails } from './entities/users.entity';
 import { UserDetailsStripeService } from 'src/modules/users/stripe/user-details.service';
+import { BaseService } from 'src/modules/base/base.service'
 
 @Injectable()
-export class UsersService {
+export class UsersService extends BaseService {
   constructor(
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
@@ -16,70 +17,69 @@ export class UsersService {
     private userDetailsRepository: Repository<UserDetails>,
 
     private readonly userDetailsStripeService: UserDetailsStripeService,
-  ) {}
+  ) {
+    super()
+  }
 
-  async create(createUserDto: CreateUserDto): Promise<{
-    status: boolean;
-    statusCode: number;
-    data: Users;
-  }> {
-    const user = this.usersRepository.create(createUserDto);
-
-    return {
-      statusCode: 200,
-      status: true,
-      data: await this.usersRepository.save(user),
-    };
+  async create(createUserDto: CreateUserDto) {
+    try {
+      const user = this.usersRepository.create(createUserDto);
+      return this.createSuccessResponse(user);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async createUsersDetails(createUserDetailsDto: CreateUserDetailsDto) {
-    const { user_id } = createUserDetailsDto;
+    try {
+      const { user_id } = createUserDetailsDto;
+      const findUser = await this.findOne(user_id);
+      const { id } = findUser.data;
 
-    const findUser = await this.findOne(user_id);
+      if (!findUser) {
+        throw new NotFoundException('User not found');
+      }
 
-    const { id } = findUser.data;
+      const userDetailsResponse = await this.userDetailsRepository.save({
+        ...createUserDetailsDto,
+        user_id: id,
+      });
 
-    if (!findUser) {
-      throw new NotFoundException('User not found');
+      const { stripe_verification, is_default } = userDetailsResponse;
+
+      if (stripe_verification && is_default) {
+        return this.userDetailsStripeService.syncWithStripeDetails(
+          userDetailsResponse,
+        );
+      }
+
+      return this.createSuccessResponse(userDetailsResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    const userDetailsResponse = await this.userDetailsRepository.save({
-      ...createUserDetailsDto,
-      user_id: id,
-    });
-
-    const { stripe_verification, is_default } = userDetailsResponse;
-
-    if (stripe_verification && is_default) {
-      return this.userDetailsStripeService.syncWithStripeDetails(
-        userDetailsResponse,
-      );
-    }
-
-    return { status: true, data: userDetailsResponse };
   }
 
   async updateUsersDetails(updateUserDetailsDto: UpdateUserDetailsDto) {
-    const { id, user_id } = updateUserDetailsDto;
+    try {
+      const { id, user_id } = updateUserDetailsDto;
+      const findUser = await this.findOne(user_id);
 
-    const findUser = await this.findOne(user_id);
+      if (!findUser) {
+        throw new NotFoundException('User not found');
+      }
 
-    if (!findUser) {
-      throw new NotFoundException('User not found');
+      const updateUserDetails = await this.userDetailsRepository.update(
+        {
+          id,
+          user_id,
+        },
+        updateUserDetailsDto,
+      );
+
+      return this.createSuccessResponse(updateUserDetails);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    const updateUserDetails = await this.userDetailsRepository.update(
-      {
-        id,
-        user_id,
-      },
-      updateUserDetailsDto,
-    );
-
-    return {
-      status: true,
-      data: updateUserDetails,
-    };
   }
 
   findAll() {
@@ -87,45 +87,71 @@ export class UsersService {
   }
 
   async findOne(id: number) {
-    const findUser = await this.usersRepository.findOne({
-      where: {
-        id,
-      },
-      relations: ['user_details'],
-    });
+    try {
+      const findUser = await this.usersRepository.findOne({
+        where: {
+          id,
+        },
+        relations: ['user_details'],
+      });
 
-    return { status: true, data: findUser };
+      return this.createSuccessResponse(findUser);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
-  findByEmail(email: string) {
-    return this.usersRepository.findOne({
-      where: {
-        email: email,
-      },
-    });
+  async findByEmail(email: string) {
+    try {
+      const findEmail = await this.usersRepository.findOne({
+        where: {
+          email: email,
+        },
+      });
+
+      return this.createSuccessResponse(findEmail);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   findByPassword(password: string) {
-    return this.usersRepository.findOne({
-      where: {
-        password: password,
-      },
-    });
+    try {
+      const findPassword = this.usersRepository.findOne({
+        where: {
+          password: password
+        },
+      });
+
+      return this.createSuccessResponse(findPassword);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   findByToken(token: string) {
-    return this.usersRepository.findOne({
-      where: {
-        remember_token: token,
-      },
-    });
+    try {
+      const findToken = this.usersRepository.findOne({
+        where: {
+          remember_token: token
+        },
+      });
+
+      return this.createSuccessResponse(findToken);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async update(id: number, updateUserDto: any) {
-    const userEntity = await this.findOne(id);
-    await this.usersRepository.save(Object.assign(userEntity, updateUserDto));
+    try {
+      const userEntity = await this.findOne(id);
+      const updateResponse = await this.usersRepository.save(Object.assign(userEntity, updateUserDto));
 
-    return userEntity;
+      return this.createSuccessResponse(updateResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   remove(id: number) {
