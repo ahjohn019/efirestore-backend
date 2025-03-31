@@ -12,114 +12,144 @@ import { unlink, mkdirSync, existsSync } from 'node:fs';
 import { Helper } from '../../utils/helper';
 import * as path from 'path';
 import { UpdateEntityImageDto } from './dto/update-entity-image.dto';
+import { BaseService } from '../base/base.service';
 
 @Injectable()
-export class ImagesService {
+export class ImagesService extends BaseService {
   constructor(
     @InjectRepository(Images)
     private imagesRepository: Repository<Images>,
-  ) {}
+  ) {
+    super();
+  }
 
   async uploadFiles(files: Array<Express.Multer.File>) {
-    const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
+    try {
+      const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
 
-    // Check if directory exists, if not, create it
-    if (!existsSync(uploadDir)) {
-      mkdirSync(uploadDir, { recursive: true });
+      // Check if directory exists, if not, create it
+      if (!existsSync(uploadDir)) {
+        mkdirSync(uploadDir, { recursive: true });
+      }
+
+      const fileList = files.map((file) => ({
+        name: file.filename,
+        path: file.path,
+        size: file.size,
+        mime_type: file.mimetype,
+        destination: file.destination
+      }));
+
+      await this.imagesRepository.save(fileList);
+
+      return this.createSuccessResponse(fileList);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    const fileList = files.map((file) => ({
-      name: file.filename,
-      path: file.path,
-      size: file.size,
-      mime_type: file.mimetype,
-      destination: file.destination,
-      created_at: new Date(),
-      updated_at: new Date(),
-    }));
-
-    await this.imagesRepository.save(fileList);
-    return { status: true, data: fileList };
   }
 
   async updatedEntityFile(updateEntityImageDto: UpdateEntityImageDto) {
-    const findEntityFile = await this.imagesRepository.findOne({
-      where: { id: updateEntityImageDto.image_id },
-    });
+    try {
+      const findEntityFile = await this.imagesRepository.findOne({
+        where: { id: updateEntityImageDto.image_id },
+      });
 
-    if (!findEntityFile) {
-      throw new NotFoundException('File Not Found.');
+      if (!findEntityFile) {
+        throw new NotFoundException('File Not Found.');
+      }
+
+      const updatedEntityFile = await this.imagesRepository.update(
+        { id: updateEntityImageDto.image_id },
+        {
+          category: updateEntityImageDto.category,
+          entity_id: updateEntityImageDto.entity_id,
+          entity_type: updateEntityImageDto.entity_type,
+        },
+      );
+
+      return this.createSuccessResponse(updatedEntityFile);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    const updatedEntityFile = await this.imagesRepository.update(
-      { id: updateEntityImageDto.image_id },
-      {
-        category: updateEntityImageDto.category,
-        entity_id: updateEntityImageDto.entity_id,
-        entity_type: updateEntityImageDto.entity_type,
-      },
-    );
-
-    return { status: true, data: updatedEntityFile };
   }
 
   async findAll(allImageDto: AllImageDto) {
-    return await Helper.calculatePagination<Images>(
-      allImageDto,
-      this.imagesRepository,
-      null,
-    );
+    try {
+      const findAllResponse = await Helper.calculatePagination<Images>(
+        allImageDto,
+        this.imagesRepository,
+        null,
+      );
+
+      return this.createSuccessResponse(findAllResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
-  findBulk(data: { ids: number[] }) {
-    return this.imagesRepository.find({
-      where: {
-        id: In(data.ids),
-      },
-    });
+  async findBulk(data: { ids: number[] }) {
+    try {
+      const findBulkImageResponse = await this.imagesRepository.find({
+        where: {
+          id: In(data.ids),
+        },
+      });
+
+      return this.createSuccessResponse(findBulkImageResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async update(id: number, file: Express.Multer.File) {
-    const findFile = await this.imagesRepository.findOne({
-      where: { id },
-    });
+    try {
+      const findFile = await this.imagesRepository.findOne({
+        where: { id },
+      });
 
-    if (!findFile) {
-      Helper.unlinkFile(file.path);
-      throw new NotFoundException('Files Not Found.');
+      if (!findFile) {
+        Helper.unlinkFile(file.path);
+        throw new NotFoundException('Files Not Found.');
+      }
+
+      Helper.unlinkFile(findFile.path);
+
+      await this.imagesRepository.update(id, {
+        name: file.filename,
+        path: file.path,
+        size: file.size,
+        mime_type: file.mimetype,
+        destination: file.destination,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
+
+      const updatedFile = await this.imagesRepository.findOne({ where: { id } });
+
+      return this.createSuccessResponse(updatedFile);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    Helper.unlinkFile(findFile.path);
-
-    await this.imagesRepository.update(id, {
-      name: file.filename,
-      path: file.path,
-      size: file.size,
-      mime_type: file.mimetype,
-      destination: file.destination,
-      created_at: new Date(),
-      updated_at: new Date(),
-    });
-
-    const updatedFile = await this.imagesRepository.findOne({ where: { id } });
-
-    return { status: true, data: updatedFile };
   }
 
   async remove(data: { ids: number[] }) {
-    const findFiles = await this.findBulk(data);
+    try {
+      const findFiles = await this.findBulk(data);
 
-    if (findFiles.length <= 0) {
-      throw new NotFoundException('Files Not Found.');
-    }
+      if (findFiles.data.length <= 0) {
+        throw new NotFoundException('Files Not Found.');
+      }
 
-    findFiles.forEach((file) => {
-      unlink(file.path, (err) => {
-        if (err) throw err;
-        this.imagesRepository.remove(file);
+      findFiles.data.forEach((file: Images) => {
+        unlink(file.path, (err) => {
+          if (err) throw err;
+          this.imagesRepository.remove(file);
+        });
       });
-    });
 
-    return { status: true, data: findFiles };
+      return this.createSuccessResponse(findFiles);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 }

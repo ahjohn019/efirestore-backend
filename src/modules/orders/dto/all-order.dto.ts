@@ -5,5 +5,5 @@ export class AllOrderDto {
   page: number;
 
   @IsNotEmpty()
-  total: number;
+  take: number;
 }

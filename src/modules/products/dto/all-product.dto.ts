@@ -23,7 +23,7 @@ export class AllProductDto {
   page: number;
 
   @IsNotEmpty()
-  total: number;
+  take: number;
 
   @IsOptional()
   @IsObject()

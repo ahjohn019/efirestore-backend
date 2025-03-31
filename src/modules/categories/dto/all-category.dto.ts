@@ -5,5 +5,5 @@ export class AllCategoryDto {
   page: number;
 
   @IsNotEmpty()
-  total: number;
+  take: number;
 }

@@ -12,5 +12,5 @@ export class AllImageDto {
   page: number;
 
   @IsNotEmpty()
-  total: number;
+  take: number;
 }
