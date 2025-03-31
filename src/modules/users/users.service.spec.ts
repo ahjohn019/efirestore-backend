@@ -123,4 +123,39 @@ describe('UsersService', () => {
     expect(createSpy).toHaveBeenCalledWith(createUser);
     expect(saveSpy).toHaveBeenCalledWith(createUser);
   });
+
+  it('check update user exists', async () => {
+    const id = 3;
+
+    const updateUser: any = {
+      id,
+      first_name: 'a23a',
+      last_name: 'b',
+      address_one: 'address_one',
+      address_two: 'address_two',
+      postal_code: '43500',
+      city: 'kl',
+      state: 'kl',
+      country: 'malaysia',
+      address_type: 'shipping',
+      is_default: 0,
+      phone_number: '0192140567',
+      identity_card_number: '950630145678',
+      gender: 'male',
+      stripe_verification: 1,
+      user_id: 1,
+    };
+
+    jest.spyOn(usersRepository, 'findOne').mockResolvedValue({ id } as Users);
+
+    const updateSpy = jest
+      .spyOn(usersRepository, 'save')
+      .mockReturnValue(updateUser);
+
+    const result = await service.update(id, updateUser);
+
+    console.log('result', result);
+
+    expect(updateSpy).toHaveBeenCalledWith(updateUser);
+  });
 });
