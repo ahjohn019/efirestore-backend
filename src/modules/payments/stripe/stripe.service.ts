@@ -5,13 +5,10 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
-import { UpdateStripeDto } from './dto/update-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
-import { UsersService } from '../../users/users.service';
-import { CustomerStripeDto } from './dto/customer-stripe.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StripeUsers } from './entities/stripe.entity';
@@ -40,33 +37,34 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async checkout(createStripeDto: CreateStripeDto) {
-    // const checkUserByEmail = await this.usersService.findByEmail(
-    //   createStripeDto.customer_email,
-    // );
+    try {
+      const checkUserByEmail = await this.usersRepository.findOne({
+        where: { email: createStripeDto.customer_email },
+      });
 
-    const checkUserByEmail = await this.usersRepository.findOne({
-      where: { email: createStripeDto.customer_email },
-    });
+      if (!checkUserByEmail) {
+        throw new NotFoundException('User not found.');
+      }
 
-    if (!checkUserByEmail) {
-      throw new NotFoundException('User not found.');
+      const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+        where: { user_id: checkUserByEmail.id },
+      });
+
+      const { customer_email, ...newCreateStripeDto } = createStripeDto;
+
+      const createStripeDtoResult = {
+        ...newCreateStripeDto,
+        customer: checkStripeUserExist?.stripe_account_id ?? null,
+      };
+
+      const session = await this.stripe.checkout.sessions.create(
+        createStripeDtoResult,
+      );
+
+      return this.createSuccessResponse(session);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: checkUserByEmail.id },
-    });
-
-    const { customer_email, ...newCreateStripeDto } = createStripeDto;
-
-    const createStripeDtoResult = {
-      ...newCreateStripeDto,
-      customer: checkStripeUserExist?.stripe_account_id ?? null,
-    };
-
-    const session = await this.stripe.checkout.sessions.create(
-      createStripeDtoResult,
-    );
-    return { status: true, data: session };
   }
 
   /**
@@ -75,12 +73,16 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {
-    const session = await this.stripe.checkout.sessions.retrieve(
-      checkoutIdStripeDto.checkoutId,
-      { expand: ['customer'] },
-    );
+    try {
+      const session = await this.stripe.checkout.sessions.retrieve(
+        checkoutIdStripeDto.checkoutId,
+        { expand: ['customer'] },
+      );
 
-    return { status: true, data: session };
+      return this.createSuccessResponse(session);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   /**
@@ -89,10 +91,15 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async checkoutGetLineItems(checkoutIdStripeDto: CheckoutIdStripeDto) {
-    const session = await this.stripe.checkout.sessions.listLineItems(
-      checkoutIdStripeDto.checkoutId,
-    );
-    return { status: true, data: session };
+    try {
+      const session = await this.stripe.checkout.sessions.listLineItems(
+        checkoutIdStripeDto.checkoutId,
+      );
+      return this.createSuccessResponse(session);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+
   }
 
   /**
@@ -101,8 +108,12 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async fetchProduct(productId: string) {
-    const fetchProduct = await this.stripe.products.retrieve(productId);
-    return { status: true, data: fetchProduct.metadata };
+    try {
+      const fetchProduct = await this.stripe.products.retrieve(productId);
+      return this.createSuccessResponse(fetchProduct);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   /**
@@ -234,8 +245,7 @@ export class StripeService extends BaseStripeService {
           null,
         );
 
-        return { status: true, data: createOrderSuccess };
-        break;
+        return this.createSuccessResponse(createOrderSuccess);
 
       default:
         throw new NotFoundException('Event type not found.');

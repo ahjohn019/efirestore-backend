@@ -33,33 +33,37 @@ export class StripeCustomerService extends BaseStripeService {
    * @returns
    */
   async create(customerStripeDto: CustomerStripeDto) {
-    const checkUserByEmail = await this.usersRepository.findOne({
-      where: { email: customerStripeDto.email },
-    });
+    try {
+      const checkUserByEmail = await this.usersRepository.findOne({
+        where: { email: customerStripeDto.email },
+      });
 
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: checkUserByEmail.id },
-    });
+      const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+        where: { user_id: checkUserByEmail.id },
+      });
 
-    if (checkStripeUserExist) {
-      throw new NotFoundException('Stripe user already exists.');
+      if (checkStripeUserExist) {
+        throw new NotFoundException('Stripe user already exists.');
+      }
+
+      if (!checkUserByEmail) {
+        throw new NotFoundException('User not found.');
+      }
+
+      const stripeCreateCustomerResponse =
+        await this.createCustomerStripe(customerStripeDto);
+
+      const payload = {
+        user_id: checkUserByEmail.id,
+        stripe_account_id: stripeCreateCustomerResponse.id,
+      };
+
+      const response = await this.stripeUsersRepository.save(payload);
+
+      return this.createSuccessResponse(response);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    if (!checkUserByEmail) {
-      throw new NotFoundException('User not found.');
-    }
-
-    const stripeCreateCustomerResponse =
-      await this.createCustomerStripe(customerStripeDto);
-
-    const payload = {
-      user_id: checkUserByEmail.id,
-      stripe_account_id: stripeCreateCustomerResponse.id,
-    };
-
-    const response = await this.stripeUsersRepository.save(payload);
-
-    return { status: true, data: response };
   }
 
   /**
@@ -77,17 +81,21 @@ export class StripeCustomerService extends BaseStripeService {
    * @returns
    */
   async show(id: number) {
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: id },
-    });
+    try {
+      const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+        where: { user_id: id },
+      });
 
-    const response = checkStripeUserExist
-      ? await this.stripe.customers.retrieve(
+      const response = checkStripeUserExist
+        ? await this.stripe.customers.retrieve(
           checkStripeUserExist.stripe_account_id,
         )
-      : null;
+        : null;
 
-    return { status: true, data: response };
+      return this.createSuccessResponse(response);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   /**
@@ -96,17 +104,21 @@ export class StripeCustomerService extends BaseStripeService {
    * @returns
    */
   async update(updateStripeDto: UpdateStripeDto) {
-    const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-      where: { user_id: updateStripeDto.metadata.user_id },
-    });
+    try {
+      const checkStripeUserExist = await this.stripeUsersRepository.findOne({
+        where: { user_id: updateStripeDto.metadata.user_id },
+      });
 
-    const stripeUpdateCustomerResponse = checkStripeUserExist
-      ? await this.stripe.customers.update(
+      const stripeUpdateCustomerResponse = checkStripeUserExist
+        ? await this.stripe.customers.update(
           checkStripeUserExist.stripe_account_id,
           updateStripeDto,
         )
-      : null;
+        : null;
 
-    return { status: true, data: stripeUpdateCustomerResponse };
+      return this.createSuccessResponse(stripeUpdateCustomerResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 }
