@@ -1,22 +1,24 @@
 import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { CreateCartDto, CreateCartItemsDto } from './dto/create-carts.dto';
-import { UpdateCartDto } from './dto/update-carts.dto';
+import { CreateCartItemsDto } from './dto/create-carts.dto';
 import { ProductsService } from '../products/products.service';
 import { UsersService } from '../users/users.service';
 import { Carts, CartItems } from './entities/carts.entity';
 import { DeleteCartItemDto } from './dto/delete-cart-item.dto';
+import { BaseService } from '../base/base.service';
 
 @Injectable()
-export class CartsService {
+export class CartsService extends BaseService {
   constructor(
     @InjectRepository(Carts)
     private cartsRepository: Repository<Carts>,
 
     @InjectRepository(CartItems)
     private cartItemsRepository: Repository<CartItems>,
-  ) {}
+  ) {
+    super();
+  }
 
   @Inject(ProductsService)
   private readonly productsService: ProductsService;
@@ -25,11 +27,15 @@ export class CartsService {
   private readonly usersService: ProductsService;
 
   async findAndCreateCart(userId: number) {
-    const findCart = await this.cartsRepository.findOne({
-      where: { user_id: userId },
-    });
+    try {
+      const findCart = await this.cartsRepository.findOne({
+        where: { user_id: userId },
+      });
 
-    if (!findCart) {
+      if (findCart) {
+        return this.createSuccessResponse(findCart);
+      }
+
       const findCartUser = await this.usersService.findOne(userId);
 
       if (!findCartUser) {
@@ -41,10 +47,10 @@ export class CartsService {
         cart_session_id: (Math.random() + 1).toString(36).substring(2),
       });
 
-      return { status: true, data: createCart };
+      return this.createSuccessResponse(createCart);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
     }
-
-    return { status: true, data: findCart };
   }
 
   async calculateCartQuantity(baseQuantity: number) {
@@ -62,39 +68,43 @@ export class CartsService {
   }
 
   async updateCartTotal(userId: number, cartId: number) {
-    // retrieve the current cart items
-    const fetchCartItems = await this.cartItemsRepository.find({
-      where: { cart_id: cartId },
-    });
+    try {
+      // retrieve the current cart items
+      const fetchCartItems = await this.cartItemsRepository.find({
+        where: { cart_id: cartId },
+      });
 
-    // sum the cart total data
-    const cartTotal = fetchCartItems.reduce(
-      (acc, item) => ({
-        unit_total: acc.unit_total + item.unit_total,
-        quantity: acc.quantity + item.quantity,
-      }),
-      { unit_total: 0, quantity: 0 },
-    );
+      // sum the cart total data
+      const cartTotal = fetchCartItems.reduce(
+        (acc, item) => ({
+          unit_total: acc.unit_total + item.unit_total,
+          quantity: acc.quantity + item.quantity,
+        }),
+        { unit_total: 0, quantity: 0 },
+      );
 
-    const { unit_total, quantity } = cartTotal;
+      const { unit_total, quantity } = cartTotal;
 
-    // update the subtotal and grand total to the main cart, by the user id
-    await this.cartsRepository.update(
-      {
-        user_id: userId,
-      },
-      {
-        subtotal: unit_total,
-        grand_total: unit_total,
-        quantity,
-      },
-    );
+      // update the subtotal and grand total to the main cart, by the user id
+      await this.cartsRepository.update(
+        {
+          user_id: userId,
+        },
+        {
+          subtotal: unit_total,
+          grand_total: unit_total,
+          quantity,
+        },
+      );
 
-    const resultCartUpdated = await this.cartsRepository.findOne({
-      where: { id: cartId },
-    });
+      const resultCartUpdated = await this.cartsRepository.findOne({
+        where: { id: cartId },
+      });
 
-    return { status: true, data: resultCartUpdated };
+      return this.createSuccessResponse(resultCartUpdated);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async createCartItems(createCartItemsDto: CreateCartItemsDto) {
@@ -149,61 +159,75 @@ export class CartsService {
   }
 
   async viewCartSummary(userId: number) {
-    return await this.cartsRepository.findOne({
-      where: { user_id: userId },
-      relations: ['cart_items', 'user'],
-    });
+    try {
+      const viewCartSummary = await this.cartsRepository.findOne({
+        where: { user_id: userId },
+        relations: ['cart_items', 'user'],
+      });
+
+      return this.createSuccessResponse(viewCartSummary);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async deleteCartItem(
     deleteCartItemDto: DeleteCartItemDto,
     request: { id: number },
   ) {
-    const findCartItem = await this.cartItemsRepository.findOne({
-      where: {
-        cart_id: deleteCartItemDto.cart_id,
-        product_id: deleteCartItemDto.product_id,
-      },
-    });
-
-    if (!findCartItem) {
-      throw new NotFoundException('Cart item not found.');
-    }
-
-    const deleteCartItem = await this.cartItemsRepository.remove(findCartItem);
-    const updateCartTotal = await this.updateCartTotal(
-      request.id,
-      findCartItem.cart_id,
-    );
-
-    if (updateCartTotal.data.quantity <= 0) {
-      const findCart = await this.cartsRepository.findOne({
+    try {
+      const findCartItem = await this.cartItemsRepository.findOne({
         where: {
-          id: deleteCartItemDto.cart_id,
-          user_id: request.id,
+          cart_id: deleteCartItemDto.cart_id,
+          product_id: deleteCartItemDto.product_id,
         },
       });
 
-      await this.cartsRepository.remove(findCart);
-    }
+      if (!findCartItem) {
+        throw new NotFoundException('Cart item not found.');
+      }
 
-    return { status: true, data: deleteCartItem };
+      const deleteCartItem = await this.cartItemsRepository.remove(findCartItem);
+      const updateCartTotal = await this.updateCartTotal(
+        request.id,
+        findCartItem.cart_id,
+      );
+
+      if (updateCartTotal.data.quantity <= 0) {
+        const findCart = await this.cartsRepository.findOne({
+          where: {
+            id: deleteCartItemDto.cart_id,
+            user_id: request.id,
+          },
+        });
+
+        await this.cartsRepository.remove(findCart);
+      }
+
+      return this.createSuccessResponse(deleteCartItem);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 
   async deleteCart(request: { id: number }) {
-    const findCart = await this.cartsRepository
-      .findOneOrFail({
-        where: { user_id: request.id },
-      })
-      .catch(() => {
-        throw new NotFoundException('Cart not found.');
+    try {
+      const findCart = await this.cartsRepository
+        .findOneOrFail({
+          where: { user_id: request.id },
+        })
+        .catch(() => {
+          throw new NotFoundException('Cart not found.');
+        });
+
+      await this.cartItemsRepository.delete({
+        cart_id: findCart.id,
       });
+      await this.cartsRepository.delete(findCart.id);
 
-    await this.cartItemsRepository.delete({
-      cart_id: findCart.id,
-    });
-    await this.cartsRepository.delete(findCart.id);
-
-    return { status: true };
+      return this.createSuccessResponse(true);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 }
