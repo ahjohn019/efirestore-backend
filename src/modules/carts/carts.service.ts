@@ -47,7 +47,7 @@ export class CartsService extends BaseService {
       }
 
       const createCart = await this.cartsRepository.save({
-        user_id: userId,
+        user_id: findCartUser.id,
         cart_session_id: (Math.random() + 1).toString(36).substring(2),
       });
 
@@ -57,18 +57,21 @@ export class CartsService extends BaseService {
     }
   }
 
-  async calculateCartQuantity(baseQuantity: number) {
-    let calculateQuantity: number;
+  async calculateCartQuantity(
+    baseQuantity: number,
+    findProductInSession: CartItems,
+  ) {
+    let { quantity } = findProductInSession;
 
-    if (baseQuantity < 0) {
-      calculateQuantity -= Math.abs(baseQuantity);
-    } else if (baseQuantity <= 0) {
-      calculateQuantity = 1;
+    if (baseQuantity >= 0) {
+      quantity = baseQuantity;
+    } else if (baseQuantity <= quantity) {
+      quantity = 1;
     } else {
-      calculateQuantity = baseQuantity;
+      quantity = quantity - Math.abs(baseQuantity);
     }
 
-    return calculateQuantity;
+    return quantity;
   }
 
   async updateCartTotal(userId: number, cartId: number) {
@@ -129,9 +132,14 @@ export class CartsService extends BaseService {
 
     const { price } = findProduct;
 
+    const findProductInSession = await this.cartItemsRepository.findOne({
+      where: { product_id, cart_session_id },
+    });
+
     // calculate the cart quantity
     const resultQuantity = await this.calculateCartQuantity(
       createCartItemsDto.quantity,
+      findProductInSession,
     );
 
     const unitTotal = price * resultQuantity;
@@ -148,14 +156,14 @@ export class CartsService extends BaseService {
     const { user_id, ...createCartItemsNew } = createCartItemsDto;
 
     // find the product id and cart session id is same
-    const findProductInSession = await this.cartItemsRepository.findOne({
+    const findProductInSessionAfter = await this.cartItemsRepository.findOne({
       where: { product_id: product_id, cart_session_id: cart_session_id },
     });
 
     // if product in session update data, else create data
-    if (findProductInSession) {
+    if (findProductInSessionAfter) {
       await this.cartItemsRepository.update(
-        findProductInSession.id,
+        findProductInSessionAfter.id,
         createCartItemsNew,
       );
     } else {
