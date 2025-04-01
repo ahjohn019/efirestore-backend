@@ -7,6 +7,8 @@ import { UsersService } from '../users/users.service';
 import { Carts, CartItems } from './entities/carts.entity';
 import { DeleteCartItemDto } from './dto/delete-cart-item.dto';
 import { BaseService } from '../base/base.service';
+import { Products } from '../products/entities/products.entity';
+import { Users } from '../users/entities/users.entity';
 
 @Injectable()
 export class CartsService extends BaseService {
@@ -16,15 +18,15 @@ export class CartsService extends BaseService {
 
     @InjectRepository(CartItems)
     private cartItemsRepository: Repository<CartItems>,
+
+    @InjectRepository(Products)
+    private productsRepository: Repository<Products>,
+
+    @InjectRepository(Users)
+    private usersRepository: Repository<Users>,
   ) {
     super();
   }
-
-  @Inject(ProductsService)
-  private readonly productsService: ProductsService;
-
-  @Inject(UsersService)
-  private readonly usersService: ProductsService;
 
   async findAndCreateCart(userId: number) {
     try {
@@ -36,7 +38,9 @@ export class CartsService extends BaseService {
         return this.createSuccessResponse(findCart);
       }
 
-      const findCartUser = await this.usersService.findOne(userId);
+      const findCartUser = await this.usersRepository.findOne({
+        where: { id: userId },
+      });
 
       if (!findCartUser) {
         throw new NotFoundException('User Not Found.');
@@ -114,14 +118,16 @@ export class CartsService extends BaseService {
     const createCart = await this.findAndCreateCart(createCartItemsDto.user_id);
 
     // find product exists
-    const findProduct = await this.productsService.findOne(product_id);
+    const findProduct = await this.productsRepository.findOne({
+      where: { id: product_id },
+    });
 
     // if product not exists, return error messages
     if (!findProduct) {
       throw new NotFoundException('Product Not Found.');
     }
 
-    const { price } = findProduct.data;
+    const { price } = findProduct;
 
     // calculate the cart quantity
     const resultQuantity = await this.calculateCartQuantity(
@@ -189,7 +195,8 @@ export class CartsService extends BaseService {
         throw new NotFoundException('Cart item not found.');
       }
 
-      const deleteCartItem = await this.cartItemsRepository.remove(findCartItem);
+      const deleteCartItem =
+        await this.cartItemsRepository.remove(findCartItem);
       const updateCartTotal = await this.updateCartTotal(
         request.id,
         findCartItem.cart_id,

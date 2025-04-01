@@ -8,6 +8,7 @@ import { UserDetailsStripeService } from 'src/modules/users/stripe/user-details.
 import { BaseService } from 'src/modules/base/base.service';
 import { Helper } from '../../utils/helper';
 import { AllUserDto } from './dto/all-user.dto';
+import { Gender } from 'src/enum/gender.enum';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -78,13 +79,19 @@ export class UsersService extends BaseService {
         updateUserDetailsDto,
       );
 
-      const findAfterUpdatedUser = await this.findOne(user_id);
+      const findUserDetails = await this.userDetailsRepository.findOne({
+        where: { id },
+      });
 
-      const { is_default } = findAfterUpdatedUser.data;
+      const { is_default } = findUserDetails;
 
       if (is_default) {
+        const userDetailsDto: CreateUserDetailsDto = {
+          ...findUserDetails,
+          gender: findUserDetails.gender as Gender,
+        };
         return await this.userDetailsStripeService.syncWithStripeDetails(
-          findAfterUpdatedUser.data,
+          userDetailsDto,
         );
       }
 

@@ -52,18 +52,6 @@ export class Carts extends BaseEntity {
   setCartSessionId() {
     this.cart_session_id = (Math.random() + 5).toString(36).substring(2);
   }
-
-  @BeforeInsert()
-  setDefaultDates() {
-    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    this.created_at = new Date(currentDate);
-    this.updated_at = new Date(currentDate);
-  }
-
-  @BeforeUpdate()
-  updateTimestamp() {
-    this.updated_at = new Date(dayjs().format('YYYY-MM-DD HH:mm:ss'));
-  }
 }
 @Entity()
 export class CartItems extends BaseEntity {
