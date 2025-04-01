@@ -1,21 +1,17 @@
 import {
   Injectable,
-  Inject,
-  NotFoundException,
-  ConflictException,
-  forwardRef,
+  NotFoundException
 } from '@nestjs/common';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
 import { CreateOrderDto, OrderItemDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { ProductsService } from '../products/products.service';
 import { Orders, OrderItems } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
-import { Product } from '../../utils/product';
 import { Users } from '../users/entities/users.entity';
 import { BaseService } from '../base/base.service';
+import { Products } from '../products/entities/products.entity';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -29,7 +25,8 @@ export class OrdersService extends BaseService {
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
 
-    private readonly productsService: ProductsService,
+    @InjectRepository(Products)
+    private productsRepository: Repository<Products>
   ) {
     super();
   }
@@ -93,8 +90,9 @@ export class OrdersService extends BaseService {
 
     for (const item of orderItems) {
       // check if product exists on store
-      const checkProductExists = await this.productsService.findOne(
-        item.product_id,
+      const checkProductExists = await this.productsRepository.findOne({
+        where: { id: item.product_id }
+      }
       );
 
       // if product not found, return error
