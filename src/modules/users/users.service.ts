@@ -47,9 +47,9 @@ export class UsersService extends BaseService {
         user_id: id,
       });
 
-      const { stripe_verification, is_default } = userDetailsResponse;
+      const { is_default } = userDetailsResponse;
 
-      if (stripe_verification && is_default) {
+      if (is_default) {
         return await this.userDetailsStripeService.syncWithStripeDetails(
           userDetailsResponse,
         );
@@ -80,9 +80,9 @@ export class UsersService extends BaseService {
 
       const findAfterUpdatedUser = await this.findOne(user_id);
 
-      const { stripe_verification, is_default } = findAfterUpdatedUser.data;
+      const { is_default } = findAfterUpdatedUser.data;
 
-      if (stripe_verification && is_default) {
+      if (is_default) {
         return await this.userDetailsStripeService.syncWithStripeDetails(
           findAfterUpdatedUser.data,
         );

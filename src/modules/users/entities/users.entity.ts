@@ -90,8 +90,8 @@ export class UserDetails extends BaseEntity {
   @Column()
   identity_card_number: string;
 
-  @Column()
-  stripe_verification: number;
+  // @Column()
+  // stripe_verification: number;
 
   @ManyToOne(() => Users, (user) => user.user_details)
   @JoinColumn({ name: 'user_id' })

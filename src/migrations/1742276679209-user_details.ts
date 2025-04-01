@@ -74,11 +74,11 @@ export class UserDetails1742276679209 implements MigrationInterface {
             name: 'identity_card_number',
             type: 'varchar',
           },
-          {
-            name: 'stripe_verification',
-            type: 'int',
-            default: 0,
-          },
+          // {
+          //   name: 'stripe_verification',
+          //   type: 'int',
+          //   default: 0,
+          // },
           {
             name: 'gender',
             type: 'enum',

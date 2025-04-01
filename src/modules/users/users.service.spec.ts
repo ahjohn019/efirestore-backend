@@ -135,7 +135,7 @@ describe('UsersService', () => {
       phone_number: '0192140567',
       identity_card_number: '950630145678',
       gender: 'male',
-      stripe_verification: 1,
+      // stripe_verification: 1,
       user_id: 1,
     };
 
@@ -173,7 +173,7 @@ describe('UsersService', () => {
       phone_number: '0192140567',
       identity_card_number: '950630145678',
       gender: 'male',
-      stripe_verification,
+      // stripe_verification,
       user_id: 1,
     };
   };
@@ -245,7 +245,6 @@ describe('UsersService', () => {
       phone_number: '0192140567',
       identity_card_number: '950630145678',
       gender: 'male',
-      stripe_verification: 1,
       user_id: 1,
     };
 
@@ -266,6 +265,14 @@ describe('UsersService', () => {
     const result = await service.updateUsersDetails(userDetailsPayload);
 
     expect(result).toEqual(userDetailsPayload);
+
+    expect(userDetailsRepository.update).toHaveBeenCalledWith(
+      {
+        user_id: 1,
+        id,
+      },
+      userDetailsPayload,
+    );
   });
 
   it('Check update user details - without stripe verification', async () => {
@@ -287,7 +294,6 @@ describe('UsersService', () => {
       phone_number: '0192140567',
       identity_card_number: '950630145678',
       gender: 'male',
-      stripe_verification: 0,
       user_id: 1,
     };
 
@@ -308,6 +314,14 @@ describe('UsersService', () => {
       code: 200,
       data: userDetailsPayload,
     });
+
+    expect(userDetailsRepository.update).toHaveBeenCalledWith(
+      {
+        user_id: 1,
+        id,
+      },
+      userDetailsPayload,
+    );
   });
 
   it('Check remove user exists', async () => {

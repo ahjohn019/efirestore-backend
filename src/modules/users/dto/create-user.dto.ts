@@ -42,7 +42,7 @@ export class CreateUserDetailsDto {
 
   user_id: number;
 
-  stripe_verification: number;
+  // stripe_verification: number;
 }
 
 export class CreateUserDto {
@@ -62,12 +62,12 @@ export class CreateUserDto {
 }
 
 export class stripeUserAddressInterface {
-  address:{
+  address: {
     city: string;
     country: string;
     line1: string;
     line2: string;
     postal_code: string;
     state: string;
-  }
+  };
 }
