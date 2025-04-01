@@ -11,7 +11,7 @@ import { ProductsService } from '../../../modules/products/products.service';
 export class IsDuplicateProducts implements ValidatorConstraintInterface {
   private findDuplicateProducts: string;
 
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService) { }
 
   async validate(value: any, args: ValidationArguments) {
     const lineItemIds = await Product.convertToProductIds(

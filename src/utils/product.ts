@@ -38,6 +38,9 @@ export class Product {
       CreateStripeDto: value.map(
         (lineItem) => lineItem.price_data?.product_data?.metadata?.id ?? [],
       ),
+      CreateOrderDto: value.map(
+        (lineItem) => lineItem?.product_id ?? []
+      )
     };
 
     if (!findProductIds[module]) {

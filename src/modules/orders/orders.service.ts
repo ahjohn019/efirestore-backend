@@ -43,7 +43,6 @@ export class OrdersService extends BaseService {
   async create(createOrderDto: CreateOrderDto, adminId: number) {
     try {
       const { customer_email, items } = createOrderDto;
-      let { user_id, admin_id } = createOrderDto;
 
       const findUser = await this.usersRepository.findOne({
         where: {
@@ -55,29 +54,13 @@ export class OrdersService extends BaseService {
         throw new NotFoundException('User Not Found.');
       }
 
-      user_id = findUser.id;
-      admin_id = adminId;
+      createOrderDto = {
+        ...createOrderDto,
+        user_id: findUser.id,
+        admin_id: adminId
+      }
 
       const orderItems: OrderItemDto[] = items;
-      const orderItemAmountTotalPrice = [];
-
-      // find duplicate product ids
-      const orderItemIds = orderItems.map((item) => item.product_id);
-
-      const checkDuplicateProductIds =
-        Helper.checkDuplicateIdsExists(orderItemIds);
-
-      // find duplicate product
-      const findDuplicateProduct = await Product.findDuplicateProductSkus(
-        this.productsService,
-        checkDuplicateProductIds,
-      );
-
-      if (findDuplicateProduct) {
-        throw new ConflictException(
-          `SKU : ${findDuplicateProduct} cannot be repeated on current item lists, please resubmit again.`,
-        );
-      }
 
       // if items no repeated by product id, only create order
       const saveOrder = await this.orderRepository.save(createOrderDto);
@@ -86,35 +69,7 @@ export class OrdersService extends BaseService {
         throw new NotFoundException('Order Not Found.');
       }
 
-      // if order items exists , create order item lists
-      if (items.length > 0) {
-        for (const item of orderItems) {
-          // check if product exists on store
-          const checkProductExists = await this.productsService.findOne(
-            item.product_id,
-          );
-
-          // if product not found, return error
-          if (!checkProductExists) {
-            throw new NotFoundException('Product Not Found.');
-          }
-
-          // get order item total price by quantity and unit price
-          const orderItemTotalPrice = item.quantity * item.unit_price;
-
-          // combine order item total price with the item lists
-          const result: OrderItemDto = {
-            total_price: orderItemTotalPrice,
-            ...item,
-          };
-
-          // push the amount of order item total price into a lists
-          orderItemAmountTotalPrice.push(orderItemTotalPrice);
-
-          // create order items
-          await this.orderItemsRepository.save(result);
-        }
-      }
+      const orderItemAmountTotalPrice = await this.saveOrderItems(orderItems);
 
       // sum the order item total price based on order item lists
       const sumOrderItemTotalPrice = orderItemAmountTotalPrice.reduce(
@@ -131,6 +86,42 @@ export class OrdersService extends BaseService {
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
+  }
+
+  private async saveOrderItems(orderItems: OrderItemDto[]) {
+    const orderItemAmountTotalPrice = [];
+
+    for (const item of orderItems) {
+      // check if product exists on store
+      const checkProductExists = await this.productsService.findOne(
+        item.product_id,
+      );
+
+      // if product not found, return error
+      if (!checkProductExists) {
+        throw new NotFoundException('Product Not Found.');
+      }
+
+      // get order item total price by quantity and unit price
+      const orderItemTotalPrice = item.quantity * item.unit_price;
+
+      // combine order item total price with the item lists
+      const result: OrderItemDto = {
+        total_price: orderItemTotalPrice,
+        ...item,
+      };
+
+      // push the amount of order item total price into a lists
+      orderItemAmountTotalPrice.push(orderItemTotalPrice);
+
+      // create order items
+      await this.orderItemsRepository.save(result);
+
+      // push the amount of order item total price into a lists
+      orderItemAmountTotalPrice.push(orderItemTotalPrice);
+    }
+
+    return orderItemAmountTotalPrice;
   }
 
   /**
