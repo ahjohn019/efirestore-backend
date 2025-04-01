@@ -252,11 +252,9 @@ describe('UsersService', () => {
       .spyOn(userDetailsRepository, 'update')
       .mockResolvedValue(userDetailsPayload);
 
-    jest.spyOn(service, 'findOne').mockResolvedValue({
-      data: userDetailsPayload,
-      status: 'success',
-      code: 200,
-    });
+    jest
+      .spyOn(userDetailsRepository, 'findOne')
+      .mockResolvedValue(userDetailsPayload);
 
     jest
       .spyOn(userDetailsStripeService, 'syncWithStripeDetails')
@@ -275,9 +273,9 @@ describe('UsersService', () => {
     );
   });
 
-  it('Check update user details - without stripe verification', async () => {
+  it('Check update user details - without is default', async () => {
     const id = 3;
-    const is_default = Math.floor(Math.random() * 1);
+    const is_default = 0;
 
     const userDetailsPayload: any = {
       id,
@@ -301,11 +299,9 @@ describe('UsersService', () => {
       .spyOn(userDetailsRepository, 'update')
       .mockResolvedValue(userDetailsPayload);
 
-    jest.spyOn(service, 'findOne').mockResolvedValue({
-      data: userDetailsPayload,
-      status: 'success',
-      code: 200,
-    });
+    jest
+      .spyOn(userDetailsRepository, 'findOne')
+      .mockResolvedValue(userDetailsPayload);
 
     const result = await service.updateUsersDetails(userDetailsPayload);
 
