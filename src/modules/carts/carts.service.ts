@@ -61,7 +61,7 @@ export class CartsService extends BaseService {
     baseQuantity: number,
     findProductInSession: CartItems,
   ) {
-    let { quantity } = findProductInSession;
+    let quantity = findProductInSession?.quantity || baseQuantity;
 
     if (baseQuantity >= 0) {
       quantity = baseQuantity;
