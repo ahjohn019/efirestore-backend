@@ -73,7 +73,7 @@ describe('CartService', () => {
     });
   });
 
-  it('should test cart calculation - BaseQuantity = 5, Price = 5, Unit Total = 25', async () => {
+  it('should test cart calculation - BaseQuantity = 5, Price = 5, Unit Total = 25', () => {
     const mockCartItem: CartItems = {
       id: 1,
       quantity: 0,
@@ -82,8 +82,8 @@ describe('CartService', () => {
       cart_session_id: '',
       cart_id: 0,
       product_id: 0,
-      created_at: undefined,
-      updated_at: undefined,
+      created_at: expect.any(Date),
+      updated_at: expect.any(Date),
       cart: new Carts(),
     };
 
@@ -92,7 +92,7 @@ describe('CartService', () => {
 
     jest.spyOn(cartItemsRepository, 'findOne').mockResolvedValue(mockCartItem);
 
-    const result = await service.calculateCartUnitTotalProcess(
+    const result = service.calculateCartUnitTotalProcess(
       baseQuantity,
       mockCartItem,
       price,
@@ -101,7 +101,7 @@ describe('CartService', () => {
     expect(result.unitTotal).toBe(25);
   });
 
-  it('should test cart calculation - BaseQuantity = -2 , Mock cart quantity = 5, quantity = 1 and unit total = 5.', async () => {
+  it('should test cart calculation - BaseQuantity = -2 , Mock cart quantity = 5, quantity = 1 and unit total = 5.', () => {
     const mockCartItem: CartItems = {
       id: 1,
       quantity: 2,
@@ -110,8 +110,8 @@ describe('CartService', () => {
       cart_session_id: '',
       cart_id: 0,
       product_id: 0,
-      created_at: undefined,
-      updated_at: undefined,
+      created_at: expect.any(Date),
+      updated_at: expect.any(Date),
       cart: new Carts(),
     };
 
@@ -120,12 +120,49 @@ describe('CartService', () => {
 
     jest.spyOn(cartItemsRepository, 'findOne').mockResolvedValue(mockCartItem);
 
-    const result = await service.calculateCartUnitTotalProcess(
+    const result = service.calculateCartUnitTotalProcess(
       baseQuantity,
       mockCartItem,
       price,
     );
 
     expect(result.unitTotal).toBe(5);
+  });
+
+  it('should test cart total qty and cart unit total', () => {
+    const cartItemsList: CartItems[] = [
+      {
+        id: 30,
+        created_at: expect.any(Date),
+        updated_at: expect.any(Date),
+        quantity: 2,
+        unit_price: 200,
+        unit_total: 400,
+        cart_session_id: 'ktwfdlh9aek',
+        cart_id: 35,
+        product_id: 1,
+        cart: new Carts(),
+      },
+      {
+        id: 31,
+        created_at: expect.any(Date),
+        updated_at: expect.any(Date),
+        quantity: 2,
+        unit_price: 200,
+        unit_total: 400,
+        cart_session_id: 'ktwfdlh9aek',
+        cart_id: 35,
+        product_id: 2,
+        cart: new Carts(),
+      },
+    ];
+
+    const totalCartItems = 800;
+    const totalQuantity = 4;
+
+    const result = service.sumCartTotal(cartItemsList);
+
+    expect(result.unit_total).toBe(totalCartItems);
+    expect(result.quantity).toBe(totalQuantity);
   });
 });

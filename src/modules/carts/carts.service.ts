@@ -57,7 +57,7 @@ export class CartsService extends BaseService {
     }
   }
 
-  async calculateCartUnitTotalProcess(
+  calculateCartUnitTotalProcess(
     baseQuantity: number,
     findProductInSession: CartItems,
     price: number,
@@ -78,6 +78,16 @@ export class CartsService extends BaseService {
     return { quantity, unitTotal };
   }
 
+  sumCartTotal(fetchCartItems: CartItems[]) {
+    return fetchCartItems.reduce(
+      (acc, item) => ({
+        unit_total: acc.unit_total + item.unit_total,
+        quantity: acc.quantity + item.quantity,
+      }),
+      { unit_total: 0, quantity: 0 },
+    );
+  }
+
   async updateCartTotal(userId: number, cartId: number) {
     try {
       // retrieve the current cart items
@@ -86,13 +96,7 @@ export class CartsService extends BaseService {
       });
 
       // sum the cart total data
-      const cartTotal = fetchCartItems.reduce(
-        (acc, item) => ({
-          unit_total: acc.unit_total + item.unit_total,
-          quantity: acc.quantity + item.quantity,
-        }),
-        { unit_total: 0, quantity: 0 },
-      );
+      const cartTotal = this.sumCartTotal(fetchCartItems);
 
       const { unit_total, quantity } = cartTotal;
 
