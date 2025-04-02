@@ -17,6 +17,12 @@ describe('Carts', () => {
   let token: string;
   let cartsService: CartsService;
 
+  const cartItemPayload = {
+    user_id: 1,
+    product_id: 1,
+    quantity: 3,
+  };
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
@@ -55,8 +61,6 @@ describe('Carts', () => {
 
     expect(code).toBe(200);
     expect(data.user_id).toBe(userId);
-
-    console.log('findCartResponse', findCartResponse.body);
   });
 
   it(`/GET viewCartSummary`, async () => {
@@ -71,16 +75,10 @@ describe('Carts', () => {
   });
 
   it('/POST createCartItems', async () => {
-    const mockCartItem = {
-      user_id: 1,
-      product_id: 1,
-      quantity: 3,
-    };
-
     const cartItemResponse = await request(url)
       .post('/cart/create-cart-items')
       .set('Authorization', `Bearer ${token}`)
-      .send(mockCartItem)
+      .send(cartItemPayload)
       .expect(201);
 
     await request(url)
@@ -88,6 +86,28 @@ describe('Carts', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ id: cartItemResponse.body.data.id })
       .expect(200);
+  });
+
+  it(`/DELETE deleteCartItem - cart item exists`, async () => {
+    const cartItemResponse = await request(url)
+      .post('/cart/create-cart-items')
+      .set('Authorization', `Bearer ${token}`)
+      .send(cartItemPayload)
+      .expect(201);
+
+    const deleteResponse = await request(url)
+      .delete('/cart/delete-cart-item')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        cart_id: cartItemResponse.body.data.id,
+        product_id: cartItemPayload.product_id,
+      })
+      .expect(200);
+
+    const { code, data } = deleteResponse.body;
+
+    expect(code).toBe(200);
+    expect(data.product_id).toBe(cartItemPayload.product_id);
   });
 
   it(`/DELETE deleteCartItem - cart item not found`, async () => {

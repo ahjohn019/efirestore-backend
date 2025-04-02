@@ -9,6 +9,7 @@ import { Users } from '../users/entities/users.entity';
 describe('CartService', () => {
   let service: CartsService;
   let cartsRepository: Repository<Carts>;
+  let cartItemsRepository: Repository<CartItems>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -35,6 +36,9 @@ describe('CartService', () => {
 
     service = module.get<CartsService>(CartsService);
     cartsRepository = module.get<Repository<Carts>>(getRepositoryToken(Carts));
+    cartItemsRepository = module.get<Repository<CartItems>>(
+      getRepositoryToken(CartItems),
+    );
   });
 
   it('should be defined', () => {
@@ -67,5 +71,61 @@ describe('CartService', () => {
       code: 200,
       data: mockCart,
     });
+  });
+
+  it('should test cart calculation - BaseQuantity = 5, Price = 5, Unit Total = 25', async () => {
+    const mockCartItem: CartItems = {
+      id: 1,
+      quantity: 0,
+      unit_price: 0,
+      unit_total: 0,
+      cart_session_id: '',
+      cart_id: 0,
+      product_id: 0,
+      created_at: undefined,
+      updated_at: undefined,
+      cart: new Carts(),
+    };
+
+    const baseQuantity = 5;
+    const price = 5;
+
+    jest.spyOn(cartItemsRepository, 'findOne').mockResolvedValue(mockCartItem);
+
+    const result = await service.calculateCartUnitTotalProcess(
+      baseQuantity,
+      mockCartItem,
+      price,
+    );
+
+    expect(result.unitTotal).toBe(25);
+  });
+
+  it('should test cart calculation - BaseQuantity = -2 , Mock cart quantity = 5, quantity = 1 and unit total = 5.', async () => {
+    const mockCartItem: CartItems = {
+      id: 1,
+      quantity: 2,
+      unit_price: 0,
+      unit_total: 0,
+      cart_session_id: '',
+      cart_id: 0,
+      product_id: 0,
+      created_at: undefined,
+      updated_at: undefined,
+      cart: new Carts(),
+    };
+
+    const baseQuantity = -5;
+    const price = 5;
+
+    jest.spyOn(cartItemsRepository, 'findOne').mockResolvedValue(mockCartItem);
+
+    const result = await service.calculateCartUnitTotalProcess(
+      baseQuantity,
+      mockCartItem,
+      price,
+    );
+
+    expect(result.unitTotal).toBe(5);
   });
 });

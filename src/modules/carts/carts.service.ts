@@ -57,21 +57,25 @@ export class CartsService extends BaseService {
     }
   }
 
-  async calculateCartQuantity(
+  async calculateCartUnitTotalProcess(
     baseQuantity: number,
     findProductInSession: CartItems,
+    price: number,
   ) {
     let quantity = findProductInSession?.quantity || baseQuantity;
 
     if (baseQuantity >= 0) {
       quantity = baseQuantity;
     } else if (baseQuantity <= quantity) {
-      quantity = 1;
-    } else {
-      quantity = quantity - Math.abs(baseQuantity);
+      quantity =
+        baseQuantity <= 0 && Math.abs(baseQuantity) >= quantity
+          ? 1
+          : quantity - Math.abs(baseQuantity);
     }
 
-    return quantity;
+    const unitTotal = price * quantity;
+
+    return { quantity, unitTotal };
   }
 
   async updateCartTotal(userId: number, cartId: number) {
@@ -137,16 +141,17 @@ export class CartsService extends BaseService {
     });
 
     // calculate the cart quantity
-    const resultQuantity = await this.calculateCartQuantity(
+    const resultQuantity = await this.calculateCartUnitTotalProcess(
       createCartItemsDto.quantity,
       findProductInSession,
+      price,
     );
 
-    const unitTotal = price * resultQuantity;
+    const { quantity, unitTotal } = resultQuantity;
 
     createCartItemsDto = {
       ...createCartItemsDto,
-      quantity: resultQuantity,
+      quantity,
       unit_price: price,
       unit_total: unitTotal,
       cart_session_id: createCart.data.cart_session_id,
