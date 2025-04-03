@@ -38,30 +38,35 @@ export class StripeService extends BaseStripeService {
    */
   async checkout(createStripeDto: CreateStripeDto) {
     try {
-      const checkUserByEmail = await this.usersRepository.findOne({
-        where: { email: createStripeDto.customer_email },
-        relations: ['stripe_users'],
-      });
+      const stripeCheckoutFieldData =
+        await this.createStripeCheckoutField(createStripeDto);
 
-      if (!checkUserByEmail) {
-        throw new NotFoundException('User not found.');
-      }
+      const checkoutSession = await this.createStripeCheckout(
+        stripeCheckoutFieldData,
+      );
 
-      const { stripe_users } = checkUserByEmail;
-
-      const { customer_email, ...newCreateStripeDto } = createStripeDto;
-
-      const createStripeDtoResult = {
-        ...newCreateStripeDto,
-        customer: stripe_users?.stripe_account_id ?? null,
-      };
-
-      const session = await this.createStripeCheckout(createStripeDtoResult);
-
-      return this.createSuccessResponse(session);
+      return this.createSuccessResponse(checkoutSession);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
+  }
+
+  async createStripeCheckoutField(createStripeDto: CreateStripeDto) {
+    const user = await this.usersRepository.findOne({
+      where: { email: createStripeDto.customer_email },
+      relations: ['stripe_users'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    const { customer_email, ...stripeData } = createStripeDto;
+
+    return {
+      ...stripeData,
+      customer: user.stripe_users?.stripe_account_id ?? null,
+    };
   }
 
   /**
@@ -154,24 +159,21 @@ export class StripeService extends BaseStripeService {
   customerAddresses(customer: Stripe.Customer) {
     const { address, shipping } = customer;
 
-    const { line1, line2, postal_code, city, state, country } = address;
+    const formatAddress = ({
+      line1,
+      line2,
+      postal_code,
+      city,
+      state,
+      country,
+    }) => `${line1} ${line2} ${postal_code} ${city} ${state} ${country}`;
 
-    const {
-      line1: shippingLine1,
-      line2: shippingLine2,
-      postal_code: shippingPostalCode,
-      city: shippingCity,
-      state: shippingState,
-      country: shippingCountry,
-    } = shipping.address;
-
-    const fullAddress = `${line1} ${line2} ${postal_code} ${city} ${state} ${country}`;
-
-    const shippingFullAddress = `${shippingLine1} ${shippingLine2} ${shippingPostalCode} ${shippingCity} ${shippingState} ${shippingCountry}`;
+    const fullAddress = formatAddress(address);
+    const shippingFullAddress = formatAddress(shipping.address);
 
     return {
-      fullAddress: fullAddress,
-      shippingFullAddress: shippingFullAddress,
+      fullAddress,
+      shippingFullAddress,
     };
   }
 
@@ -181,28 +183,29 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async fetchOrderLineItems(id: string) {
-    const getLineItems = await this.checkoutGetLineItems({
+    const {
+      data: { data },
+    } = await this.checkoutGetLineItems({
       checkoutId: id,
     });
 
-    const getProductIdList: string[] = getLineItems.data.data.map(
+    const getProductIdList = data.map(
       (item: CheckoutLineItemsStripeDto) => item.price.product,
     );
 
     const productDetailList = await this.productDetailList(getProductIdList);
 
-    return getLineItems.data.data.map(
-      (item: CheckoutLineItemsStripeDto, index: number) => {
-        const { quantity, price, amount_subtotal } = item;
+    return data.map((item: CheckoutLineItemsStripeDto, index: number) => {
+      const { quantity, price, amount_subtotal } = item;
+      const { id: productId } = productDetailList[index].data.metadata || {};
 
-        return {
-          unit_price: price.unit_amount,
-          quantity,
-          product_id: productDetailList[index].data.metadata?.id,
-          total_price: amount_subtotal,
-        };
-      },
-    );
+      return {
+        unit_price: price.unit_amount,
+        quantity,
+        product_id: productId,
+        total_price: amount_subtotal,
+      };
+    });
   }
 
   /**
@@ -222,13 +225,12 @@ export class StripeService extends BaseStripeService {
       amount_total,
     } = checkoutGetData;
 
-    const fetchCustomerAddress = this.customerAddresses(
-      customer as Stripe.Customer,
-    );
+    const [fetchCustomerAddress, orderLineItems] = await Promise.all([
+      this.customerAddresses(customer as Stripe.Customer),
+      this.fetchOrderLineItems(id),
+    ]);
 
     const { fullAddress, shippingFullAddress } = fetchCustomerAddress;
-
-    const orderLineItems = await this.fetchOrderLineItems(id);
 
     const { email } = customer_details;
 
@@ -237,8 +239,8 @@ export class StripeService extends BaseStripeService {
     });
 
     return {
-      title: 'Order ' + (Math.random() + 5).toString(36).substring(2),
-      status: status,
+      title: `Order - ${(Math.random() + 5).toString(36).substring(2).toUpperCase()}`,
+      status,
       shipping_address: shippingFullAddress,
       billing_address: fullAddress,
       customer_email: email,
@@ -248,7 +250,7 @@ export class StripeService extends BaseStripeService {
       admin_id: null,
       created_at: new Date(),
       updated_at: new Date(),
-      user_id: checkUserByEmail.id ?? null,
+      user_id: checkUserByEmail?.id ?? null,
       tracking_number: '',
     };
   }
@@ -274,13 +276,10 @@ export class StripeService extends BaseStripeService {
           throw new NotFoundException('Checkout ID not found.');
         }
 
-        const checkoutGetData = await this.retrieveStripeCheckout({
+        const { data: checkoutData } = await this.retrieveStripeCheckout({
           checkoutId: fetchCheckoutId,
         });
-
-        const saveOrderPayload = await this.prepareOrderFields(
-          checkoutGetData.data,
-        );
+        const saveOrderPayload = await this.prepareOrderFields(checkoutData);
 
         const createOrderSuccess = await this.ordersService.create(
           saveOrderPayload,
