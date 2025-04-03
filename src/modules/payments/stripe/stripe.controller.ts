@@ -7,9 +7,8 @@ import {
   Request,
 } from '@nestjs/common';
 import { StripeService } from './stripe.service';
-import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
+import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
 import { CreateStripeDto } from './dto/create-stripe.dto';
-import { CustomerStripeDto } from './dto/customer-stripe.dto';
 import { AuthGuard } from '../../../commons/guards/auth';
 
 @Controller('stripe')
@@ -25,7 +24,7 @@ export class StripeController {
   @Post('/checkout/get')
   @UseGuards(AuthGuard)
   checkoutGet(@Body() checkoutIdStripeDto: CheckoutIdStripeDto) {
-    return this.stripeService.checkoutGet(checkoutIdStripeDto);
+    return this.stripeService.retrieveStripeCheckout(checkoutIdStripeDto);
   }
 
   @Post('/checkout/get/line-items')

@@ -29,6 +29,7 @@ export class CreateOrderItemsTable1725188870914 implements MigrationInterface {
           {
             name: 'product_id',
             type: 'integer',
+            default: 0,
           },
           {
             name: 'order_id',

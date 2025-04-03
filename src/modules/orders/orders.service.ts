@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
@@ -26,7 +23,7 @@ export class OrdersService extends BaseService {
     private usersRepository: Repository<Users>,
 
     @InjectRepository(Products)
-    private productsRepository: Repository<Products>
+    private productsRepository: Repository<Products>,
   ) {
     super();
   }
@@ -54,8 +51,8 @@ export class OrdersService extends BaseService {
       createOrderDto = {
         ...createOrderDto,
         user_id: findUser.id,
-        admin_id: adminId
-      }
+        admin_id: adminId,
+      };
 
       const orderItems: OrderItemDto[] = items;
 
@@ -91,9 +88,8 @@ export class OrdersService extends BaseService {
     for (const item of orderItems) {
       // check if product exists on store
       const checkProductExists = await this.productsRepository.findOne({
-        where: { id: item.product_id }
-      }
-      );
+        where: { id: item.product_id },
+      });
 
       // if product not found, return error
       if (!checkProductExists) {

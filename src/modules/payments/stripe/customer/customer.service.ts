@@ -36,13 +36,12 @@ export class StripeCustomerService extends BaseStripeService {
     try {
       const checkUserByEmail = await this.usersRepository.findOne({
         where: { email: customerStripeDto.email },
+        relations: ['stripe_users'],
       });
 
-      const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-        where: { user_id: checkUserByEmail.id },
-      });
+      const { stripe_users } = checkUserByEmail;
 
-      if (checkStripeUserExist) {
+      if (stripe_users) {
         throw new NotFoundException('Stripe user already exists.');
       }
 
@@ -88,8 +87,8 @@ export class StripeCustomerService extends BaseStripeService {
 
       const response = checkStripeUserExist
         ? await this.stripe.customers.retrieve(
-          checkStripeUserExist.stripe_account_id,
-        )
+            checkStripeUserExist.stripe_account_id,
+          )
         : null;
 
       return this.createSuccessResponse(response);
@@ -111,9 +110,9 @@ export class StripeCustomerService extends BaseStripeService {
 
       const stripeUpdateCustomerResponse = checkStripeUserExist
         ? await this.stripe.customers.update(
-          checkStripeUserExist.stripe_account_id,
-          updateStripeDto,
-        )
+            checkStripeUserExist.stripe_account_id,
+            updateStripeDto,
+          )
         : null;
 
       return this.createSuccessResponse(stripeUpdateCustomerResponse);

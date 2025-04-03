@@ -50,7 +50,7 @@ export class CreateStripeDto {
 
   @IsEmail()
   @Validate(IsUserEmail, ['customer_email'])
-  customer_email: string;
+  customer_email?: string;
 
   @IsNotEmpty()
   @IsEnum(PaymentMode)

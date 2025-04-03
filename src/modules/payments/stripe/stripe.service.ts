@@ -5,7 +5,10 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
-import { CheckoutIdStripeDto } from './dto/checkout-id-stripe.dto';
+import {
+  CheckoutIdStripeDto,
+  CheckoutLineItemsStripeDto,
+} from './dto/checkout-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
@@ -19,9 +22,6 @@ import { Users } from 'src/modules/users/entities/users.entity';
 export class StripeService extends BaseStripeService {
   constructor(
     protected configService: ConfigService,
-
-    @InjectRepository(StripeUsers)
-    private stripeUsersRepository: Repository<StripeUsers>,
 
     private readonly ordersService: OrdersService,
 
@@ -40,27 +40,40 @@ export class StripeService extends BaseStripeService {
     try {
       const checkUserByEmail = await this.usersRepository.findOne({
         where: { email: createStripeDto.customer_email },
+        relations: ['stripe_users'],
       });
 
       if (!checkUserByEmail) {
         throw new NotFoundException('User not found.');
       }
 
-      const checkStripeUserExist = await this.stripeUsersRepository.findOne({
-        where: { user_id: checkUserByEmail.id },
-      });
+      const { stripe_users } = checkUserByEmail;
 
       const { customer_email, ...newCreateStripeDto } = createStripeDto;
 
       const createStripeDtoResult = {
         ...newCreateStripeDto,
-        customer: checkStripeUserExist?.stripe_account_id ?? null,
+        customer: stripe_users?.stripe_account_id ?? null,
       };
 
+      const session = await this.createStripeCheckout(createStripeDtoResult);
+
+      return this.createSuccessResponse(session);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+  }
+
+  /**
+   * Create Stripe Checkout
+   * @param createStripeDtoResult
+   * @returns
+   */
+  async createStripeCheckout(createStripeDtoResult: CreateStripeDto) {
+    try {
       const session = await this.stripe.checkout.sessions.create(
         createStripeDtoResult,
       );
-
       return this.createSuccessResponse(session);
     } catch (error) {
       return this.createErrorResponse(error.message);
@@ -72,7 +85,7 @@ export class StripeService extends BaseStripeService {
    * @param checkoutIdStripeDto
    * @returns
    */
-  async checkoutGet(checkoutIdStripeDto: CheckoutIdStripeDto) {
+  async retrieveStripeCheckout(checkoutIdStripeDto: CheckoutIdStripeDto) {
     try {
       const session = await this.stripe.checkout.sessions.retrieve(
         checkoutIdStripeDto.checkoutId,
@@ -99,7 +112,6 @@ export class StripeService extends BaseStripeService {
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
-
   }
 
   /**
@@ -139,9 +151,10 @@ export class StripeService extends BaseStripeService {
    * @param customer
    * @returns
    */
-  async customerAddresses(customer: Stripe.Customer) {
-    const { line1, line2, postal_code, city, state, country } =
-      customer.address;
+  customerAddresses(customer: Stripe.Customer) {
+    const { address, shipping } = customer;
+
+    const { line1, line2, postal_code, city, state, country } = address;
 
     const {
       line1: shippingLine1,
@@ -150,7 +163,7 @@ export class StripeService extends BaseStripeService {
       city: shippingCity,
       state: shippingState,
       country: shippingCountry,
-    } = customer.shipping.address;
+    } = shipping.address;
 
     const fullAddress = `${line1} ${line2} ${postal_code} ${city} ${state} ${country}`;
 
@@ -159,6 +172,84 @@ export class StripeService extends BaseStripeService {
     return {
       fullAddress: fullAddress,
       shippingFullAddress: shippingFullAddress,
+    };
+  }
+
+  /**
+   * Fetch Order Items
+   * @param id
+   * @returns
+   */
+  async fetchOrderLineItems(id: string) {
+    const getLineItems = await this.checkoutGetLineItems({
+      checkoutId: id,
+    });
+
+    const getProductIdList: string[] = getLineItems.data.data.map(
+      (item: CheckoutLineItemsStripeDto) => item.price.product,
+    );
+
+    const productDetailList = await this.productDetailList(getProductIdList);
+
+    return getLineItems.data.data.map(
+      (item: CheckoutLineItemsStripeDto, index: number) => {
+        const { quantity, price, amount_subtotal } = item;
+
+        return {
+          unit_price: price.unit_amount,
+          quantity,
+          product_id: productDetailList[index].data.metadata?.id,
+          total_price: amount_subtotal,
+        };
+      },
+    );
+  }
+
+  /**
+   * Prepare Order Fields
+   * @param checkoutGetData
+   * @returns
+   */
+  async prepareOrderFields(
+    checkoutGetData: Stripe.Response<Stripe.Checkout.Session>,
+  ) {
+    const {
+      id,
+      status,
+      customer,
+      customer_details,
+      amount_subtotal,
+      amount_total,
+    } = checkoutGetData;
+
+    const fetchCustomerAddress = this.customerAddresses(
+      customer as Stripe.Customer,
+    );
+
+    const { fullAddress, shippingFullAddress } = fetchCustomerAddress;
+
+    const orderLineItems = await this.fetchOrderLineItems(id);
+
+    const { email } = customer_details;
+
+    const checkUserByEmail = await this.usersRepository.findOne({
+      where: { email },
+    });
+
+    return {
+      title: 'Order ' + (Math.random() + 5).toString(36).substring(2),
+      status: status,
+      shipping_address: shippingFullAddress,
+      billing_address: fullAddress,
+      customer_email: email,
+      items: orderLineItems,
+      subtotal: amount_subtotal,
+      grand_total: amount_total,
+      admin_id: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      user_id: checkUserByEmail.id ?? null,
+      tracking_number: '',
     };
   }
 
@@ -178,67 +269,18 @@ export class StripeService extends BaseStripeService {
     switch (event.type) {
       case 'checkout.session.completed':
         const fetchCheckoutId = event.data?.object?.id || null;
-        const checkoutSuccessPayload = {
+
+        if (!fetchCheckoutId) {
+          throw new NotFoundException('Checkout ID not found.');
+        }
+
+        const checkoutGetData = await this.retrieveStripeCheckout({
           checkoutId: fetchCheckoutId,
-        };
-        const checkoutGetData = await this.checkoutGet(checkoutSuccessPayload);
-
-        const {
-          id,
-          status,
-          customer,
-          customer_details,
-          amount_subtotal,
-          amount_total,
-        } = checkoutGetData.data;
-
-        const fullAddress = (
-          await this.customerAddresses(customer as Stripe.Customer)
-        ).fullAddress;
-
-        const shippingFullAddress = (
-          await this.customerAddresses(customer as Stripe.Customer)
-        ).shippingFullAddress;
-
-        const getLineItems = await this.checkoutGetLineItems({
-          checkoutId: checkoutGetData.data.id,
         });
 
-        const getProductIdList: string[] = getLineItems.data.data.map(
-          (item) => item.price.product as string,
+        const saveOrderPayload = await this.prepareOrderFields(
+          checkoutGetData.data,
         );
-
-        const productDetailList =
-          await this.productDetailList(getProductIdList);
-
-        const orderLineItems = getLineItems.data.data.map((item, index) => {
-          return {
-            unit_price: item.price.unit_amount,
-            quantity: item.quantity,
-            product_id: productDetailList[index].data.id,
-            total_price: item.amount_subtotal,
-          };
-        });
-
-        const checkUserByEmail = await this.usersRepository.findOne({
-          where: { email: customer_details.email },
-        });
-
-        const saveOrderPayload = {
-          title: 'Order ' + id,
-          status: status,
-          shipping_address: shippingFullAddress,
-          billing_address: fullAddress,
-          customer_email: customer_details.email,
-          items: orderLineItems,
-          subtotal: amount_subtotal,
-          grand_total: amount_total,
-          admin_id: null,
-          created_at: new Date(),
-          updated_at: new Date(),
-          user_id: checkUserByEmail.id ?? null,
-          tracking_number: '',
-        };
 
         const createOrderSuccess = await this.ordersService.create(
           saveOrderPayload,

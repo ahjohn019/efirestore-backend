@@ -5,6 +5,7 @@ import {
   BeforeInsert,
   OneToMany,
   ManyToOne,
+  OneToOne,
   JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../enum/role.enum';
@@ -13,6 +14,7 @@ import { AddressType } from '../../../enum/address-type.enum';
 import * as bcrypt from 'bcrypt';
 import { Orders } from '../../orders/entities/orders.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
+import { StripeUsers } from 'src/modules/payments/stripe/entities/stripe.entity';
 
 // Users Entity
 @Entity()
@@ -46,6 +48,9 @@ export class Users extends BaseEntity {
     cascade: true,
   })
   orders: Orders[];
+
+  @OneToOne(() => StripeUsers, (stripeUsers) => stripeUsers.user)
+  stripe_users: StripeUsers;
 }
 
 // UserDetails Entity
@@ -89,8 +94,6 @@ export class UserDetails extends BaseEntity {
 
   @Column()
   identity_card_number: string;
-
-  // @Column()
   // stripe_verification: number;
 
   @ManyToOne(() => Users, (user) => user.user_details)

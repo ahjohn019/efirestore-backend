@@ -121,7 +121,7 @@ export class UsersService extends BaseService {
         where: {
           id,
         },
-        relations: ['user_details'],
+        relations: ['user_details', 'orders', 'stripe_users'],
       });
 
       return this.createSuccessResponse(findUser);
