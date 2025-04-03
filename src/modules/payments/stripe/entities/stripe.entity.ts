@@ -1,6 +1,6 @@
 import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
-import { BaseEntity } from 'src/modules/base/entities/base.entity';
-import { Users } from 'src/modules/users/entities/users.entity';
+import { BaseEntity } from '../../../base/entities/base.entity';
+import { Users } from '../../../users/entities/users.entity';
 
 @Entity()
 export class StripeUsers extends BaseEntity {

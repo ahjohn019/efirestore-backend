@@ -66,11 +66,12 @@ export class CartsService extends BaseService {
 
     if (baseQuantity >= 0) {
       quantity = baseQuantity;
-    } else if (baseQuantity <= quantity) {
-      quantity =
-        baseQuantity <= 0 && Math.abs(baseQuantity) >= quantity
+    } else {
+      const adjustedQuantity =
+        Math.abs(baseQuantity) >= quantity
           ? 1
           : quantity - Math.abs(baseQuantity);
+      quantity = baseQuantity <= 0 ? adjustedQuantity : quantity;
     }
 
     const unitTotal = price * quantity;
@@ -88,15 +89,18 @@ export class CartsService extends BaseService {
     );
   }
 
-  async updateCartTotal(userId: number, cartId: number) {
+  async updateCartTotal(userId: number) {
     try {
       // retrieve the current cart items
-      const fetchCartItems = await this.cartItemsRepository.find({
-        where: { cart_id: cartId },
+      const fetchCartItems = await this.cartsRepository.findOne({
+        where: { user_id: userId },
+        relations: ['cart_items'],
       });
 
+      const cartItems = fetchCartItems?.cart_items ?? [];
+
       // sum the cart total data
-      const cartTotal = this.sumCartTotal(fetchCartItems);
+      const cartTotal = this.sumCartTotal(cartItems);
 
       const { unit_total, quantity } = cartTotal;
 
@@ -111,12 +115,6 @@ export class CartsService extends BaseService {
           quantity,
         },
       );
-
-      const resultCartUpdated = await this.cartsRepository.findOne({
-        where: { id: cartId },
-      });
-
-      return this.createSuccessResponse(resultCartUpdated);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
@@ -145,7 +143,7 @@ export class CartsService extends BaseService {
     });
 
     // calculate the cart quantity
-    const resultQuantity = await this.calculateCartUnitTotalProcess(
+    const resultQuantity = this.calculateCartUnitTotalProcess(
       createCartItemsDto.quantity,
       findProductInSession,
       price,
@@ -153,7 +151,7 @@ export class CartsService extends BaseService {
 
     const { quantity, unitTotal } = resultQuantity;
 
-    createCartItemsDto = {
+    const { user_id, ...updateCartItems } = {
       ...createCartItemsDto,
       quantity,
       unit_price: price,
@@ -162,25 +160,34 @@ export class CartsService extends BaseService {
       cart_id: createCart.data.id,
     };
 
-    const { user_id, ...createCartItemsNew } = createCartItemsDto;
-
-    // find the product id and cart session id is same
-    const findProductInSessionAfter = await this.cartItemsRepository.findOne({
-      where: { product_id: product_id, cart_session_id: cart_session_id },
-    });
+    const createCartItems = {
+      ...createCartItemsDto,
+      quantity,
+      unit_price: price,
+      unit_total: unitTotal,
+      cart_session_id: createCart.data.cart_session_id,
+      cart_id: createCart.data.id,
+    };
 
     // if product in session update data, else create data
-    if (findProductInSessionAfter) {
+    if (findProductInSession) {
       await this.cartItemsRepository.update(
-        findProductInSessionAfter.id,
-        createCartItemsNew,
+        findProductInSession.id,
+        updateCartItems,
       );
     } else {
-      await this.cartItemsRepository.save(createCartItemsDto);
+      await this.cartItemsRepository.save(createCartItems);
     }
 
     // update the cart total
-    return this.updateCartTotal(user_id, createCartItemsDto.cart_id);
+    await this.updateCartTotal(user_id);
+
+    const findCarts = await this.cartsRepository.findOne({
+      where: { user_id: user_id },
+      relations: ['cart_items'],
+    });
+
+    return this.createSuccessResponse(findCarts);
   }
 
   async viewCartSummary(userId: number) {
@@ -214,10 +221,7 @@ export class CartsService extends BaseService {
 
       const deleteCartItem =
         await this.cartItemsRepository.remove(findCartItem);
-      const updateCartTotal = await this.updateCartTotal(
-        request.id,
-        findCartItem.cart_id,
-      );
+      const updateCartTotal = await this.updateCartTotal(request.id);
 
       if (updateCartTotal.data.quantity <= 0) {
         const findCart = await this.cartsRepository.findOne({
@@ -246,9 +250,6 @@ export class CartsService extends BaseService {
           throw new NotFoundException('Cart not found.');
         });
 
-      await this.cartItemsRepository.delete({
-        cart_id: findCart.id,
-      });
       await this.cartsRepository.delete(findCart.id);
 
       return this.createSuccessResponse(true);

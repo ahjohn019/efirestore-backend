@@ -41,7 +41,9 @@ export class Carts extends BaseEntity {
   @Column()
   user_id: number;
 
-  @OneToMany(() => CartItems, (cart_items) => cart_items.cart)
+  @OneToMany(() => CartItems, (cart_items) => cart_items.cart, {
+    cascade: true,
+  })
   cart_items: CartItems[];
 
   @OneToOne(() => Users, { cascade: true })
@@ -83,6 +85,7 @@ export class CartItems extends BaseEntity {
 
   @ManyToOne(() => Carts, (cart) => cart.cart_items, {
     nullable: true,
+    onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'cart_id' })
   cart: Carts;

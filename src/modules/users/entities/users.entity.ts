@@ -14,7 +14,7 @@ import { AddressType } from '../../../enum/address-type.enum';
 import * as bcrypt from 'bcrypt';
 import { Orders } from '../../orders/entities/orders.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
-import { StripeUsers } from 'src/modules/payments/stripe/entities/stripe.entity';
+import { StripeUsers } from '../../payments/stripe/entities/stripe.entity';
 
 // Users Entity
 @Entity()
