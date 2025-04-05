@@ -61,7 +61,7 @@ export class CreateUserDto {
   password_confirmation: string;
 }
 
-export class stripeUserAddressInterface {
+export interface stripeUserAddressInterface {
   address: {
     city: string;
     country: string;

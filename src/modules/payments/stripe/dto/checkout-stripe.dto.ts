@@ -5,7 +5,7 @@ export class CheckoutIdStripeDto {
   checkoutId: string;
 }
 
-export class CheckoutLineItemsStripeDto {
+export interface CheckoutLineItemsStripeDto {
   price: {
     product: string;
     unit_amount: number;
