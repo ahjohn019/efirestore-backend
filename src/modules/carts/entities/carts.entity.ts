@@ -50,6 +50,8 @@ export class Carts extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user: Users;
 
+  totalCartItems: 0;
+
   @BeforeInsert()
   setCartSessionId() {
     this.cart_session_id = (Math.random() + 5).toString(36).substring(2);

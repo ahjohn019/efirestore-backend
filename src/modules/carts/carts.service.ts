@@ -121,73 +121,80 @@ export class CartsService extends BaseService {
   }
 
   async createCartItems(createCartItemsDto: CreateCartItemsDto) {
-    const { product_id, cart_session_id } = createCartItemsDto;
+    try {
+      const { product_id, cart_session_id } = createCartItemsDto;
 
-    // find and create new cart
-    const createCart = await this.findAndCreateCart(createCartItemsDto.user_id);
-
-    // find product exists
-    const findProduct = await this.productsRepository.findOne({
-      where: { id: product_id },
-    });
-
-    // if product not exists, return error messages
-    if (!findProduct) {
-      throw new NotFoundException('Product Not Found.');
-    }
-
-    const { price } = findProduct;
-
-    const findProductInSession = await this.cartItemsRepository.findOne({
-      where: { product_id, cart_session_id },
-    });
-
-    // calculate the cart quantity
-    const resultQuantity = this.calculateCartUnitTotalProcess(
-      createCartItemsDto.quantity,
-      findProductInSession,
-      price,
-    );
-
-    const { quantity, unitTotal } = resultQuantity;
-
-    const { user_id, ...updateCartItems } = {
-      ...createCartItemsDto,
-      quantity,
-      unit_price: price,
-      unit_total: unitTotal,
-      cart_session_id: createCart.data.cart_session_id,
-      cart_id: createCart.data.id,
-    };
-
-    const createCartItems = {
-      ...createCartItemsDto,
-      quantity,
-      unit_price: price,
-      unit_total: unitTotal,
-      cart_session_id: createCart.data.cart_session_id,
-      cart_id: createCart.data.id,
-    };
-
-    // if product in session update data, else create data
-    if (findProductInSession) {
-      await this.cartItemsRepository.update(
-        findProductInSession.id,
-        updateCartItems,
+      // find and create new cart
+      const createCart = await this.findAndCreateCart(
+        createCartItemsDto.user_id,
       );
-    } else {
-      await this.cartItemsRepository.save(createCartItems);
+
+      // find product exists
+      const findProduct = await this.productsRepository.findOne({
+        where: { id: product_id },
+      });
+
+      // if product not exists, return error messages
+      if (!findProduct) {
+        throw new NotFoundException('Product Not Found.');
+      }
+
+      const { price } = findProduct;
+
+      const findProductInSession = await this.cartItemsRepository.findOne({
+        where: { product_id, cart_session_id },
+      });
+
+      // calculate the cart quantity
+      const resultQuantity = this.calculateCartUnitTotalProcess(
+        createCartItemsDto.quantity,
+        findProductInSession,
+        price,
+      );
+
+      const { quantity, unitTotal } = resultQuantity;
+
+      const { user_id, ...updateCartItems } = {
+        ...createCartItemsDto,
+        quantity,
+        unit_price: price,
+        unit_total: unitTotal,
+        cart_session_id: createCart.data.cart_session_id,
+        cart_id: createCart.data.id,
+      };
+
+      const createCartItems = {
+        ...createCartItemsDto,
+        quantity,
+        unit_price: price,
+        unit_total: unitTotal,
+        cart_session_id: createCart.data.cart_session_id,
+        cart_id: createCart.data.id,
+      };
+
+      // if product in session update data, else create data
+      if (findProductInSession) {
+        await this.cartItemsRepository.update(
+          findProductInSession.id,
+          updateCartItems,
+        );
+      } else {
+        await this.cartItemsRepository.save(createCartItems);
+      }
+
+      // update the cart total
+      await this.updateCartTotal(user_id);
+
+      const findCarts = await this.cartsRepository.findOne({
+        where: { user_id: user_id },
+        relations: ['cart_items'],
+      });
+
+      return this.createSuccessResponse(findCarts);
+    } catch (error) {
+      console.log('error', error);
+      return this.createErrorResponse(error.message);
     }
-
-    // update the cart total
-    await this.updateCartTotal(user_id);
-
-    const findCarts = await this.cartsRepository.findOne({
-      where: { user_id: user_id },
-      relations: ['cart_items'],
-    });
-
-    return this.createSuccessResponse(findCarts);
   }
 
   async viewCartSummary(userId: number) {
@@ -213,29 +220,26 @@ export class CartsService extends BaseService {
           cart_id: deleteCartItemDto.cart_id,
           product_id: deleteCartItemDto.product_id,
         },
+        relations: ['cart'],
       });
 
       if (!findCartItem) {
         throw new NotFoundException('Cart item not found.');
       }
 
-      const deleteCartItem =
-        await this.cartItemsRepository.remove(findCartItem);
-      const updateCartTotal = await this.updateCartTotal(request.id);
+      await this.cartItemsRepository.remove(findCartItem);
 
-      if (updateCartTotal.data.quantity <= 0) {
-        const findCart = await this.cartsRepository.findOne({
-          where: {
-            id: deleteCartItemDto.cart_id,
-            user_id: request.id,
-          },
-        });
+      await this.updateCartTotal(request.id);
 
-        await this.cartsRepository.remove(findCart);
+      const countCartItems = findCartItem.cart?.cart_items?.length || 0;
+
+      if (countCartItems <= 0) {
+        await this.cartsRepository.delete(findCartItem.cart.id);
       }
 
-      return this.createSuccessResponse(deleteCartItem);
+      return this.createSuccessResponse(true);
     } catch (error) {
+      console.log('error', error);
       return this.createErrorResponse(error.message);
     }
   }
