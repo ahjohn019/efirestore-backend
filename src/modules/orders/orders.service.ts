@@ -8,7 +8,6 @@ import { Orders } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 import { Users } from '../users/entities/users.entity';
 import { BaseService } from '../base/base.service';
-import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -125,6 +124,10 @@ export class OrdersService extends BaseService {
   ) {
     try {
       const findOrder = await this.findOne(id);
+
+      if (!findOrder) {
+        throw new NotFoundException('Order Not Found.');
+      }
 
       const updateOrder = await this.orderRepository.update(findOrder.data.id, {
         status: updateOrderStatusDto.status,
