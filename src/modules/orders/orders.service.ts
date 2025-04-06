@@ -2,13 +2,12 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
-import { CreateOrderDto, OrderItemDto } from './dto/create-order.dto';
+import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
-import { Orders, OrderItems } from './entities/orders.entity';
+import { Orders } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 import { Users } from '../users/entities/users.entity';
 import { BaseService } from '../base/base.service';
-import { Products } from '../products/entities/products.entity';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -30,7 +29,7 @@ export class OrdersService extends BaseService {
    */
   async create(createOrderDto: CreateOrderDto, adminId: number) {
     try {
-      const { customer_email, items } = createOrderDto;
+      const { customer_email } = createOrderDto;
 
       const findUser = await this.usersRepository.findOne({
         where: {
@@ -47,8 +46,6 @@ export class OrdersService extends BaseService {
         user_id: findUser.id,
         admin_id: adminId,
       };
-
-      const orderItems: OrderItemDto[] = items;
 
       // if items no repeated by product id, only create order
       const saveOrder = await this.orderRepository.save({

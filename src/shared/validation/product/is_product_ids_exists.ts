@@ -7,7 +7,7 @@ import { ProductsService } from '../../../modules/products/products.service';
 import { Product } from '../../../utils/product';
 
 @ValidatorConstraint({ async: true })
-export class IsProductExists implements ValidatorConstraintInterface {
+export class IsProductIdsExists implements ValidatorConstraintInterface {
   private productIdsNotExists: number[];
 
   constructor(private readonly productsService: ProductsService) {}

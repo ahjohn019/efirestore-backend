@@ -10,6 +10,7 @@ import {
   IsNumber,
 } from 'class-validator';
 import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_products';
+import { IsProductIdsExists } from 'src/shared/validation/product/is_product_ids_exists';
 
 export class OrderItemDto {
   @IsInt()
@@ -64,6 +65,7 @@ export class CreateOrderDto {
   @IsArray()
   @ArrayNotEmpty()
   @Validate(IsDuplicateProducts)
+  @Validate(IsProductIdsExists)
   items: OrderItemDto[];
 
   created_at: Date;

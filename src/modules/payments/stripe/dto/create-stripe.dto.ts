@@ -14,7 +14,7 @@ import { PaymentMethodType } from '../../../../enum/stripe-payment-method.enum';
 import { PaymentMode } from '../../../../enum/stripe-payment-mode.enum';
 import { IsUserEmail } from 'src/shared/validation/user/is_user_email';
 import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_products';
-import { IsProductExists } from 'src/shared/validation/product/is_product_exists';
+import { IsProductIdsExists } from 'src/shared/validation/product/is_product_ids_exists';
 class ProductDataDto {
   name: string;
   metadata: Record<string, any>;
@@ -45,7 +45,7 @@ export class CreateStripeDto {
   @ValidateNested()
   @Type(() => LineItemsDto)
   @Validate(IsDuplicateProducts)
-  @Validate(IsProductExists)
+  @Validate(IsProductIdsExists)
   line_items: LineItemsDto[];
 
   @IsEmail()
