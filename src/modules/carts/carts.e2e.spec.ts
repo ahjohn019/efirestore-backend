@@ -9,8 +9,6 @@ import { Users } from '../users/entities/users.entity';
 import { ConfigModule } from '@nestjs/config';
 import * as dotenv from 'dotenv';
 import { dataSourceOptions } from 'src/config/datasource';
-import { after, before } from 'node:test';
-import { create } from 'domain';
 dotenv.config();
 
 describe('Carts', () => {
