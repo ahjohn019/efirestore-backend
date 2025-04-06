@@ -14,7 +14,6 @@ import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { StripeUsers } from './entities/stripe.entity';
 import { BaseStripeService } from './base-stripe.service';
 import { Users } from 'src/modules/users/entities/users.entity';
 
