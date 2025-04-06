@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { IsDuplicateProducts } from 'src/shared/validation/product/is_duplicate_products';
 import { IsProductIdsExists } from 'src/shared/validation/product/is_product_ids_exists';
+import { IsUserEmail } from 'src/shared/validation/user/is_user_email';
 
 export class OrderItemDto {
   @IsInt()
@@ -59,6 +60,7 @@ export class CreateOrderDto {
 
   @IsNotEmpty()
   @IsEmail()
+  @Validate(IsUserEmail, ['customer_email'])
   customer_email: string;
 
   @IsNotEmpty()

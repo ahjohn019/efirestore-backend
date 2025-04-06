@@ -8,6 +8,7 @@ import { Orders } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 import { Users } from '../users/entities/users.entity';
 import { BaseService } from '../base/base.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -32,14 +33,8 @@ export class OrdersService extends BaseService {
       const { customer_email } = createOrderDto;
 
       const findUser = await this.usersRepository.findOne({
-        where: {
-          email: customer_email,
-        },
+        where: { email: customer_email },
       });
-
-      if (!findUser) {
-        throw new NotFoundException('User Not Found.');
-      }
 
       createOrderDto = {
         ...createOrderDto,
@@ -47,7 +42,7 @@ export class OrdersService extends BaseService {
         admin_id: adminId,
       };
 
-      // if items no repeated by product id, only create order
+      // if items no repeated by product id, only create orders
       const saveOrder = await this.orderRepository.save({
         ...createOrderDto,
         user: findUser,
@@ -56,24 +51,21 @@ export class OrdersService extends BaseService {
           product: { id: item.product_id },
           total_price: item.unit_price * item.quantity,
         })),
+        subtotal: createOrderDto.items.reduce(
+          (sum, item) => sum + item.unit_price * item.quantity,
+          0,
+        ),
+        grand_total: createOrderDto.items.reduce(
+          (sum, item) => sum + item.unit_price * item.quantity,
+          0,
+        ),
       });
 
       if (!saveOrder) {
         throw new NotFoundException('Order Not Found.');
       }
 
-      // sum the order item total price based on order item lists
-      const sumOrderItemTotalPrice = saveOrder.items.reduce(
-        (sum, item) => sum + item.total_price,
-        0,
-      );
-
-      const updateOrder = await this.orderRepository.update(saveOrder.id, {
-        subtotal: sumOrderItemTotalPrice,
-        grand_total: sumOrderItemTotalPrice,
-      });
-
-      return this.createSuccessResponse(updateOrder);
+      return this.createSuccessResponse(saveOrder);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
