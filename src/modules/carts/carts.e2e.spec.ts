@@ -107,7 +107,7 @@ describe('Carts', () => {
     const { code, data } = deleteResponse.body;
 
     expect(code).toBe(200);
-    expect(data.product_id).toBe(cartItemPayload.product_id);
+    expect(data).toBe(true);
   });
 
   it(`/DELETE deleteCartItem - cart item not found`, async () => {

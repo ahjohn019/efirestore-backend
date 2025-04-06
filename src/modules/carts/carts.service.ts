@@ -2,8 +2,6 @@ import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCartItemsDto } from './dto/create-carts.dto';
-import { ProductsService } from '../products/products.service';
-import { UsersService } from '../users/users.service';
 import { Carts, CartItems } from './entities/carts.entity';
 import { DeleteCartItemDto } from './dto/delete-cart-item.dto';
 import { BaseService } from '../base/base.service';
@@ -192,7 +190,6 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(findCarts);
     } catch (error) {
-      console.log('error', error);
       return this.createErrorResponse(error.message);
     }
   }
@@ -239,7 +236,6 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(true);
     } catch (error) {
-      console.log('error', error);
       return this.createErrorResponse(error.message);
     }
   }
