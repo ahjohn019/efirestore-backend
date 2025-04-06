@@ -19,6 +19,7 @@ describe('Orders', () => {
   let orderId: number;
   let createOrderResponse: any;
   let orderData: any;
+  let userEmail: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -35,10 +36,11 @@ describe('Orders', () => {
     app = moduleRef.createNestApplication();
     url = 'http://' + process.env.APP_URL + ':' + process.env.PORT;
     ordersService = moduleRef.get<OrdersService>(OrdersService);
+    userEmail = 'admin_one@email.com';
 
     const loginResponse = await request(url)
       .post('/auth/login')
-      .send({ email: 'admin_one@email.com', password: '1111aaaa' })
+      .send({ email: userEmail, password: '1111aaaa' })
       .expect(200);
 
     token = loginResponse.body.data;
@@ -48,11 +50,11 @@ describe('Orders', () => {
 
   beforeEach(async () => {
     const mockCreateOrder = {
-      title: 'admin_one@email.com',
+      title: userEmail,
       status: 'success',
       shipping_address: 'asdasd',
       billing_address: 'adasdas',
-      customer_email: 'admin_one@email.com',
+      customer_email: userEmail,
       items: [
         {
           quantity: 1,
@@ -93,11 +95,14 @@ describe('Orders', () => {
       .send(pagination)
       .expect(200);
 
-    const responseFindAllData = findAllResponse.body.data.data.length;
-    const responseCurrentPage = findAllResponse.body.data.current_page;
-    const responseNextPage = findAllResponse.body.data.next_page;
+    const { code, data } = findAllResponse.body;
+
+    const responseFindAllData = data.data.length;
+    const responseCurrentPage = data.current_page;
+    const responseNextPage = data.next_page;
     const actualNextPage = pagination.page;
 
+    expect(code).toBe(200);
     expect(responseFindAllData).toBe(pagination.take);
     expect(responseCurrentPage).toBe(pagination.page);
     expect(responseNextPage).toBe(actualNextPage);
@@ -109,7 +114,18 @@ describe('Orders', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
-    expect(findOneResponse.body.data.id).toBe(orderId);
+    const { code, data } = findOneResponse.body;
+
+    expect(data.id).toBe(orderId);
+    expect(code).toBe(200);
+    expect(data).toHaveProperty('items');
+    expect(data.items).toBeInstanceOf(Array);
+    expect(data.items.length).toBeGreaterThan(0);
+
+    expect(data.user).toBeInstanceOf(Object);
+    expect(data.admin).toBeInstanceOf(Object);
+
+    expect(data.user.email).toBe(userEmail);
   });
 
   it('Update Order Status', async () => {
