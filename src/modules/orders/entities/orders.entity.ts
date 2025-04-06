@@ -72,6 +72,7 @@ export class OrderItems extends BaseEntity {
 
   @ManyToOne(() => Orders, (orders) => orders.items, {
     eager: true,
+    onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'order_id' })
   orders: Orders;

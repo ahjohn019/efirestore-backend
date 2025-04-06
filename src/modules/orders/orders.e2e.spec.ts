@@ -9,138 +9,140 @@ import { Users } from '../users/entities/users.entity';
 import { OrdersService } from './orders.service';
 import { IsUserEmail } from 'src/shared/validation/user/is_user_email';
 import * as dotenv from 'dotenv';
+import { before } from 'node:test';
 dotenv.config();
 
 describe('Orders', () => {
-    let app: INestApplication;
-    let url: string;
-    let token: string;
-    let ordersService: OrdersService;
-    let orderId: number;
-    let createOrderResponse: any;
-    let createMockOrder: any;
+  let app: INestApplication;
+  let url: string;
+  let token: string;
+  let ordersService: OrdersService;
+  let orderId: number;
+  let createOrderResponse: any;
+  let orderData: any;
 
-    beforeAll(async () => {
-        const moduleRef = await Test.createTestingModule({
-            imports: [
-                ConfigModule.forRoot({
-                    isGlobal: true,
-                }),
-                TypeOrmModule.forRoot(dataSourceOptions),
-                TypeOrmModule.forFeature([Orders, Users]),
-            ],
-            providers: [OrdersService, IsUserEmail],
-        }).compile();
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [
+        ConfigModule.forRoot({
+          isGlobal: true,
+        }),
+        TypeOrmModule.forRoot(dataSourceOptions),
+        TypeOrmModule.forFeature([Orders, Users]),
+      ],
+      providers: [OrdersService, IsUserEmail],
+    }).compile();
 
-        app = moduleRef.createNestApplication();
-        url = 'http://' + process.env.APP_URL + ':' + process.env.PORT;
-        ordersService = moduleRef.get<OrdersService>(OrdersService);
-        // orderId = 15;
+    app = moduleRef.createNestApplication();
+    url = 'http://' + process.env.APP_URL + ':' + process.env.PORT;
+    ordersService = moduleRef.get<OrdersService>(OrdersService);
 
-        const loginResponse = await request(url)
-            .post('/auth/login')
-            .send({ email: 'admin_one@email.com', password: '1111aaaa' })
-            .expect(200);
+    const loginResponse = await request(url)
+      .post('/auth/login')
+      .send({ email: 'admin_one@email.com', password: '1111aaaa' })
+      .expect(200);
 
-        token = loginResponse.body.data;
+    token = loginResponse.body.data;
 
-        const mockCreateOrder = {
-            "title": "admin_one@email.com",
-            "status": "success",
-            "shipping_address": "asdasd",
-            "billing_address": "adasdas",
-            "customer_email": "admin_one@email.com",
-            "items": [
-                {
-                    "quantity": 1,
-                    "unit_price": 12,
-                    "product_id": 1
-                },
-                {
-                    "quantity": 10,
-                    "unit_price": 24,
-                    "product_id": 2
-                }
-            ]
-        }
+    await app.init();
+  });
 
-        createOrderResponse = await request(url)
-            .post('/orders')
-            .set('Authorization', `Bearer ${token}`)
-            .send(mockCreateOrder)
-            .expect(201);
+  beforeEach(async () => {
+    const mockCreateOrder = {
+      title: 'admin_one@email.com',
+      status: 'success',
+      shipping_address: 'asdasd',
+      billing_address: 'adasdas',
+      customer_email: 'admin_one@email.com',
+      items: [
+        {
+          quantity: 1,
+          unit_price: 12,
+          product_id: 1,
+        },
+        {
+          quantity: 10,
+          unit_price: 24,
+          product_id: 2,
+        },
+      ],
+    };
 
-        orderId = createOrderResponse.body.data.id;
+    createOrderResponse = await request(url)
+      .post('/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send(mockCreateOrder);
 
-        console.log('orderId', orderId);
+    orderData = createOrderResponse.body.data;
+    orderId = orderData.id;
+  });
 
-        await app.init();
-    });
+  it('Create Order', async () => {
+    expect(orderData).toHaveProperty('id');
+    expect(createOrderResponse.body.code).toBe(200);
+  });
 
-    it('Find All Order', async () => {
-        const pagination = {
-            page: 1,
-            take: 1
-        }
+  it('Find All Order', async () => {
+    const pagination = {
+      page: 1,
+      take: 1,
+    };
 
-        const findAllResponse = await request(url)
-            .get('/orders')
-            .set('Authorization', `Bearer ${token}`)
-            .send(pagination)
-            .expect(200);
+    const findAllResponse = await request(url)
+      .get('/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send(pagination)
+      .expect(200);
 
-        console.log('findAllResponse', findAllResponse);
+    const responseFindAllData = findAllResponse.body.data.data.length;
+    const responseCurrentPage = findAllResponse.body.data.current_page;
+    const responseNextPage = findAllResponse.body.data.next_page;
+    const actualNextPage = pagination.page;
 
-        const responseFindAllData = findAllResponse.body.data.data.length;
-        const responseCurrentPage = findAllResponse.body.data.current_page;
-        const responseNextPage = findAllResponse.body.data.next_page;
-        const actualNextPage = pagination.page;
+    expect(responseFindAllData).toBe(pagination.take);
+    expect(responseCurrentPage).toBe(pagination.page);
+    expect(responseNextPage).toBe(actualNextPage);
+  });
 
-        expect(responseFindAllData).toBe(pagination.take);
-        expect(responseCurrentPage).toBe(pagination.page);
-        expect(responseNextPage).toBe(actualNextPage);
-    });
+  it('Find One Order', async () => {
+    const findOneResponse = await request(url)
+      .get('/orders/' + orderId)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
 
-    it('Find One Order', async () => {
-        const findOneResponse = await request(url)
-            .get('/orders/' + orderId)
-            .set('Authorization', `Bearer ${token}`)
-            .expect(200);
+    expect(findOneResponse.body.data.id).toBe(orderId);
+  });
 
-        expect(findOneResponse.body.data.id).toBe(orderId);
-    });
+  it('Update Order Status', async () => {
+    const statusUpdate = {
+      status: 'pending',
+    };
 
-    it('Update Order Status', async () => {
-        const statusUpdate = {
-            status: "pending"
-        }
+    const updateOrderStatusResponse = await request(url)
+      .patch('/orders/update-status/' + orderId)
+      .set('Authorization', `Bearer ${token}`)
+      .send(statusUpdate)
+      .expect(200);
 
-        const updateOrderStatusResponse = await request(url)
-            .patch('/orders/update-status/' + orderId)
-            .set('Authorization', `Bearer ${token}`)
-            .send(statusUpdate)
-            .expect(200);
+    expect(updateOrderStatusResponse.body.data.affected).toBe(1);
+  });
 
-        expect(updateOrderStatusResponse.body.data.affected).toBe(1);
-    })
+  it('Delete Order If Order Exists', async () => {
+    const deleteOrderResponse = await request(url)
+      .delete('/orders/' + orderId)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
 
-    it('Delete Order If Order Exists', async () => {
-        const deleteOrderResponse = await request(url)
-            .delete('/orders/' + orderId)
-            .set('Authorization', `Bearer ${token}`)
-            .expect(200);
+    expect(deleteOrderResponse.body.data.affected).toBe(1);
+  });
 
-        expect(deleteOrderResponse.body.data.affected).toBe(1);
-    });
+  afterEach(async () => {
+    await request(url)
+      .delete('/orders/' + orderId)
+      .set('Authorization', `Bearer ${token}`);
+  });
 
-    afterEach(async () => {
-        await request(url)
-            .delete('/orders/' + orderId)
-            .set('Authorization', `Bearer ${token}`)
-            .expect(200);
-    })
-
-    afterAll(async () => {
-        await app.close();
-    });
+  afterAll(async () => {
+    await app.close();
+  });
 });

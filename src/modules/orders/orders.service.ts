@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
-import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderDto, orderItemTotalPrice } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { Orders } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
@@ -50,14 +50,8 @@ export class OrdersService extends BaseService {
           product: { id: item.product_id },
           total_price: item.unit_price * item.quantity,
         })),
-        subtotal: createOrderDto.items.reduce(
-          (sum, item) => sum + item.unit_price * item.quantity,
-          0,
-        ),
-        grand_total: createOrderDto.items.reduce(
-          (sum, item) => sum + item.unit_price * item.quantity,
-          0,
-        ),
+        subtotal: this.calculateTotalPrice(createOrderDto.items),
+        grand_total: this.calculateTotalPrice(createOrderDto.items),
       });
 
       if (!saveOrder) {
@@ -68,6 +62,17 @@ export class OrdersService extends BaseService {
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
+  }
+
+  /**
+   * Calculate total price of order items
+   * @param orderItems
+   * @returns
+   */
+  calculateTotalPrice(orderItems: orderItemTotalPrice[]): number {
+    return orderItems.reduce((total: number, item: orderItemTotalPrice) => {
+      return total + item.unit_price * item.quantity;
+    }, 0);
   }
 
   /**

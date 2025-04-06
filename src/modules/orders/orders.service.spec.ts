@@ -25,11 +25,21 @@ describe('OrdersService', () => {
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
-    orderRepository = module.get<Repository<Orders>>(getRepositoryToken(Orders));
+    orderRepository = module.get<Repository<Orders>>(
+      getRepositoryToken(Orders),
+    );
   });
 
   it('should be defined', () => {
     expect(service).toBeDefined();
   });
 
+  it('should calculate order subtotal and grand total', () => {
+    const items = [
+      { unit_price: 10, quantity: 2 },
+      { unit_price: 20, quantity: 1 },
+    ];
+    const subtotal = service.calculateTotalPrice(items);
+    expect(subtotal).toEqual(40);
+  });
 });

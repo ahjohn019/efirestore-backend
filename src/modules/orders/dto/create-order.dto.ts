@@ -81,3 +81,8 @@ export class CreateOrderDto {
 
   tracking_number: string;
 }
+
+export interface orderItemTotalPrice {
+  unit_price: number;
+  quantity: number;
+}
