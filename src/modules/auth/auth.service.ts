@@ -134,11 +134,11 @@ export class AuthService extends BaseService {
         checkResetPasswordExpiredDto.id,
       );
 
-      const { updated_at, remember_token } = user.data;
-
-      if (!user) {
+      if (!user || !user.data) {
         throw new UnauthorizedException('User Not Found.');
       }
+
+      const { updated_at, remember_token } = user.data;
 
       const dateNow = dayjs().format('YYYY-MM-DD');
       const dateUpdatedAt = dayjs(updated_at).format('YYYY-MM-DD');

@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { StripeUsers } from '../payments/stripe/entities/stripe.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { Helper } from 'src/utils/helper';
+import { Gender } from 'src/enum/gender.enum';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -90,7 +91,7 @@ describe('UsersService', () => {
     expect(result).toEqual({ data: mockUser, status: 'success', code: 200 });
     expect(findOneSpy).toHaveBeenCalledWith({
       where: { id: mockUser.id },
-      relations: ['user_details'],
+      relations: ['user_details', 'orders', 'stripe_users'],
     });
   });
 
@@ -361,6 +362,257 @@ describe('UsersService', () => {
       status: 'success',
       code: 200,
       data: mockPaginationResponse,
+    });
+  });
+
+  it('should find user by email', async () => {
+    const mockUser = {
+      id: 1,
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'hashed_password',
+      role: 'user',
+      remember_token: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      hashPassword: async () => {},
+      user_details: [],
+      orders: [],
+      stripe_users: null,
+    } as Users;
+
+    jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockUser);
+
+    const result = await service.findByEmail(mockUser.email);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: mockUser,
+    });
+    expect(usersRepository.findOne).toHaveBeenCalledWith({
+      where: { email: mockUser.email },
+    });
+  });
+
+  it('should find user by password', async () => {
+    const mockUser = {
+      id: 1,
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'hashed_password',
+      role: 'user',
+      remember_token: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      hashPassword: async () => {},
+      user_details: [],
+      orders: [],
+      stripe_users: null,
+    } as Users;
+
+    jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockUser);
+
+    const result = await service.findByPassword(mockUser.password);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: mockUser,
+    });
+    expect(usersRepository.findOne).toHaveBeenCalledWith({
+      where: { password: mockUser.password },
+    });
+  });
+
+  it('should find user by token', async () => {
+    const mockUser = {
+      id: 1,
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'hashed_password',
+      role: 'user',
+      remember_token: 'some-token',
+      created_at: new Date(),
+      updated_at: new Date(),
+      hashPassword: async () => {},
+      user_details: [],
+      orders: [],
+      stripe_users: null,
+    } as Users;
+
+    jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockUser);
+
+    const result = await service.findByToken(mockUser.remember_token);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: mockUser,
+    });
+    expect(usersRepository.findOne).toHaveBeenCalledWith({
+      where: { remember_token: mockUser.remember_token },
+    });
+  });
+
+  it('should update user', async () => {
+    const mockUser = {
+      id: 1,
+      email: 'test@example.com',
+      name: 'Test User',
+      password: 'hashed_password',
+      role: 'user',
+      remember_token: null,
+      created_at: new Date(),
+      updated_at: new Date(),
+      hashPassword: async () => {},
+      user_details: [],
+      orders: [],
+      stripe_users: null,
+    } as Users;
+
+    const updateData = {
+      name: 'Updated Name',
+      email: 'updated@example.com',
+    };
+
+    const updatedUser = {
+      ...mockUser,
+      ...updateData,
+    } as Users;
+
+    jest.spyOn(service, 'findOne').mockResolvedValue({
+      status: 'success',
+      code: 200,
+      data: mockUser,
+    });
+    jest.spyOn(usersRepository, 'save').mockResolvedValue(updatedUser);
+
+    const result = await service.update(mockUser.id, updateData);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: updatedUser,
+    });
+    expect(service.findOne).toHaveBeenCalledWith(mockUser.id);
+    expect(usersRepository.save).toHaveBeenCalledWith({
+      status: 'success',
+      code: 200,
+      data: mockUser,
+      ...updateData,
+    });
+  });
+
+  it('should find all users with pagination', async () => {
+    const mockUsers = [
+      {
+        id: 1,
+        email: 'test1@example.com',
+        name: 'Test User 1',
+        password: 'hashed_password',
+        role: 'user',
+        remember_token: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+        hashPassword: async () => {},
+        user_details: [],
+        orders: [],
+        stripe_users: null,
+      } as Users,
+      {
+        id: 2,
+        email: 'test2@example.com',
+        name: 'Test User 2',
+        password: 'hashed_password',
+        role: 'user',
+        remember_token: null,
+        created_at: new Date(),
+        updated_at: new Date(),
+        hashPassword: async () => {},
+        user_details: [],
+        orders: [],
+        stripe_users: null,
+      } as Users,
+    ];
+
+    const paginationDto = {
+      page: 1,
+      take: 10,
+    };
+
+    const paginationResult = {
+      data: mockUsers,
+      total_page: 1,
+      current_page: 1,
+      next_page: null,
+      previous_page: null,
+      total_data: 2,
+    };
+
+    jest.spyOn(Helper, 'calculatePagination').mockResolvedValue(paginationResult);
+
+    const result = await service.findAll(paginationDto);
+
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: paginationResult,
+    });
+    expect(Helper.calculatePagination).toHaveBeenCalledWith(
+      paginationDto,
+      usersRepository,
+      null,
+    );
+  });
+
+  it('should handle error when creating user', async () => {
+    const createUserDto = {
+      name: 'Test User',
+      email: 'test@example.com',
+      password: 'password123',
+      password_confirmation: 'password123',
+    };
+
+    jest.spyOn(usersRepository, 'create').mockImplementation(() => {
+      throw new Error('Database error');
+    });
+
+    const result = await service.create(createUserDto);
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 500,
+      data: 'Database error',
+    });
+  });
+
+  it('should handle error when user not found in createUsersDetails', async () => {
+    const userDetailsDto = {
+      user_id: 999,
+      first_name: 'John',
+      last_name: 'Doe',
+      address_one: '123 Street',
+      address_two: 'Apt 4',
+      postal_code: '12345',
+      city: 'Test City',
+      state: 'Test State',
+      country: 'Test Country',
+      phone_number: '1234567890',
+      identity_card_number: '123456789012',
+      gender: Gender.MALE,
+      address_type: 'billing',
+      is_default: 1,
+    };
+
+    jest.spyOn(service, 'findOne').mockResolvedValue(null);
+
+    const result = await service.createUsersDetails(userDetailsDto);
+
+    expect(result).toEqual({
+      status: 'error',
+      code: 500,
+      data: 'Cannot read properties of null (reading \'data\')',
     });
   });
 });

@@ -9,17 +9,13 @@ import {
   UploadedFile,
   UploadedFiles,
   UseInterceptors,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
+  ParseIntPipe,
   BadRequestException,
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
 import { AllImageDto } from './dto/all-image.dto';
 import { UpdateEntityImageDto } from './dto/update-entity-image.dto';
-import { CreateImageDto } from './dto/create-image.dto';
-import { UpdateImageDto } from './dto/update-image.dto';
-import { FilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { imageUploadInterceptor } from '../../shared/validation/file_validation';
 
 @Controller('images')
@@ -32,6 +28,7 @@ export class ImagesController {
     @UploadedFiles()
     files: Array<Express.Multer.File>,
   ) {
+    console.log('files', files);
     return this.imagesService.uploadFiles(files);
   }
 
@@ -52,8 +49,15 @@ export class ImagesController {
 
   @Patch(':id')
   @UseInterceptors(FileInterceptor('file'))
-  update(@Param('id') id: string, @UploadedFile() file: Express.Multer.File) {
-    return this.imagesService.update(+id, file);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    return this.imagesService.update(id, file);
   }
 
   @Delete()

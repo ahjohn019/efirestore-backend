@@ -144,9 +144,9 @@ export class UsersService extends BaseService {
     }
   }
 
-  findByPassword(password: string) {
+  async findByPassword(password: string) {
     try {
-      const findPassword = this.usersRepository.findOne({
+      const findPassword = await this.usersRepository.findOne({
         where: {
           password: password,
         },
@@ -158,9 +158,9 @@ export class UsersService extends BaseService {
     }
   }
 
-  findByToken(token: string) {
+  async findByToken(token: string) {
     try {
-      const findToken = this.usersRepository.findOne({
+      const findToken = await this.usersRepository.findOne({
         where: {
           remember_token: token,
         },

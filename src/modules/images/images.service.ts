@@ -37,13 +37,14 @@ export class ImagesService extends BaseService {
         path: file.path,
         size: file.size,
         mime_type: file.mimetype,
-        destination: file.destination
+        destination: file.destination,
       }));
 
       await this.imagesRepository.save(fileList);
 
       return this.createSuccessResponse(fileList);
     } catch (error) {
+      console.log('error', error);
       return this.createErrorResponse(error.message);
     }
   }
@@ -107,11 +108,15 @@ export class ImagesService extends BaseService {
         where: { id },
       });
 
+      console.log('findFile', findFile);
+
       if (!findFile) {
+        // Delete the uploaded file since we can't associate it with an existing image
         Helper.unlinkFile(file.path);
-        throw new NotFoundException('Files Not Found.');
+        return this.createErrorResponse('Image not found', 404);
       }
 
+      // Delete the old file
       Helper.unlinkFile(findFile.path);
 
       await this.imagesRepository.update(id, {
@@ -124,10 +129,16 @@ export class ImagesService extends BaseService {
         updated_at: new Date(),
       });
 
-      const updatedFile = await this.imagesRepository.findOne({ where: { id } });
+      const updatedFile = await this.imagesRepository.findOne({
+        where: { id },
+      });
 
       return this.createSuccessResponse(updatedFile);
     } catch (error) {
+      // If there's an error, try to clean up the uploaded file
+      if (file && file.path) {
+        Helper.unlinkFile(file.path);
+      }
       return this.createErrorResponse(error.message);
     }
   }
