@@ -1,6 +1,14 @@
-import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  OneToOne,
+} from 'typeorm';
 import { Users } from '../../users/entities/users.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
+import { OrderRefunds } from './order-refunds.entity';
 
 @Entity()
 export class Orders extends BaseEntity {
@@ -51,6 +59,10 @@ export class Orders extends BaseEntity {
   @Column()
   admin_id: number;
   total_price: number;
+
+  @OneToOne(() => OrderRefunds, (orderRefunds) => orderRefunds.orders)
+  @JoinColumn({ name: 'order_id' })
+  refunds: OrderRefunds;
 }
 
 @Entity()
