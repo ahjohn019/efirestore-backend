@@ -7,9 +7,6 @@ export class RefundOrderDto {
   order_id: number;
 
   @IsNotEmpty()
-  amount: number;
-
-  @IsNotEmpty()
   reason: string;
 
   @IsNotEmpty()

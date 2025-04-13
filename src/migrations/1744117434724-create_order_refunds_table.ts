@@ -24,6 +24,7 @@ export class CreateOrderRefundsTable1744117434724
             type: 'decimal',
             precision: 10,
             scale: 2,
+            default: 0,
           },
           {
             name: 'reason',
