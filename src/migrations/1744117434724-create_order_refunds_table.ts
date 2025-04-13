@@ -41,6 +41,11 @@ export class CreateOrderRefundsTable1744117434724
             enum: ['pending', 'approved', 'rejected'],
           },
           {
+            name: 'stripe_sync',
+            type: 'varchar',
+            default: 0,
+          },
+          {
             name: 'created_at',
             type: 'timestamp',
             default: 'CURRENT_TIMESTAMP',

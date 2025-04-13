@@ -61,8 +61,13 @@ export class Orders extends BaseEntity {
   total_price: number;
 
   @OneToOne(() => OrderRefunds, (orderRefunds) => orderRefunds.orders)
-  @JoinColumn({ name: 'order_id' })
   refunds: OrderRefunds;
+
+  @Column()
+  checkout_stripe_id: string;
+
+  @Column()
+  stripe_sync: number;
 }
 
 @Entity()

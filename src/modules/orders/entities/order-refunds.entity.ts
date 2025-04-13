@@ -1,5 +1,5 @@
 import { BaseEntity } from '../../base/entities/base.entity';
-import { Entity, Column, OneToOne } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
 import { PaymentMethod } from '../../../enum/payment-method.enum';
 import { OrderStatus } from '../../../enum/order-status.enum';
 import { Orders } from './orders.entity';
@@ -28,5 +28,6 @@ export class OrderRefunds extends BaseEntity {
   status: OrderStatus;
 
   @OneToOne(() => Orders, (orders) => orders.refunds)
+  @JoinColumn({ name: 'order_id' })
   orders: Orders;
 }
