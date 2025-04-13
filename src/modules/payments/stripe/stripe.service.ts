@@ -3,6 +3,7 @@ import {
   Inject,
   NotFoundException,
   forwardRef,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import {
@@ -16,6 +17,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BaseStripeService } from './base-stripe.service';
 import { Users } from 'src/modules/users/entities/users.entity';
+import { UpdateCheckoutStripeDto } from './dto/update-stripe.dto';
 
 @Injectable()
 export class StripeService extends BaseStripeService {
@@ -79,6 +81,56 @@ export class StripeService extends BaseStripeService {
         createStripeDtoResult,
       );
       return this.createSuccessResponse(session);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+  }
+
+  async updateStripeCheckout(updateCheckoutStripeDto: UpdateCheckoutStripeDto) {
+    try {
+      const { order_id } = updateCheckoutStripeDto;
+
+      const findOrder = await this.ordersService.findOne(order_id);
+
+      const { checkout_stripe_id, user, items } = findOrder.data;
+
+      if (checkout_stripe_id) {
+        throw new BadRequestException('Order Already Checkout.');
+      }
+
+      const stripeLineItems = items.map((item) => ({
+        price_data: {
+          currency: 'myr',
+          product_data: {
+            name: item.product.title,
+            metadata: {
+              id: item.product.id,
+            },
+          },
+          unit_amount: item.unit_price * 100,
+        },
+        quantity: item.quantity,
+      }));
+
+      const payload = {
+        payment_method_types: [
+          'card',
+          'fpx',
+        ] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
+        line_items: stripeLineItems,
+        customer_email: user.email,
+        mode: 'payment' as 'payment',
+        success_url: 'https://example.com/success',
+        cancel_url: 'https://example.com/cancel',
+      };
+
+      const result = await this.stripe.checkout.sessions.create(payload);
+
+      const orderUpdate = this.ordersService.updateOrder(order_id, {
+        checkout_stripe_id: result.id,
+      });
+
+      return this.createSuccessResponse(orderUpdate);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }

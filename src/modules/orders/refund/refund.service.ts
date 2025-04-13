@@ -118,6 +118,7 @@ export class OrderRefundService extends BaseStripeService {
 
   async stripeRefund(refundId: number) {
     const findOrder = await this.findOne(refundId);
+    console.log('findOrder', findOrder);
 
     const stripeCheckoutSessionId = findOrder.data.checkout_stripe_id;
 

@@ -12,7 +12,7 @@ import {
 import { OrdersService } from './orders.service';
 import { AllOrderDto } from './dto/all-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { Roles } from '../../commons/decorators/roles.decorator';
 import { AuthGuard } from '../../commons/guards/auth';
 import { RolesGuard } from '../../commons/guards/roles.guard';
@@ -48,11 +48,8 @@ export class OrdersController {
   @Patch('/update-status/:id')
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  updateOrderStatus(
-    @Param('id') id: string,
-    @Body() updateOrderStatusDto: UpdateOrderStatusDto,
-  ) {
-    return this.ordersService.updateOrderStatus(+id, updateOrderStatusDto);
+  updateOrder(@Param('id') id: string, @Body() UpdateOrderDto: UpdateOrderDto) {
+    return this.ordersService.updateOrder(+id, UpdateOrderDto);
   }
 
   @Delete(':id')

@@ -2,9 +2,12 @@ import { PartialType } from '@nestjs/mapped-types';
 import { IsEmail, IsNotEmpty } from 'class-validator';
 
 import { CreateStripeDto } from './create-stripe.dto';
-import { CustomerStripeAddressDto, CustomerStripeDto } from './customer-stripe.dto';
+import {
+  CustomerStripeAddressDto,
+  CustomerStripeDto,
+} from './customer-stripe.dto';
 
-export class UpdateStripeDto extends CustomerStripeDto{
+export class UpdateStripeDto extends CustomerStripeDto {
   @IsNotEmpty()
   metadata?: {
     user_id: number;
@@ -26,4 +29,9 @@ export class UpdateStripeDto extends CustomerStripeDto{
     name: string;
     phone: string;
   };
+}
+
+export class UpdateCheckoutStripeDto {
+  @IsNotEmpty()
+  order_id: number;
 }

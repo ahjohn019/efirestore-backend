@@ -5,10 +5,12 @@ import {
   Body,
   UseGuards,
   Request,
+  Put,
 } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
 import { CreateStripeDto } from './dto/create-stripe.dto';
+import { UpdateCheckoutStripeDto } from './dto/update-stripe.dto';
 import { AuthGuard } from '../../../commons/guards/auth';
 
 @Controller('stripe')
@@ -23,8 +25,16 @@ export class StripeController {
 
   @Post('/checkout/get')
   @UseGuards(AuthGuard)
-  checkoutGet(@Body() checkoutIdStripeDto: CheckoutIdStripeDto) {
+  retrieveStripeCheckout(@Body() checkoutIdStripeDto: CheckoutIdStripeDto) {
     return this.stripeService.retrieveStripeCheckout(checkoutIdStripeDto);
+  }
+
+  @Put('/checkout/update')
+  @UseGuards(AuthGuard)
+  updateStripeCheckout(
+    @Body() updateCheckoutStripeDto: UpdateCheckoutStripeDto,
+  ) {
+    return this.stripeService.updateStripeCheckout(updateCheckoutStripeDto);
   }
 
   @Post('/checkout/get/line-items')
@@ -34,6 +44,7 @@ export class StripeController {
   }
 
   @Post('/webhook')
+  @UseGuards(AuthGuard)
   postWebhook(@Request() request) {
     return this.stripeService.postWebhook(request);
   }

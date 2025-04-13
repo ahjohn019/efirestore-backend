@@ -9,6 +9,7 @@ import {
 import { Users } from '../../users/entities/users.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
 import { OrderRefunds } from './order-refunds.entity';
+import { Products } from 'src/modules/products/entities/products.entity';
 
 @Entity()
 export class Orders extends BaseEntity {
@@ -36,17 +37,6 @@ export class Orders extends BaseEntity {
   @Column()
   remarks: string;
 
-  @OneToMany(() => OrderItems, (orderItems) => orderItems.orders, {
-    cascade: true,
-  })
-  items: OrderItems[];
-
-  @ManyToOne(() => Users, (users) => users.orders, {
-    eager: true,
-  })
-  @JoinColumn({ name: 'user_id' })
-  user: Users;
-
   @ManyToOne(() => Users, (users) => users.orders, {
     eager: true,
   })
@@ -59,6 +49,17 @@ export class Orders extends BaseEntity {
   @Column()
   admin_id: number;
   total_price: number;
+
+  @OneToMany(() => OrderItems, (orderItems) => orderItems.orders, {
+    cascade: true,
+  })
+  items: OrderItems[];
+
+  @ManyToOne(() => Users, (users) => users.orders, {
+    eager: true,
+  })
+  @JoinColumn({ name: 'user_id' })
+  user: Users;
 
   @OneToOne(() => OrderRefunds, (orderRefunds) => orderRefunds.orders)
   refunds: OrderRefunds;
@@ -93,4 +94,8 @@ export class OrderItems extends BaseEntity {
   })
   @JoinColumn({ name: 'order_id' })
   orders: Orders;
+
+  @OneToOne(() => Products, (product) => product.order_item, { eager: true })
+  @JoinColumn({ name: 'product_id' })
+  product: Products;
 }

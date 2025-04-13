@@ -3,7 +3,7 @@ import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
 import { CreateOrderDto, orderItemTotalPrice } from './dto/create-order.dto';
-import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { Orders } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 import { Users } from '../users/entities/users.entity';
@@ -104,12 +104,8 @@ export class OrdersService extends BaseService {
     try {
       const findOrder = await this.orderRepository.findOne({
         where: { id },
-        relations: ['items'],
+        relations: ['items', 'user'],
       });
-
-      if (!findOrder) {
-        throw new NotFoundException('Order Not Found.');
-      }
 
       return this.createSuccessResponse(findOrder);
     } catch (error) {
@@ -120,13 +116,10 @@ export class OrdersService extends BaseService {
   /**
    * Update order status
    * @param id
-   * @param updateOrderStatusDto
+   * @param UpdateOrderDto
    * @returns
    */
-  async updateOrderStatus(
-    id: number,
-    updateOrderStatusDto: UpdateOrderStatusDto,
-  ) {
+  async updateOrder(id: number, UpdateOrderDto: UpdateOrderDto) {
     try {
       const findOrder = await this.findOne(id);
 
@@ -134,9 +127,10 @@ export class OrdersService extends BaseService {
         throw new NotFoundException('Order Not Found.');
       }
 
-      const updateOrder = await this.orderRepository.update(findOrder.data.id, {
-        status: updateOrderStatusDto.status,
-      });
+      const updateOrder = await this.orderRepository.update(
+        findOrder.data.id,
+        UpdateOrderDto,
+      );
 
       return this.createSuccessResponse(updateOrder);
     } catch (error) {

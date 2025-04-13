@@ -67,7 +67,9 @@ describe('OrdersService', () => {
     }).compile();
 
     service = module.get<OrdersService>(OrdersService);
-    orderRepository = module.get<Repository<Orders>>(getRepositoryToken(Orders));
+    orderRepository = module.get<Repository<Orders>>(
+      getRepositoryToken(Orders),
+    );
     usersRepository = module.get<Repository<Users>>(getRepositoryToken(Users));
     userDetailsRepository = module.get<Repository<UserDetails>>(
       getRepositoryToken(UserDetails),
@@ -124,7 +126,9 @@ describe('OrdersService', () => {
       };
 
       jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockUser);
-      jest.spyOn(orderRepository, 'save').mockImplementation((order) => Promise.resolve(order as Orders));
+      jest
+        .spyOn(orderRepository, 'save')
+        .mockImplementation((order) => Promise.resolve(order as Orders));
 
       const result = await service.create(createOrderDto, 1);
 
@@ -176,7 +180,7 @@ describe('OrdersService', () => {
       expect(result).toEqual({
         status: 'error',
         code: 500,
-        data: 'Cannot read properties of null (reading \'id\')',
+        data: "Cannot read properties of null (reading 'id')",
       });
     });
   });
@@ -214,7 +218,9 @@ describe('OrdersService', () => {
         total_data: 2,
       };
 
-      jest.spyOn(Helper, 'calculatePagination').mockResolvedValue(paginationResult);
+      jest
+        .spyOn(Helper, 'calculatePagination')
+        .mockResolvedValue(paginationResult);
 
       const result = await service.findAll({ page: 1, take: 10 });
 
@@ -268,7 +274,7 @@ describe('OrdersService', () => {
     });
   });
 
-  describe('updateOrderStatus', () => {
+  describe('updateOrder', () => {
     it('should update order status successfully', async () => {
       const mockOrder = {
         id: 1,
@@ -284,9 +290,11 @@ describe('OrdersService', () => {
         code: 200,
         data: mockOrder,
       });
-      jest.spyOn(orderRepository, 'update').mockResolvedValue({ affected: 1 } as any);
+      jest
+        .spyOn(orderRepository, 'update')
+        .mockResolvedValue({ affected: 1 } as any);
 
-      const result = await service.updateOrderStatus(1, updateStatusDto);
+      const result = await service.updateOrder(1, updateStatusDto);
 
       expect(result).toEqual({
         status: 'success',
@@ -301,7 +309,7 @@ describe('OrdersService', () => {
     it('should handle not found error', async () => {
       jest.spyOn(service, 'findOne').mockResolvedValue(null);
 
-      const result = await service.updateOrderStatus(999, { status: 'completed' });
+      const result = await service.updateOrder(999, { status: 'completed' });
 
       expect(result).toEqual({
         status: 'error',
@@ -328,7 +336,9 @@ describe('OrdersService', () => {
     });
 
     it('should handle error when deleting non-existent order', async () => {
-      jest.spyOn(orderRepository, 'delete').mockRejectedValue(new Error('Delete failed'));
+      jest
+        .spyOn(orderRepository, 'delete')
+        .mockRejectedValue(new Error('Delete failed'));
 
       const result = await service.remove(999);
 
