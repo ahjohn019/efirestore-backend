@@ -98,18 +98,17 @@ export class OrderRefundService extends BaseStripeService {
         throw new BadRequestException('Refund quantity exceeds order quantity.');
       }
 
-      let refund: Partial<OrderRefunds> = {
+      const isPartialRefundAmount = sumOrderRefundItems.totalAmount < orderData.grand_total;
+      const isPartialRefundQuantity = sumOrderRefundItems.totalQuantity < orderData.total_quantity;
+
+      const refund: Partial<OrderRefunds> = {
         order_id,
         reason,
         method: method as PaymentMethod,
         status: status as OrderStatus,
+        amount: isPartialRefundAmount ? sumOrderRefundItems.totalAmount : orderData.grand_total,
+        type: isPartialRefundQuantity ? OrderRefundType.PARTIAL : OrderRefundType.FULL
       };
-
-      refund = {
-        ...refund,
-        amount: sumOrderRefundItems.totalAmount < orderData.grand_total ? sumOrderRefundItems.totalAmount : orderData.grand_total,
-        type: sumOrderRefundItems.totalQuantity < orderData.total_quantity ? OrderRefundType.PARTIAL : OrderRefundType.FULL
-      }
 
       await this.orderRefundRepository.save(refund);
       await this.orderRefundItemRepository.save(mappedOrderItemData);
