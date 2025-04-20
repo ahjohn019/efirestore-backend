@@ -62,7 +62,7 @@ export class OrderRefundService extends BaseStripeService {
    */
   async create(refundOrderDto: RefundOrderDto) {
     try {
-      const { order_id, reason, method, status, items } = refundOrderDto;
+      const { order_id, reason, method, status } = refundOrderDto;
 
       // find order refund and get the order by relations
       const orderData = await this.orderRepository.findOne({
@@ -110,8 +110,10 @@ export class OrderRefundService extends BaseStripeService {
         type: isPartialRefundQuantity ? OrderRefundType.PARTIAL : OrderRefundType.FULL
       };
 
-      await this.orderRefundRepository.save(refund);
-      await this.orderRefundItemRepository.save(mappedOrderItemData);
+      await Promise.all([
+        this.orderRefundRepository.save(refund),
+        this.orderRefundItemRepository.save(mappedOrderItemData)
+      ]);
 
       const findOrderRefundAfter = await this.orderRefundRepository.findOne({
         where: { order_id: refundOrderDto.order_id }
