@@ -1,8 +1,10 @@
 import { BaseEntity } from '../../base/entities/base.entity';
-import { Entity, Column, OneToOne, JoinColumn } from 'typeorm';
+import { Entity, Column, OneToOne, JoinColumn, OneToMany } from 'typeorm';
 import { PaymentMethod } from '../../../enum/payment-method.enum';
 import { OrderStatus } from '../../../enum/order-status.enum';
 import { Orders } from './orders.entity';
+import { OrderRefundItems } from './order-refund-items.entity';
+import { OrderRefundType } from '../../../enum/order-refund-type.enum';
 
 @Entity()
 export class OrderRefunds extends BaseEntity {
@@ -14,6 +16,12 @@ export class OrderRefunds extends BaseEntity {
 
   @Column()
   reason: string;
+
+  @Column({
+    type: 'enum',
+    enum: OrderRefundType
+  })
+  type: OrderRefundType;
 
   @Column({
     type: 'enum',
@@ -30,4 +38,7 @@ export class OrderRefunds extends BaseEntity {
   @OneToOne(() => Orders, (orders) => orders.refunds)
   @JoinColumn({ name: 'order_id' })
   orders: Orders;
+
+  @OneToMany(() => OrderRefundItems, (order_refund_items) => order_refund_items.order_refund)
+  order_refund_items: OrderRefundItems;
 }

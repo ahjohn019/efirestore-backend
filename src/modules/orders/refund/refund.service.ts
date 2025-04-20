@@ -8,11 +8,13 @@ import { ConfigService } from '@nestjs/config';
 import { RefundOrderDto } from '../dto/refund-order.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderRefunds } from '../entities/order-refunds.entity';
+import { OrderRefundItems } from '../entities/order-refund-items.entity';
 import { Repository } from 'typeorm';
 import { PaymentMethod } from 'src/enum/payment-method.enum';
 import { OrderStatus } from 'src/enum/order-status.enum';
 import { OrderItems, Orders } from '../entities/orders.entity';
 import { UpdateRefundOrderDto } from '../dto/update-refund-order.dto';
+import { OrderRefundType } from 'src/enum/order-refund-type.enum';
 
 @Injectable()
 export class OrderRefundService extends BaseStripeService {
@@ -24,6 +26,9 @@ export class OrderRefundService extends BaseStripeService {
 
     @InjectRepository(OrderRefunds)
     private orderRefundRepository: Repository<OrderRefunds>,
+
+    @InjectRepository(OrderRefundItems)
+    private orderRefundItemRepository: Repository<OrderRefundItems>,
   ) {
     super(configService);
   }
@@ -71,23 +76,51 @@ export class OrderRefundService extends BaseStripeService {
         throw new NotFoundException('Order Not Found');
       }
 
+      if (orderData.refunds) {
+        throw new BadRequestException('Order refund already exists.');
+      }
+
       const mappedOrderItemData = await this.groupOrderRefundItems(
         refundOrderDto,
         orderData,
       );
 
-      console.log('mapped', mappedOrderItemData);
+      const sumOrderRefundItems = mappedOrderItemData.reduce((acc, item) => {
+        acc.totalQuantity += item.quantity;
+        acc.totalAmount += item.amount;
+        return acc;
+      }, {
+        totalQuantity: 0,
+        totalAmount: 0
+      });
 
-      const refund: Partial<OrderRefunds> = {
+      if (sumOrderRefundItems.totalQuantity > orderData.total_quantity) {
+        throw new BadRequestException('Refund quantity exceeds order quantity.');
+      }
+
+      let refund: Partial<OrderRefunds> = {
         order_id,
         reason,
         method: method as PaymentMethod,
         status: status as OrderStatus,
       };
 
-      // const orderRefundEntity = await this.orderRefundRepository.save(refund);
-      // return this.createSuccessResponse(orderRefundEntity);
+      refund = {
+        ...refund,
+        amount: sumOrderRefundItems.totalAmount < orderData.grand_total ? sumOrderRefundItems.totalAmount : orderData.grand_total,
+        type: sumOrderRefundItems.totalQuantity < orderData.total_quantity ? OrderRefundType.PARTIAL : OrderRefundType.FULL
+      }
+
+      await this.orderRefundRepository.save(refund);
+      await this.orderRefundItemRepository.save(mappedOrderItemData);
+
+      const findOrderRefundAfter = await this.orderRefundRepository.findOne({
+        where: { order_id: refundOrderDto.order_id }
+      });
+
+      return this.createSuccessResponse(findOrderRefundAfter);
     } catch (error) {
+      console.log('error', error);
       return this.createErrorResponse(error.message);
     }
   }

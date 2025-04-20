@@ -12,6 +12,7 @@ import { IsNotEmpty, Validate } from 'class-validator';
 import { Categories } from '../../categories/entities/categories.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
 import { OrderItems } from '../../orders/entities/orders.entity';
+import { OrderRefundItems } from '../../orders/entities/order-refund-items.entity';
 
 @Entity()
 export class Products extends BaseEntity {
@@ -45,4 +46,7 @@ export class Products extends BaseEntity {
 
   @OneToOne(() => OrderItems, (orderItems) => orderItems.product)
   order_item: OrderItems;
+
+  @OneToOne(() => OrderRefundItems, (order_refund_item) => order_refund_item.product)
+  order_refund_item: OrderRefundItems;
 }
