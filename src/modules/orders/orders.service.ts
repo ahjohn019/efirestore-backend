@@ -50,6 +50,12 @@ export class OrdersService extends BaseService {
           product: { id: item.product_id },
           total_price: item.unit_price * item.quantity,
         })),
+        total_quantity: createOrderDto.items.reduce(
+          (total: number, item: orderItemTotalPrice) => {
+            return total + item.quantity;
+          },
+          0,
+        ),
         subtotal: this.calculateTotalPrice(createOrderDto.items),
         grand_total: this.calculateTotalPrice(createOrderDto.items),
       });

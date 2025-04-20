@@ -1,16 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { BaseStripeService } from 'src/modules/payments/stripe/base-stripe.service';
 import { ConfigService } from '@nestjs/config';
-import {
-  CheckoutSessionStripeDto,
-  RefundOrderDto,
-} from '../dto/refund-order.dto';
+import { RefundOrderDto } from '../dto/refund-order.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { OrderRefunds } from '../entities/order-refunds.entity';
-import { Not, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { PaymentMethod } from 'src/enum/payment-method.enum';
 import { OrderStatus } from 'src/enum/order-status.enum';
-import { Orders } from '../entities/orders.entity';
+import { OrderItems, Orders } from '../entities/orders.entity';
 import { UpdateRefundOrderDto } from '../dto/update-refund-order.dto';
 
 @Injectable()
@@ -56,7 +57,26 @@ export class OrderRefundService extends BaseStripeService {
    */
   async create(refundOrderDto: RefundOrderDto) {
     try {
-      const { order_id, reason, method, status } = refundOrderDto;
+      const { order_id, reason, method, status, items } = refundOrderDto;
+
+      // find order refund and get the order by relations
+      const orderData = await this.orderRepository.findOne({
+        where: {
+          id: refundOrderDto.order_id,
+        },
+        relations: ['refunds', 'items'],
+      });
+
+      if (!orderData) {
+        throw new NotFoundException('Order Not Found');
+      }
+
+      const mappedOrderItemData = await this.groupOrderRefundItems(
+        refundOrderDto,
+        orderData,
+      );
+
+      console.log('mapped', mappedOrderItemData);
 
       const refund: Partial<OrderRefunds> = {
         order_id,
@@ -65,26 +85,36 @@ export class OrderRefundService extends BaseStripeService {
         status: status as OrderStatus,
       };
 
-      const findOrder = await this.orderRepository.findOne({
-        where: { id: order_id },
-        relations: ['refunds'],
-      });
-
-      if (findOrder.refunds) {
-        throw new NotFoundException('Order Refund Exists');
-      }
-
-      if (!findOrder) {
-        throw new NotFoundException('Order not found.');
-      }
-
-      refund.amount = findOrder.grand_total;
-      const orderRefundEntity = await this.orderRefundRepository.save(refund);
-
-      return this.createSuccessResponse(orderRefundEntity);
+      // const orderRefundEntity = await this.orderRefundRepository.save(refund);
+      // return this.createSuccessResponse(orderRefundEntity);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
+  }
+
+  async groupOrderRefundItems(
+    refundOrderDto: RefundOrderDto,
+    orderData: Orders,
+  ) {
+    const { items } = orderData;
+
+    return refundOrderDto.items
+      .filter((refundItem) =>
+        items.some(
+          (orderItem) => orderItem.product_id === refundItem.product_id,
+        ),
+      )
+      .map((refundItem) => {
+        const matchedOrderItem = items.find(
+          (orderItem) => orderItem.product_id === refundItem.product_id,
+        );
+
+        return {
+          product_id: refundItem.product_id,
+          quantity: refundItem.quantity,
+          amount: refundItem.quantity * matchedOrderItem.unit_price,
+        };
+      });
   }
 
   /**
@@ -106,27 +136,38 @@ export class OrderRefundService extends BaseStripeService {
         refundUpdate,
       );
 
-      if (updateRefundOrder.affected) {
-        this.stripeRefund(refundUpdate.id);
+      if (!updateRefundOrder.affected) {
+        throw new NotFoundException('Updated not found.');
       }
 
-      return this.createSuccessResponse(updateRefundOrder);
+      return this.stripeRefund(refundUpdate.id);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
   }
 
   async stripeRefund(refundId: number) {
-    const findOrder = await this.findOne(refundId);
-    console.log('findOrder', findOrder);
+    try {
+      const findOrder = await this.findOne(refundId);
 
-    const stripeCheckoutSessionId = findOrder.data.checkout_stripe_id;
+      const stripeCheckoutSessionId = findOrder.data.orders.checkout_stripe_id;
 
-    // const findCheckoutStripeSession =
-    //   await this.stripe.checkout.sessions.retrieve(
-    //     checkoutSessionStripeDto.checkoutSessionId,
-    //   );
+      const findCheckoutStripeSession =
+        await this.stripe.checkout.sessions.retrieve(stripeCheckoutSessionId);
 
-    // console.log('findCheckoutStripeSession', findCheckoutStripeSession);
+      const { payment_intent } = findCheckoutStripeSession;
+
+      if (typeof payment_intent !== 'string' || !payment_intent) {
+        throw new BadRequestException('Invalid payment intent.');
+      }
+
+      const refundResult = await this.stripe.refunds.create({
+        payment_intent,
+      });
+
+      return this.createSuccessResponse(refundResult);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
   }
 }

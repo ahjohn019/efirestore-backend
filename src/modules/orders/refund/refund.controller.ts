@@ -6,6 +6,7 @@ import {
   Request,
   UseGuards,
   Put,
+  Param,
 } from '@nestjs/common';
 import { RefundOrderDto } from '../dto/refund-order.dto';
 import { AuthGuard } from '../../../commons/guards/auth';
@@ -33,8 +34,8 @@ export class OrderRefundController {
   }
 
   /**
-   * Create order refund
-   * @param refundOrderDto
+   * Create order refund items
+   * @param refundOrderItemsDto
    * @returns
    */
   @Post('create')

@@ -32,6 +32,11 @@ export class CreateOrderRefundsTable1744117434724
             isNullable: true,
           },
           {
+            name: 'type',
+            type: 'enum',
+            enum: ['partial', 'full'],
+          },
+          {
             name: 'method',
             type: 'enum',
             enum: ['cash', 'bank_transfer', 'card'],

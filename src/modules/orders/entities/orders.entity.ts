@@ -9,7 +9,7 @@ import {
 import { Users } from '../../users/entities/users.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
 import { OrderRefunds } from './order-refunds.entity';
-import { Products } from 'src/modules/products/entities/products.entity';
+import { Products } from '../../products/entities/products.entity';
 
 @Entity()
 export class Orders extends BaseEntity {
@@ -32,7 +32,7 @@ export class Orders extends BaseEntity {
   billing_address: string;
 
   @Column()
-  tracking_number: string;
+  total_quantity: number;
 
   @Column()
   remarks: string;

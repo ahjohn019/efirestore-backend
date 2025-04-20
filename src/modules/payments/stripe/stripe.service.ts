@@ -94,7 +94,11 @@ export class StripeService extends BaseStripeService {
 
       const { checkout_stripe_id, user, items } = findOrder.data;
 
-      if (checkout_stripe_id) {
+      const findCheckoutStripe = await this.retrieveStripeCheckout({
+        checkoutId: checkout_stripe_id,
+      });
+
+      if (findCheckoutStripe.data.status !== 'expired') {
         throw new BadRequestException('Order Already Checkout.');
       }
 

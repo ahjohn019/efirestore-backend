@@ -34,12 +34,6 @@ export class CreateOrderRefundItemsTable1744117782173
             scale: 2,
           },
           {
-            name: 'status',
-            type: 'enum',
-            enum: ['pending', 'approved', 'rejected'],
-            default: "'pending'",
-          },
-          {
             name: 'created_at',
             type: 'timestamp',
             default: 'CURRENT_TIMESTAMP',

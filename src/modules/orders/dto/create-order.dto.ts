@@ -78,8 +78,6 @@ export class CreateOrderDto {
 
   admin_id: number;
   user_id: number;
-
-  tracking_number: string;
 }
 
 export interface orderItemTotalPrice {

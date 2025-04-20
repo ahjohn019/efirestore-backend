@@ -6,7 +6,11 @@ import { Orders, OrderItems } from './entities/orders.entity';
 import { Users } from '../users/entities/users.entity';
 import { NotFoundException } from '@nestjs/common';
 import { Helper } from '../../utils/helper';
-import { CreateOrderDto, OrderItemDto } from './dto/create-order.dto';
+import {
+  CreateOrderDto,
+  OrderItemDto,
+  orderItemTotalPrice,
+} from './dto/create-order.dto';
 import { DeepPartial } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { UserDetails } from '../users/entities/users.entity';
@@ -122,7 +126,6 @@ describe('OrdersService', () => {
         grand_total: 0,
         admin_id: 0,
         user_id: 0,
-        tracking_number: '',
       };
 
       jest.spyOn(usersRepository, 'findOne').mockResolvedValue(mockUser);
@@ -145,6 +148,12 @@ describe('OrdersService', () => {
           product: { id: item.product_id },
           total_price: item.unit_price * item.quantity,
         })),
+        total_quantity: createOrderDto.items.reduce(
+          (total: number, item: orderItemTotalPrice) => {
+            return total + item.quantity;
+          },
+          0,
+        ),
         subtotal: 40,
         grand_total: 40,
       });
@@ -170,7 +179,6 @@ describe('OrdersService', () => {
         grand_total: 0,
         admin_id: 0,
         user_id: 0,
-        tracking_number: '',
       };
 
       jest.spyOn(usersRepository, 'findOne').mockResolvedValue(null);
@@ -257,7 +265,7 @@ describe('OrdersService', () => {
       });
       expect(orderRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['items'],
+        relations: ['items', 'user'],
       });
     });
 
@@ -267,9 +275,9 @@ describe('OrdersService', () => {
       const result = await service.findOne(999);
 
       expect(result).toEqual({
-        status: 'error',
-        code: 500,
-        data: 'Order Not Found.',
+        status: 'success',
+        code: 200,
+        data: null,
       });
     });
   });

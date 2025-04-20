@@ -40,9 +40,9 @@ export class CreateOrdersTable1725188518899 implements MigrationInterface {
             type: 'text',
           },
           {
-            name: 'tracking_number',
-            type: 'varchar',
-            isNullable: true,
+            name: 'total_quantity',
+            type: 'int',
+            default: 0,
           },
           {
             name: 'remarks',

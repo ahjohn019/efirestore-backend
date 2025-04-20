@@ -11,7 +11,7 @@ import {
 import { IsNotEmpty, Validate } from 'class-validator';
 import { Categories } from '../../categories/entities/categories.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
-import { OrderItems } from 'src/modules/orders/entities/orders.entity';
+import { OrderItems } from '../../orders/entities/orders.entity';
 
 @Entity()
 export class Products extends BaseEntity {
