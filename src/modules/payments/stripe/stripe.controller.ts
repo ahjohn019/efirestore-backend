@@ -44,7 +44,7 @@ export class StripeController {
   }
 
   @Post('/webhook')
-  @UseGuards(AuthGuard)
+  // @UseGuards(AuthGuard)
   postWebhook(@Request() request) {
     return this.stripeService.postWebhook(request);
   }

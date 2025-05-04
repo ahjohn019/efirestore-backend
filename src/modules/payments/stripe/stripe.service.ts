@@ -255,7 +255,7 @@ export class StripeService extends BaseStripeService {
       const { id: productId } = productDetailList[index].data.metadata || {};
 
       return {
-        unit_price: price.unit_amount,
+        unit_price: parseFloat((price.unit_amount / 100).toFixed(2)),
         quantity,
         product_id: productId,
         total_price: amount_subtotal,

@@ -85,38 +85,53 @@ export class OrderRefundService extends BaseStripeService {
         orderData,
       );
 
-      const sumOrderRefundItems = mappedOrderItemData.reduce((acc, item) => {
-        acc.totalQuantity += item.quantity;
-        acc.totalAmount += item.amount;
-        return acc;
-      }, {
-        totalQuantity: 0,
-        totalAmount: 0
-      });
+      const sumOrderRefundItems = mappedOrderItemData.reduce(
+        (acc, item) => {
+          acc.totalQuantity += item.quantity;
+          acc.totalAmount += item.amount;
+          return acc;
+        },
+        {
+          totalQuantity: 0,
+          totalAmount: 0,
+        },
+      );
 
       if (sumOrderRefundItems.totalQuantity > orderData.total_quantity) {
-        throw new BadRequestException('Refund quantity exceeds order quantity.');
+        throw new BadRequestException(
+          'Refund quantity exceeds order quantity.',
+        );
       }
 
-      const isPartialRefundAmount = sumOrderRefundItems.totalAmount < orderData.grand_total;
-      const isPartialRefundQuantity = sumOrderRefundItems.totalQuantity < orderData.total_quantity;
+      const isPartialRefundAmount =
+        sumOrderRefundItems.totalAmount < orderData.grand_total;
+      const isPartialRefundQuantity =
+        sumOrderRefundItems.totalQuantity < orderData.total_quantity;
 
       const refund: Partial<OrderRefunds> = {
         order_id,
         reason,
         method: method as PaymentMethod,
         status: status as OrderStatus,
-        amount: isPartialRefundAmount ? sumOrderRefundItems.totalAmount : orderData.grand_total,
-        type: isPartialRefundQuantity ? OrderRefundType.PARTIAL : OrderRefundType.FULL
+        amount: isPartialRefundAmount
+          ? sumOrderRefundItems.totalAmount
+          : orderData.grand_total,
+        type: isPartialRefundQuantity
+          ? OrderRefundType.PARTIAL
+          : OrderRefundType.FULL,
       };
 
-      await Promise.all([
-        this.orderRefundRepository.save(refund),
-        this.orderRefundItemRepository.save(mappedOrderItemData)
-      ]);
+      const fetchCreatedOrder = await this.orderRefundRepository.save(refund);
+
+      const mapOrderRefund = mappedOrderItemData.map((item) => ({
+        ...item,
+        order_refund_id: fetchCreatedOrder.id,
+      }));
+
+      this.orderRefundItemRepository.save(mapOrderRefund);
 
       const findOrderRefundAfter = await this.orderRefundRepository.findOne({
-        where: { order_id: refundOrderDto.order_id }
+        where: { order_id: refundOrderDto.order_id },
       });
 
       return this.createSuccessResponse(findOrderRefundAfter);
