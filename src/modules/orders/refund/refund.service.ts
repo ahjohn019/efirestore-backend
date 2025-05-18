@@ -173,15 +173,15 @@ export class OrderRefundService extends BaseStripeService {
    */
   async update(updateRefundOrderDto: UpdateRefundOrderDto) {
     try {
-      const { id, status } = updateRefundOrderDto;
+      const { order_id, status, is_stripe_enabled } = updateRefundOrderDto;
 
       const refundUpdate: Partial<OrderRefunds> = {
-        id,
+        order_id,
         status: status as OrderStatus,
       };
 
       const updateRefundOrder = await this.orderRefundRepository.update(
-        { id: refundUpdate.id },
+        { order_id: refundUpdate.order_id },
         refundUpdate,
       );
 
@@ -189,7 +189,11 @@ export class OrderRefundService extends BaseStripeService {
         throw new NotFoundException('Updated not found.');
       }
 
-      return this.stripeRefund(refundUpdate.id);
+      if (is_stripe_enabled) {
+        return this.stripeRefund(refundUpdate.id);
+      }
+
+      return this.createSuccessResponse(updateRefundOrder);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }

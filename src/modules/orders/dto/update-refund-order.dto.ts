@@ -3,9 +3,12 @@ import { OrderStatus } from 'src/enum/order-status.enum';
 
 export class UpdateRefundOrderDto {
   @IsNotEmpty()
-  id: number;
+  order_id: number;
 
   @IsNotEmpty()
   @IsEnum(OrderStatus)
   status: string;
+
+  @IsNotEmpty()
+  is_stripe_enabled: boolean;
 }
