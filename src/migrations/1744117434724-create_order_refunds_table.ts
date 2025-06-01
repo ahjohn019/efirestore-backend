@@ -48,7 +48,7 @@ export class CreateOrderRefundsTable1744117434724
           },
           {
             name: 'stripe_sync',
-            type: 'varchar',
+            type: 'int',
             default: 0,
           },
           {

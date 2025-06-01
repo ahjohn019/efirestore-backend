@@ -66,9 +66,6 @@ export class Orders extends BaseEntity {
 
   @Column()
   checkout_stripe_id: string;
-
-  @Column()
-  stripe_sync: number;
 }
 
 @Entity()

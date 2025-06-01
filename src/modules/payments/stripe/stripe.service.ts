@@ -308,7 +308,6 @@ export class StripeService extends BaseStripeService {
       user_id: checkUserByEmail?.id ?? null,
       tracking_number: '',
       checkout_stripe_id: id,
-      stripe_sync: 1,
     };
   }
 
