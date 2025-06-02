@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -88,11 +89,7 @@ export class AuthService extends BaseService {
       const generateEmailToken = await bcrypt.hash(email, 10);
 
       const emailLink =
-        forgetPasswordDto.url +
-        '/resetPassword?token=' +
-        generateEmailToken +
-        '&id=' +
-        id;
+        process.env.FRONTEND_URL + '?user_id=' + id + '&email=' + email;
 
       await this.usersService.update(id, {
         remember_token: generateEmailToken,
@@ -106,9 +103,9 @@ export class AuthService extends BaseService {
     }
   }
 
-  async updatePassword(updatePasswordDto: updatePasswordDto) {
+  async updatePassword(updatePasswordDto: updatePasswordDto, reqUser) {
     try {
-      const user = await this.usersService.findOne(updatePasswordDto.id);
+      const user = await this.usersService.findOne(reqUser.id);
 
       const generatePasswordHash = await bcrypt.hash(
         updatePasswordDto.password_confirmation,
@@ -120,7 +117,7 @@ export class AuthService extends BaseService {
         remember_token: null,
       });
 
-      return this.createSuccessResponse(updatePassword);
+      return updatePassword;
     } catch (error) {
       return this.createErrorResponse(error.message);
     }

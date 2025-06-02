@@ -5,6 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { useContainer } from 'class-validator';
 import { HttpExceptionFilter } from './commons/filters/http-exception.filter';
 import { join } from 'path';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import * as session from 'express-session';
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -29,6 +30,16 @@ async function bootstrap() {
       cookie: { secure: false },
     }),
   );
+
+  const config = new DocumentBuilder()
+    .setTitle('Efirestore Backend')
+    .setDescription('efirestore ecommerce backend')
+    .setVersion('1.0')
+    .addTag('ecommerce')
+    .addBearerAuth()
+    .build();
+  const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, documentFactory);
 
   useContainer(app.select(AppModule), { fallbackOnErrors: true });
   await app.listen(port, process.env.APP_URL);

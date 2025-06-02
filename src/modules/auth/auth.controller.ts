@@ -17,8 +17,11 @@ import { updatePasswordDto } from './dto/UpdatePassword.dto';
 import { checkResetPasswordExpiredDto } from './dto/checkResetPasswordExpired.dto';
 import { AuthGuard } from '../../commons/guards/auth';
 import { Users } from '../users/entities/users.entity';
+import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @Controller('auth')
+@ApiTags('Auth User')
+@ApiBearerAuth()
 export class AuthController {
   constructor(private authService: AuthService) {}
 
@@ -41,9 +44,10 @@ export class AuthController {
   }
 
   // update password
+  @UseGuards(AuthGuard)
   @Post('update-password')
-  updatePassword(@Body() updatePasswordDto: updatePasswordDto) {
-    return this.authService.updatePassword(updatePasswordDto);
+  updatePassword(@Request() req, @Body() updatePasswordDto: updatePasswordDto) {
+    return this.authService.updatePassword(updatePasswordDto, req.user);
   }
 
   @Post('check-reset-password-expired')

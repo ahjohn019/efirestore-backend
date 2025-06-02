@@ -174,9 +174,16 @@ export class UsersService extends BaseService {
 
   async update(id: number, updateUserDto: any) {
     try {
-      const userEntity = await this.findOne(id);
-      const updateResponse = await this.usersRepository.save(
-        Object.assign(userEntity, updateUserDto),
+      // const userEntity = await this.findOne(id);
+      // const updateResponse = await this.usersRepository.save(
+      //   Object.assign(userEntity, updateUserDto),
+      // );
+
+      const updateResponse = await this.usersRepository.update(
+        {
+          id,
+        },
+        updateUserDto,
       );
 
       return this.createSuccessResponse(updateResponse);
