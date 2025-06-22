@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   ParseIntPipe,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { ImagesService } from './images.service';
 import { AllImageDto } from './dto/all-image.dto';
@@ -20,7 +21,7 @@ import { imageUploadInterceptor } from '../../shared/validation/file_validation'
 
 @Controller('images')
 export class ImagesController {
-  constructor(private readonly imagesService: ImagesService) {}
+  constructor(private readonly imagesService: ImagesService) { }
 
   @Post('upload')
   @UseInterceptors(imageUploadInterceptor())
@@ -38,11 +39,11 @@ export class ImagesController {
   }
 
   @Get()
-  findAll(@Body() allImageDto: AllImageDto) {
+  findAll(@Query() allImageDto: AllImageDto) {
     return this.imagesService.findAll(allImageDto);
   }
 
-  @Get('/bulk')
+  @Post('/bulk')
   findBulk(@Body() data: { ids: number[] }) {
     return this.imagesService.findBulk(data);
   }

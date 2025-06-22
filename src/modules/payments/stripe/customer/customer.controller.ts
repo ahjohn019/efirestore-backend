@@ -6,6 +6,7 @@ import {
   UseGuards,
   Request,
   Put,
+  Param
 } from '@nestjs/common';
 import { AuthGuard } from 'src/commons/guards/auth';
 import { StripeCustomerService } from 'src/modules/payments/stripe/customer/customer.service';
@@ -29,10 +30,10 @@ export class StripeCustomerController extends BaseStripeService {
     return this.stripeCustomerService.create(customerStripeDto);
   }
 
-  @Post('')
+  @Get(':id')
   @UseGuards(AuthGuard)
-  show(@Body() body: { id: number }) {
-    return this.stripeCustomerService.show(body.id);
+  show(@Param('id') id: number) {
+    return this.stripeCustomerService.show(id);
   }
 
   @Put('update')

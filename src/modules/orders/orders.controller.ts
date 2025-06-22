@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { AllOrderDto } from './dto/all-order.dto';
@@ -20,7 +21,7 @@ import { Role } from '../../enum/role.enum';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(private readonly ordersService: OrdersService) { }
 
   @Post()
   @Roles(Role.ADMIN)
@@ -34,7 +35,7 @@ export class OrdersController {
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  findAll(@Body() allOrderDto: AllOrderDto) {
+  findAll(@Query() allOrderDto: AllOrderDto) {
     return this.ordersService.findAll(allOrderDto);
   }
 

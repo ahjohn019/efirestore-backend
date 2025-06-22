@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Put,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
@@ -21,7 +22,7 @@ import { AllUserDto } from './dto/all-user.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
@@ -38,15 +39,15 @@ export class UsersController {
     return this.usersService.updateUsersDetails(updateUserDetailsDto);
   }
 
-  @Post()
-  findByEmail(email: string) {
+  @Get()
+  findByEmail(@Param('email') email: string) {
     return this.usersService.findByEmail(email);
   }
 
   @Get()
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  findAll(@Body() allProductDto: AllUserDto) {
+  findAll(@Query() allProductDto: AllUserDto) {
     return this.usersService.findAll(allProductDto);
   }
 

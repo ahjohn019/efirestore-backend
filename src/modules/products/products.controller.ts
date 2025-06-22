@@ -7,11 +7,7 @@ import {
   Param,
   Delete,
   UseGuards,
-  UploadedFile,
-  UploadedFiles,
-  UseInterceptors,
-  Query,
-  ValidationPipe,
+  Query
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ProductsService } from './products.service';
@@ -25,10 +21,10 @@ import { Role } from '../../enum/role.enum';
 
 @Controller('products')
 export class ProductsController {
-  constructor(private readonly productsService: ProductsService) {}
+  constructor(private readonly productsService: ProductsService) { }
 
   @Get()
-  findAll(@Body() allProductDto: AllProductDto) {
+  findAll(@Query() allProductDto: AllProductDto) {
     return this.productsService.findAll(allProductDto);
   }
 

@@ -4,11 +4,9 @@ import {
   Post,
   HttpCode,
   HttpStatus,
-  Param,
-  Get,
   Request,
-  Req,
   UseGuards,
+  Get
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { signInDto } from '../auth/dto/signin.dto';
@@ -16,14 +14,13 @@ import { forgetPasswordDto } from './dto/forgetPassword.dto';
 import { updatePasswordDto } from './dto/UpdatePassword.dto';
 import { checkResetPasswordExpiredDto } from './dto/checkResetPasswordExpired.dto';
 import { AuthGuard } from '../../commons/guards/auth';
-import { Users } from '../users/entities/users.entity';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 @Controller('auth')
 @ApiTags('Auth User')
 @ApiBearerAuth()
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -33,7 +30,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard)
   @Get('profile')
-  getProfile(@Request() req, user: Users) {
+  getProfile(@Request() req) {
     return req.user;
   }
 
