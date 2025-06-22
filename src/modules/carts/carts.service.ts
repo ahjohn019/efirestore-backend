@@ -26,16 +26,23 @@ export class CartsService extends BaseService {
     super();
   }
 
-  async findAndCreateCart(userId: number) {
+  async findCart(userId: number) {
     try {
       const findCart = await this.cartsRepository.findOne({
         where: { user_id: userId },
       });
 
-      if (findCart) {
-        return this.createSuccessResponse(findCart);
+      if (!findCart) {
+        throw new NotFoundException('Cart Not Found.');
       }
 
+      return this.createSuccessResponse(findCart);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+  }
+  async createCart(userId: number) {
+    try {
       const findCartUser = await this.usersRepository.findOne({
         where: { id: userId },
       });
@@ -123,7 +130,7 @@ export class CartsService extends BaseService {
       const { product_id, cart_session_id } = createCartItemsDto;
 
       // find and create new cart
-      const createCart = await this.findAndCreateCart(
+      const createCart = await this.findCart(
         createCartItemsDto.user_id,
       );
 
@@ -240,11 +247,11 @@ export class CartsService extends BaseService {
     }
   }
 
-  async deleteCart(request: { id: number }) {
+  async deleteCart(userId: number) {
     try {
       const findCart = await this.cartsRepository
         .findOneOrFail({
-          where: { user_id: request.id },
+          where: { user_id: userId },
         })
         .catch(() => {
           throw new NotFoundException('Cart not found.');

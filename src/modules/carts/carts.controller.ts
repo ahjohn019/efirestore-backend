@@ -10,17 +10,39 @@ import {
   Request,
 } from '@nestjs/common';
 import { CartsService } from './carts.service';
-import { CreateCartDto, CreateCartItemsDto } from './dto/create-carts.dto';
+import { CreateCartItemsDto } from './dto/create-carts.dto';
 import { DeleteCartItemDto } from './dto/delete-cart-item.dto';
 import { AuthGuard } from '../../commons/guards/auth';
+import { ApiBearerAuth, ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 @Controller('cart')
+@ApiTags('Carts')
+@ApiBearerAuth()
 export class CartsController {
-  constructor(private readonly cartsService: CartsService) {}
+  constructor(private readonly cartsService: CartsService) { }
 
-  @Post('find-cart/:id')
+  @Get('find-cart/:id')
   @UseGuards(AuthGuard)
-  findAndCreateCart(@Param('id') userId: number) {
-    return this.cartsService.findAndCreateCart(userId);
+  @ApiParam({
+    name: 'id',
+    type: Number,
+    example: 1,
+  })
+  findCart(@Param('id') id: number) {
+    return this.cartsService.findCart(id);
+  }
+
+  @Post('create-cart')
+  @UseGuards(AuthGuard)
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'number', example: 1, description: 'The ID of the user' },
+      },
+    },
+  })
+  createCart(@Body() cart: { userId: number }) {
+    return this.cartsService.createCart(cart.userId);
   }
 
   @Post('create-cart-items')
@@ -43,7 +65,15 @@ export class CartsController {
 
   @Delete('delete-cart')
   @UseGuards(AuthGuard)
-  deleteCart(@Request() req) {
-    return this.cartsService.deleteCart(req.user);
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        userId: { type: 'number', example: 1, description: 'The ID of the user' },
+      },
+    },
+  })
+  deleteCart(@Body() cart: { userId: number }) {
+    return this.cartsService.deleteCart(cart.userId);
   }
 }

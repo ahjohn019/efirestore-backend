@@ -1,24 +1,19 @@
 import { IsNotEmpty } from 'class-validator';
-
-export class CreateCartDto {
-  @IsNotEmpty()
-  user_id: number;
-
-  @IsNotEmpty()
-  quantity: number;
-
-  @IsNotEmpty()
-  subtotal: number;
-
-  @IsNotEmpty()
-  grand_total: number;
-}
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateCartItemsDto {
   @IsNotEmpty()
+  @ApiProperty({
+    type: Number,
+    example: 2,
+  })
   product_id: number;
 
   @IsNotEmpty()
+  @ApiProperty({
+    type: Number,
+    example: 1,
+  })
   quantity: number;
 
   unit_price: number;
@@ -28,6 +23,10 @@ export class CreateCartItemsDto {
   cart_session_id: string;
 
   @IsNotEmpty()
+  @ApiProperty({
+    type: Number,
+    example: 1,
+  })
   user_id: number;
 
   cart_id: number;
