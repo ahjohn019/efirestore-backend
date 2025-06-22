@@ -77,22 +77,20 @@ export class CategoriesService extends BaseService {
       const categoryProductEntity = await this.productsRepository.find({
         where: {
           categories: {
-            id: id,
+            id,
           },
         },
       });
 
-      if (categoryProductEntity.length <= 0) {
-        throw new Error('Category not found');
+      if (categoryProductEntity.length > 0) {
+        for (const product of categoryProductEntity) {
+          product.categories = null;
+        }
+
+        await this.productsRepository.save(Object.assign(categoryProductEntity));
       }
 
-      for (const product of categoryProductEntity) {
-        product.categories = null;
-      }
-
-      await this.productsRepository.save(Object.assign(categoryProductEntity));
       const deleteResponse = await this.categoriesRepository.delete(id);
-
       return this.createSuccessResponse(deleteResponse);
     } catch (error) {
       return this.createErrorResponse(error.message);
