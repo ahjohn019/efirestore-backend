@@ -14,26 +14,30 @@ export class CategoriesSeeder1725636366518 implements Seeder {
     await dataSource.query('TRUNCATE TABLE categories');
     await dataSource.query('SET FOREIGN_KEY_CHECKS = 1');
 
-    const repository = dataSource.getRepository(Categories);
-    await repository.insert([
-      {
-        name: 'Category One',
-        slug: 'category_one',
-        created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      },
-      {
-        name: 'Category Two',
-        slug: 'category_two',
-        created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      },
-      {
-        name: 'Flash Sales',
-        slug: 'flash_sales',
-        created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-        updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-      },
-    ]);
+    const categoriesFactory = await factoryManager.get(Categories);
+    // const repository = dataSource.getRepository(Categories);
+
+    await categoriesFactory.saveMany(20);
+
+    // await repository.insert([
+    //   {
+    //     name: 'Category One',
+    //     slug: 'category_one',
+    //     created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    //     updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    //   },
+    //   {
+    //     name: 'Category Two',
+    //     slug: 'category_two',
+    //     created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    //     updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    //   },
+    //   {
+    //     name: 'Flash Sales',
+    //     slug: 'flash_sales',
+    //     created_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    //     updated_at: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+    //   },
+    // ]);
   }
 }
