@@ -67,6 +67,13 @@ export class ProductsService extends BaseService {
           'products',
         );
 
+        if (productSearchResponse.errno) {
+          return this.createErrorResponse(
+            productSearchResponse.sqlMessage,
+            productSearchResponse.errno,
+          );
+        }
+
         return this.createSuccessResponse(productSearchResponse);
       }
 

@@ -68,17 +68,21 @@ export class Helper {
     searchParams: any,
     tableName: string,
   ) {
-    const query = repository.createQueryBuilder(tableName);
+    try {
+      const query = repository.createQueryBuilder(tableName);
 
-    Object.entries(searchParams).forEach(([key, value]) => {
-      if (value) {
-        const condition = `${tableName}.${key} LIKE :${key}`;
-        const param = { [key]: `%${value}%` };
+      Object.entries(searchParams).forEach(([key, value]) => {
+        if (value) {
+          const condition = `${tableName}.${key} LIKE :${key}`;
+          const param = { [key]: `%${value}%` };
 
-        query.where(condition, param);
-      }
-    });
+          query.where(condition, param);
+        }
+      });
 
-    return await query.getMany();
+      return await query.getMany();
+    } catch (error) {
+      return error;
+    }
   }
 }
