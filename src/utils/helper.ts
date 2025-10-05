@@ -6,7 +6,7 @@ export class Helper {
     payload: { take: number; page: number },
     repository: Repository<T>,
     where?: FindOptionsWhere<T> | FindOptionsWhere<T>[],
-    relationItems?: (keyof T & string)[]
+    relationItems?: (keyof T & string)[],
   ) {
     const { take, page } = payload;
 
@@ -15,7 +15,7 @@ export class Helper {
       take,
       skip: skip,
       where,
-      relations: relationItems
+      relations: relationItems,
     });
 
     let total_page = Math.max(Math.ceil(totalRecord / take), 1);
@@ -61,5 +61,24 @@ export class Helper {
     const uniqueDuplicateIds = [...new Set(idLists)];
 
     return uniqueDuplicateIds;
+  }
+
+  static async searchHelpers<T>(
+    repository: Repository<T>,
+    searchParams: any,
+    tableName: string,
+  ) {
+    const query = repository.createQueryBuilder(tableName);
+
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value) {
+        const condition = `${tableName}.${key} LIKE :${key}`;
+        const param = { [key]: `%${value}%` };
+
+        query.where(condition, param);
+      }
+    });
+
+    return await query.getMany();
   }
 }

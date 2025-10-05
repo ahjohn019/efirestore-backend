@@ -58,6 +58,18 @@ export class ProductsService extends BaseService {
         allProductDto.condition,
       );
 
+      if (allProductDto.search) {
+        const { search, ...searchProductDto } = allProductDto;
+
+        const productSearchResponse = await Helper.searchHelpers<Products>(
+          this.productsRepository,
+          searchProductDto,
+          'products',
+        );
+
+        return this.createSuccessResponse(productSearchResponse);
+      }
+
       return this.createSuccessResponse(productResponse);
     } catch (error) {
       return this.createErrorResponse(error.message);

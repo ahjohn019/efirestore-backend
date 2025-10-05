@@ -3,9 +3,10 @@ import {
   ValidateNested,
   IsObject,
   IsOptional,
+  IsBoolean,
 } from 'class-validator';
 
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 class CategoryCondition {
   @IsNotEmpty()
@@ -30,4 +31,13 @@ export class AllProductDto {
   @ValidateNested()
   @Type(() => Condition)
   condition?: Condition;
+
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    return Boolean(value);
+  })
+  @IsBoolean()
+  search: Boolean;
 }
