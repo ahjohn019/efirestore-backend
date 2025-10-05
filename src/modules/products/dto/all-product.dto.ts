@@ -38,6 +38,5 @@ export class AllProductDto {
     }
     return Boolean(value);
   })
-  @IsBoolean()
   search: Boolean;
 }
