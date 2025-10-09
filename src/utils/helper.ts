@@ -11,7 +11,7 @@ export class Helper {
     const { take, page } = payload;
 
     const skip = take * (page - 1);
-    const [data, totalRecord] = await repository.findAndCount({
+    const [list, totalRecord] = await repository.findAndCount({
       take,
       skip: skip,
       where,
@@ -25,17 +25,17 @@ export class Helper {
     let total_data = totalRecord;
 
     // If no data, reset to page 1
-    if (data.length === 0) {
+    if (list.length === 0) {
       current_page = next_page = previous_page = 1;
     }
 
     // If all data is retrieved, there's no next page
-    if (data.length === totalRecord) {
+    if (list.length === totalRecord) {
       next_page = 1;
     }
 
     return {
-      data,
+      list,
       total_page,
       current_page,
       next_page,
