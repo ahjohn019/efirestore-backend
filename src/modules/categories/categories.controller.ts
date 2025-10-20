@@ -7,13 +7,19 @@ import {
   Param,
   Delete,
   UseGuards,
-  Query
+  Query,
 } from '@nestjs/common';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { AllCategoryDto } from './dto/all-category.dto';
-import { ApiBearerAuth, ApiBody, ApiParam, ApiTags, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiParam,
+  ApiTags,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { Role } from '../../enum/role.enum';
 import { Roles } from '../../commons/decorators/roles.decorator';
 import { AuthGuard } from '../../commons/guards/auth';
@@ -23,7 +29,7 @@ import { RolesGuard } from '../../commons/guards/roles.guard';
 @ApiTags('Category')
 @ApiBearerAuth()
 export class CategoriesController {
-  constructor(private readonly categoriesService: CategoriesService) { }
+  constructor(private readonly categoriesService: CategoriesService) {}
 
   @Post()
   @Roles(Role.ADMIN)
@@ -39,20 +45,20 @@ export class CategoriesController {
     return this.categoriesService.findAll(allCategoryDto);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.categoriesService.findOne(+id);
+  @Get(':slug')
+  findOne(@Param('slug') slug: string) {
+    return this.categoriesService.findOne(slug);
   }
 
   @Patch(':id')
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiParam({ name: 'id', required: true, type: Number })
+  @ApiParam({ name: 'slug', required: true, type: Number })
   update(
-    @Param('id') id: string,
+    @Param('slug') slug: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoriesService.update(+id, updateCategoryDto);
+    return this.categoriesService.update(slug, updateCategoryDto);
   }
 
   @Delete(':id')

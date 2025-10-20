@@ -46,11 +46,11 @@ export class CategoriesService extends BaseService {
     }
   }
 
-  async findOne(id: number) {
+  async findOne(slug: string) {
     try {
       const findCategoryResponse = await this.categoriesRepository.findOne({
         where: {
-          id: id,
+          slug: slug,
         },
       });
 
@@ -60,9 +60,9 @@ export class CategoriesService extends BaseService {
     }
   }
 
-  async update(id: number, updateCategoryDto: UpdateCategoryDto) {
+  async update(slug: string, updateCategoryDto: UpdateCategoryDto) {
     try {
-      const categoryEntity = await this.findOne(id);
+      const categoryEntity = await this.findOne(slug);
       const categoryResponse = await this.categoriesRepository.save(
         Object.assign(categoryEntity, updateCategoryDto),
       );
@@ -87,7 +87,9 @@ export class CategoriesService extends BaseService {
           product.categories = null;
         }
 
-        await this.productsRepository.save(Object.assign(categoryProductEntity));
+        await this.productsRepository.save(
+          Object.assign(categoryProductEntity),
+        );
       }
 
       const deleteResponse = await this.categoriesRepository.delete(id);

@@ -13,7 +13,7 @@ export class Helper {
     const skip = take * (page - 1);
     const [list, totalRecord] = await repository.findAndCount({
       take,
-      skip: skip,
+      skip,
       where,
       relations: relationItems,
     });
@@ -67,21 +67,47 @@ export class Helper {
     repository: Repository<T>,
     searchParams: any,
     tableName: string,
+    relations?: string[],
   ) {
     try {
       const query = repository.createQueryBuilder(tableName);
 
-      Object.entries(searchParams).forEach(([key, value]) => {
-        if (value) {
-          const condition = `${tableName}.${key} LIKE :${key}`;
-          const param = { [key]: `%${value}%` };
+      const { page, take, ...filters } = searchParams;
+      const skip = take * (page - 1);
 
-          query.where(condition, param);
-        }
+      if (relations && relations.length > 0) {
+        relations.forEach((relation) => {
+          query.leftJoinAndSelect(`${tableName}.${relation}`, relation);
+        });
+      }
+
+      Object.entries(filters).forEach(([key, value]) => {
+        if (!value) return;
+
+        const condition = `${tableName}.${key} LIKE :${key}`;
+        const param = { [key]: `%${value}%` };
+
+        query.andWhere(condition, param);
       });
 
-      return await query.getMany();
+      query.skip(skip).take(take);
+
+      const [data, total] = await query.getManyAndCount();
+      const total_page = Math.ceil(total / take);
+      const current_page = parseInt(page);
+      const next_page = current_page + 1;
+      const previous_page = Math.max(current_page - 1, 1);
+
+      return {
+        data,
+        total,
+        total_page,
+        current_page,
+        previous_page,
+        next_page,
+      };
     } catch (error) {
+      console.log('e', error);
       return error;
     }
   }

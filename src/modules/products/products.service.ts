@@ -65,6 +65,7 @@ export class ProductsService extends BaseService {
           this.productsRepository,
           searchProductDto,
           'products',
+          ['categories'],
         );
 
         if (productSearchResponse.errno) {
