@@ -87,7 +87,18 @@ export class Helper {
         const condition = `${tableName}.${key} LIKE :${key}`;
         const param = { [key]: `%${value}%` };
 
-        query.andWhere(condition, param);
+        if (key.includes('.')) {
+          const [relationAlias, column] = key.split('.');
+          const paramName = `${relationAlias}_${column}`;
+
+          query.andWhere(`${relationAlias}.${column} LIKE :${paramName}`, {
+            [paramName]: `%${value}%`,
+          });
+        } else {
+          query.andWhere(condition, {
+            param,
+          });
+        }
       });
 
       query.skip(skip).take(take);
