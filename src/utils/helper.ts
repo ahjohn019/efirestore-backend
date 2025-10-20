@@ -95,9 +95,7 @@ export class Helper {
             [paramName]: `%${value}%`,
           });
         } else {
-          query.andWhere(condition, {
-            param,
-          });
+          query.andWhere(condition, param);
         }
       });
 
