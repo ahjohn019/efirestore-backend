@@ -1,5 +1,6 @@
 import { Repository, FindOptionsWhere } from 'typeorm';
 import { unlink } from 'node:fs';
+import { SelectQueryBuilder } from 'typeorm';
 
 export class Helper {
   static async calculatePagination<T>(
@@ -18,7 +19,7 @@ export class Helper {
       relations: relationItems,
     });
 
-    let total_page = Math.max(Math.ceil(totalRecord / take), 1);
+    const total_page = Math.max(Math.ceil(totalRecord / take), 1);
     let current_page = Math.max(page, 1);
     let next_page = current_page + 1;
     let previous_page = Math.max(current_page - 1, 1);
@@ -81,23 +82,11 @@ export class Helper {
         });
       }
 
-      Object.entries(filters).forEach(([key, value]) => {
-        if (!value) return;
-
-        const condition = `${tableName}.${key} LIKE :${key}`;
-        const param = { [key]: `%${value}%` };
-
-        if (key.includes('.')) {
-          const [relationAlias, column] = key.split('.');
-          const paramName = `${relationAlias}_${column}`;
-
-          query.andWhere(`${relationAlias}.${column} LIKE :${paramName}`, {
-            [paramName]: `%${value}%`,
-          });
-        } else {
-          query.andWhere(condition, param);
-        }
-      });
+      Object.entries(filters as Record<string, string | number>).forEach(
+        ([key, value]) => {
+          this.applyDynamicSearch(value, key, tableName, query, filters);
+        },
+      );
 
       query.skip(skip).take(take);
 
@@ -119,5 +108,42 @@ export class Helper {
       console.log('e', error);
       return error;
     }
+  }
+
+  static applyDynamicSearch<T>(
+    value: string | number,
+    key: string,
+    tableName: string,
+    query: SelectQueryBuilder<T>,
+    filters: Record<string, any>,
+  ): SelectQueryBuilder<T> {
+    if (!value) return query;
+
+    if (key.includes('.')) {
+      const [relationAlias, column] = key.split('.');
+      const paramName = `${relationAlias}_${column}`;
+
+      query.andWhere(`${relationAlias}.${column} LIKE :${paramName}`, {
+        [paramName]: `%${value}%`,
+      });
+
+      return query;
+    }
+
+    if (filters.minPrice && filters.maxPrice) {
+      query.andWhere(`${tableName}.price BETWEEN :min AND :max`, {
+        min: filters.minPrice,
+        max: filters.maxPrice,
+      });
+
+      return query;
+    }
+
+    const condition = `${tableName}.${key} LIKE :${key}`;
+    const param = { [key]: `%${value}%` };
+
+    query.andWhere(condition, param);
+
+    return query;
   }
 }
