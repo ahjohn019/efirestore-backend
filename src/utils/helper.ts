@@ -113,7 +113,7 @@ export class Helper {
     key: string,
     tableName: string,
     query: SelectQueryBuilder<T>,
-    filters: Record<string, any>,
+    filters: Record<string, string | number>,
   ): SelectQueryBuilder<T> {
     if (!value) return query;
 
