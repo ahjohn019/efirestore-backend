@@ -1,5 +1,13 @@
 import { Repository, FindOptionsWhere, SelectQueryBuilder } from 'typeorm';
 import { unlink } from 'node:fs';
+
+interface Filters {
+  [key: string]: string | number;
+  minPrice?: number;
+  maxPrice?: number;
+  column?: string;
+  orderBy?: 'ASC' | 'DESC' | 'asc' | 'desc';
+}
 export class Helper {
   static async calculatePagination<T>(
     payload: { take: number; page: number },
@@ -113,35 +121,46 @@ export class Helper {
     key: string,
     tableName: string,
     query: SelectQueryBuilder<T>,
-    filters: Record<string, string | number>,
+    filters: Filters,
   ): SelectQueryBuilder<T> {
-    if (!value) return query;
+    try {
+      if (!value) return query;
 
-    if (key.includes('.')) {
-      const [relationAlias, column] = key.split('.');
-      const paramName = `${relationAlias}_${column}`;
+      if (key.includes('.')) {
+        const [relationAlias, column] = key.split('.');
+        const paramName = `${relationAlias}_${column}`;
 
-      query.andWhere(`${relationAlias}.${column} LIKE :${paramName}`, {
-        [paramName]: `%${value}%`,
-      });
+        query.andWhere(`${relationAlias}.${column} LIKE :${paramName}`, {
+          [paramName]: `%${value}%`,
+        });
+
+        return query;
+      }
+
+      if (filters.minPrice || filters.maxPrice) {
+        query.andWhere(`${tableName}.price BETWEEN :min AND :max`, {
+          min: filters?.minPrice || 1,
+          max: filters?.maxPrice || 999,
+        });
+      }
+
+      if (filters.orderBy && filters.column) {
+        const direction = filters.orderBy.toUpperCase() as 'ASC' | 'DESC';
+        query.orderBy(`${tableName}.${filters.column}`, direction);
+      }
+
+      const skipKeys = ['minPrice', 'maxPrice', 'orderBy', 'column'];
+
+      if (!skipKeys.includes(key)) {
+        const condition = `${tableName}.${key} LIKE :${key}`;
+        const param = { [key]: `%${value}%` };
+        query.andWhere(condition, param);
+      }
 
       return query;
+    } catch (error) {
+      console.log('e', error);
+      return error;
     }
-
-    if (filters.minPrice && filters.maxPrice) {
-      query.andWhere(`${tableName}.price BETWEEN :min AND :max`, {
-        min: filters.minPrice,
-        max: filters.maxPrice,
-      });
-
-      return query;
-    }
-
-    const condition = `${tableName}.${key} LIKE :${key}`;
-    const param = { [key]: `%${value}%` };
-
-    query.andWhere(condition, param);
-
-    return query;
   }
 }
