@@ -58,6 +58,11 @@ export class ProductsService extends BaseService {
         allProductDto.condition,
       );
 
+      // Get min and max price
+      const [priceRange] = await this.productsRepository.query(`
+        SELECT MIN(price) as minPrice, MAX(price) as maxPrice FROM products
+      `);
+
       if (allProductDto.search) {
         const { search, ...searchProductDto } = allProductDto;
 
@@ -75,10 +80,18 @@ export class ProductsService extends BaseService {
           );
         }
 
-        return this.createSuccessResponse(productSearchResponse);
+        return this.createSuccessResponse({
+          ...productSearchResponse,
+          min_price: parseFloat(priceRange.minPrice),
+          max_price: parseFloat(priceRange.maxPrice),
+        });
       }
 
-      return this.createSuccessResponse(productResponse);
+      return this.createSuccessResponse({
+        ...productResponse,
+        min_price: parseFloat(priceRange.minPrice),
+        max_price: parseFloat(priceRange.maxPrice),
+      });
     } catch (error) {
       return this.createErrorResponse(error.message);
     }

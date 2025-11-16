@@ -125,14 +125,15 @@ export class CartsService extends BaseService {
     }
   }
 
-  async createCartItems(createCartItemsDto: CreateCartItemsDto) {
+  async createCartItems(
+    createCartItemsDto: CreateCartItemsDto,
+    userId: number,
+  ) {
     try {
       const { product_id, cart_session_id } = createCartItemsDto;
 
       // find and create new cart
-      const createCart = await this.findCart(
-        createCartItemsDto.user_id,
-      );
+      const createCart = await this.findCart(userId);
 
       // find product exists
       const findProduct = await this.productsRepository.findOne({
@@ -159,7 +160,7 @@ export class CartsService extends BaseService {
 
       const { quantity, unitTotal } = resultQuantity;
 
-      const { user_id, ...updateCartItems } = {
+      const { ...updateCartItems } = {
         ...createCartItemsDto,
         quantity,
         unit_price: price,
@@ -188,10 +189,10 @@ export class CartsService extends BaseService {
       }
 
       // update the cart total
-      await this.updateCartTotal(user_id);
+      await this.updateCartTotal(userId);
 
       const findCarts = await this.cartsRepository.findOne({
-        where: { user_id: user_id },
+        where: { user_id: userId },
         relations: ['cart_items'],
       });
 

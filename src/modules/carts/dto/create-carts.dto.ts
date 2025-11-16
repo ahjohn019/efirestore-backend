@@ -22,12 +22,5 @@ export class CreateCartItemsDto {
 
   cart_session_id: string;
 
-  @IsNotEmpty()
-  @ApiProperty({
-    type: Number,
-    example: 1,
-  })
-  user_id: number;
-
   cart_id: number;
 }

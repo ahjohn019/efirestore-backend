@@ -18,7 +18,7 @@ import { ApiBearerAuth, ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
 @ApiTags('Carts')
 @ApiBearerAuth()
 export class CartsController {
-  constructor(private readonly cartsService: CartsService) { }
+  constructor(private readonly cartsService: CartsService) {}
 
   @Get('find-cart/:id')
   @UseGuards(AuthGuard)
@@ -37,18 +37,25 @@ export class CartsController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'number', example: 1, description: 'The ID of the user' },
+        userId: {
+          type: 'number',
+          example: 1,
+          description: 'The ID of the user',
+        },
       },
     },
   })
-  createCart(@Body() cart: { userId: number }) {
-    return this.cartsService.createCart(cart.userId);
+  createCart(@Request() req) {
+    return this.cartsService.createCart(req.user.id);
   }
 
   @Post('create-cart-items')
   @UseGuards(AuthGuard)
-  createCartItems(@Body() createCartItemsDto: CreateCartItemsDto) {
-    return this.cartsService.createCartItems(createCartItemsDto);
+  createCartItems(
+    @Body() createCartItemsDto: CreateCartItemsDto,
+    @Request() req,
+  ) {
+    return this.cartsService.createCartItems(createCartItemsDto, req.user.id);
   }
 
   @Get()
@@ -69,7 +76,11 @@ export class CartsController {
     schema: {
       type: 'object',
       properties: {
-        userId: { type: 'number', example: 1, description: 'The ID of the user' },
+        userId: {
+          type: 'number',
+          example: 1,
+          description: 'The ID of the user',
+        },
       },
     },
   })
