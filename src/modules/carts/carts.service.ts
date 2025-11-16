@@ -58,7 +58,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(createCart);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      return this.createErrorResponse(error.message, error.status);
     }
   }
 
