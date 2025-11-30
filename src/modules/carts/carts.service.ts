@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  UnauthorizedException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCartItemsDto } from './dto/create-carts.dto';
@@ -47,8 +53,16 @@ export class CartsService extends BaseService {
         where: { id: userId },
       });
 
+      const findMainCart = await this.cartsRepository.findOne({
+        where: { user_id: userId },
+      });
+
       if (!findCartUser) {
         throw new NotFoundException('User Not Found.');
+      }
+
+      if (findMainCart) {
+        throw new UnprocessableEntityException('Cart already exists.');
       }
 
       const createCart = await this.cartsRepository.save({
