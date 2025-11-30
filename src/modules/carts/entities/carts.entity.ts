@@ -13,6 +13,7 @@ import { IsNotEmpty } from 'class-validator';
 import * as dayjs from 'dayjs';
 import { Users } from '../../users/entities/users.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
+import { Products } from '../../products/entities/products.entity';
 
 @Entity()
 export class Carts extends BaseEntity {
@@ -89,4 +90,8 @@ export class CartItems extends BaseEntity {
   })
   @JoinColumn({ name: 'cart_id' })
   cart: Carts;
+
+  @ManyToOne(() => Products, (product) => product.cart_items)
+  @JoinColumn({ name: 'product_id' })
+  product: Products;
 }

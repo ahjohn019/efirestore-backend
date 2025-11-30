@@ -220,7 +220,7 @@ export class CartsService extends BaseService {
     try {
       const viewCartSummary = await this.cartsRepository.findOne({
         where: { user_id: userId },
-        relations: ['cart_items', 'user'],
+        relations: ['cart_items', 'user', 'cart_items.product'],
       });
 
       return this.createSuccessResponse(viewCartSummary);
