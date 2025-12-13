@@ -213,13 +213,9 @@ export class CartsService extends BaseService {
 
       // update the cart total
       await this.updateCartTotal(userId);
+      const cartItem = await this.findCartSessionItems(product_id, userId);
 
-      const findCarts = await this.cartsRepository.findOne({
-        where: { user_id: userId },
-        relations: ['cart_items'],
-      });
-
-      return this.createSuccessResponse(findCarts);
+      return this.createSuccessResponse(cartItem.data);
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
