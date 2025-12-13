@@ -1,9 +1,8 @@
 import {
   Injectable,
   NotFoundException,
-  Inject,
-  UnauthorizedException,
   UnprocessableEntityException,
+  HttpStatus,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -144,10 +143,15 @@ export class CartsService extends BaseService {
     userId: number,
   ) {
     try {
-      const { product_id, cart_session_id } = createCartItemsDto;
-
       // find and create new cart
-      const createCart = await this.findCart(userId);
+      let findCart = await this.findCart(userId);
+
+      if (findCart.code === HttpStatus.NOT_FOUND) {
+        await this.createCart(userId);
+        findCart = await this.findCart(userId);
+      }
+
+      const { product_id, cart_session_id } = createCartItemsDto;
 
       // find product exists
       const findProduct = await this.productsRepository.findOne({
@@ -174,23 +178,17 @@ export class CartsService extends BaseService {
 
       const { quantity, unitTotal } = resultQuantity;
 
-      const { ...updateCartItems } = {
+      const cartItemPayload = {
         ...createCartItemsDto,
         quantity,
         unit_price: price,
         unit_total: unitTotal,
-        cart_session_id: createCart.data.cart_session_id,
-        cart_id: createCart.data.id,
+        cart_session_id: findCart.data.cart_session_id,
+        cart_id: findCart.data.id,
       };
 
-      const createCartItems = {
-        ...createCartItemsDto,
-        quantity,
-        unit_price: price,
-        unit_total: unitTotal,
-        cart_session_id: createCart.data.cart_session_id,
-        cart_id: createCart.data.id,
-      };
+      const updateCartItems = { ...cartItemPayload };
+      const createCartItems = { ...cartItemPayload };
 
       // if product in session update data, else create data
       if (findProductInSession) {
@@ -212,6 +210,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(findCarts);
     } catch (error) {
+      console.log('e', error);
       return this.createErrorResponse(error.message);
     }
   }
