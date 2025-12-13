@@ -39,7 +39,7 @@ export class CartsService extends BaseService {
       });
 
       if (!findCart) {
-        throw new NotFoundException('Cart Not Found.');
+        return await this.createCart(userId);
       }
 
       return this.createSuccessResponse(findCart);
@@ -163,12 +163,7 @@ export class CartsService extends BaseService {
   ) {
     try {
       // find and create new cart
-      let findCart = await this.findCart(userId);
-
-      if (findCart.code === HttpStatus.NOT_FOUND) {
-        await this.createCart(userId);
-        findCart = await this.findCart(userId);
-      }
+      const findCart = await this.findCart(userId);
 
       const { product_id, cart_session_id } = createCartItemsDto;
 
