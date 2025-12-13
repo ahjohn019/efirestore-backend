@@ -3,6 +3,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
   HttpStatus,
+  HttpException,
 } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -43,6 +44,9 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(findCart);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       return this.createErrorResponse(error.message, error.status);
     }
   }
@@ -83,6 +87,9 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(createCart);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       return this.createErrorResponse(error.message, error.status);
     }
   }
@@ -219,7 +226,10 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(findCarts);
     } catch (error) {
-      console.log('e', error);
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       return this.createErrorResponse(error.message);
     }
   }
@@ -244,7 +254,7 @@ export class CartsService extends BaseService {
     try {
       const findCartItem = await this.cartItemsRepository.findOne({
         where: {
-          cart_id: deleteCartItemDto.cart_id,
+          user_id: request.id,
           product_id: deleteCartItemDto.product_id,
         },
         relations: ['cart'],
@@ -254,18 +264,20 @@ export class CartsService extends BaseService {
         throw new NotFoundException('Cart item not found.');
       }
 
-      await this.cartItemsRepository.remove(findCartItem);
+      await this.cartItemsRepository.delete(findCartItem.id);
 
-      await this.updateCartTotal(request.id);
+      const viewCartSummary = await this.viewCartSummary(request.id);
 
-      const countCartItems = findCartItem.cart?.cart_items?.length || 0;
-
-      if (countCartItems <= 0) {
-        await this.cartsRepository.delete(findCartItem.cart.id);
+      if (viewCartSummary.data.cart_items.length <= 0) {
+        await this.cartsRepository.delete(viewCartSummary.data.id);
+        return this.createSuccessResponse('Cart items cleared.');
       }
 
       return this.createSuccessResponse(true);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       return this.createErrorResponse(error.message);
     }
   }
