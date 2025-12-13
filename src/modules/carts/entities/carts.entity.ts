@@ -78,6 +78,9 @@ export class CartItems extends BaseEntity {
   @Column()
   product_id: number;
 
+  @Column()
+  user_id: number;
+
   @Column({ type: 'datetime' })
   created_at: Date;
 

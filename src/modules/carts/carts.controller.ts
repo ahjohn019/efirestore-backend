@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { CartsService } from './carts.service';
 import { CreateCartItemsDto } from './dto/create-carts.dto';
@@ -29,6 +30,18 @@ export class CartsController {
   })
   findCart(@Param('id') id: number) {
     return this.cartsService.findCart(id);
+  }
+
+  @Get('find-cart-items')
+  @UseGuards(AuthGuard)
+  @ApiParam({
+    name: 'session',
+    type: String,
+    example: '',
+    required: true,
+  })
+  findCartItems(@Query('productId') productId: number, @Request() req) {
+    return this.cartsService.findCartSessionItems(productId, req.user.id);
   }
 
   @Post('create-cart')

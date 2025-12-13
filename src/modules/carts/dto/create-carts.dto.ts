@@ -23,4 +23,6 @@ export class CreateCartItemsDto {
   cart_session_id: string;
 
   cart_id: number;
+
+  user_id: number;
 }

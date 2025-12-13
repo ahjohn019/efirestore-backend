@@ -46,6 +46,18 @@ export class CartsService extends BaseService {
       return this.createErrorResponse(error.message, error.status);
     }
   }
+
+  async findCartSessionItems(productId: number, userId: number) {
+    const findProductInSession = await this.cartItemsRepository.findOne({
+      where: {
+        product_id: productId,
+        user_id: userId,
+      },
+    });
+
+    return this.createSuccessResponse(findProductInSession);
+  }
+
   async createCart(userId: number) {
     try {
       const findCartUser = await this.usersRepository.findOne({
@@ -185,19 +197,16 @@ export class CartsService extends BaseService {
         unit_total: unitTotal,
         cart_session_id: findCart.data.cart_session_id,
         cart_id: findCart.data.id,
+        user_id: userId,
       };
-
-      const updateCartItems = { ...cartItemPayload };
-      const createCartItems = { ...cartItemPayload };
 
       // if product in session update data, else create data
       if (findProductInSession) {
-        await this.cartItemsRepository.update(
-          findProductInSession.id,
-          updateCartItems,
-        );
+        await this.cartItemsRepository.update(findProductInSession.id, {
+          ...cartItemPayload,
+        });
       } else {
-        await this.cartItemsRepository.save(createCartItems);
+        await this.cartItemsRepository.save({ ...cartItemPayload });
       }
 
       // update the cart total
