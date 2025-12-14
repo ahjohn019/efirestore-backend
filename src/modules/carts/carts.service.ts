@@ -256,14 +256,13 @@ export class CartsService extends BaseService {
       }
 
       await this.cartItemsRepository.delete(findCartItem.id);
-
+      await this.updateCartTotal(request.id);
       const viewCartSummary = await this.viewCartSummary(request.id);
 
       if (viewCartSummary.data.cart_items.length <= 0) {
         await this.cartsRepository.delete(viewCartSummary.data.id);
         return this.createSuccessResponse('Cart items cleared.');
       }
-
       return this.createSuccessResponse(true);
     } catch (error) {
       if (error instanceof HttpException) {
