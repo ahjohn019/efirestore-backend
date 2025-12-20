@@ -16,6 +16,8 @@ import { CartModule } from './modules/carts/carts.module';
 import { ToyyibpayModule } from './modules/payments/toyyibpay/toyyibpay.module';
 import { StripeModule } from './modules/payments/stripe/stripe.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CronjobsModule } from './cronjobs/cronjobs.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,6 +34,8 @@ import { OrdersModule } from './modules/orders/orders.module';
     ToyyibpayModule,
     StripeModule,
     OrdersModule,
+    ScheduleModule.forRoot(),
+    CronjobsModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],
