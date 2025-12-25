@@ -17,7 +17,7 @@ export class CronjobsService {
     private readonly cartsService: CartsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_SECOND)
+  @Cron(CronExpression.EVERY_30_SECONDS)
   async updateStripeCheckoutStatus() {
     const BATCH_SIZE = 500;
     let page = 0;
