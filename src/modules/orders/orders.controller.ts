@@ -21,7 +21,7 @@ import { Role } from '../../enum/role.enum';
 
 @Controller('orders')
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) { }
+  constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
   @Roles(Role.ADMIN)
@@ -50,7 +50,7 @@ export class OrdersController {
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
   updateOrder(@Param('id') id: string, @Body() UpdateOrderDto: UpdateOrderDto) {
-    return this.ordersService.updateOrder(+id, UpdateOrderDto);
+    return this.ordersService.update(+id, UpdateOrderDto);
   }
 
   @Delete(':id')

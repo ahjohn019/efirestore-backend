@@ -27,7 +27,7 @@ export class OrdersService extends BaseService {
    * @param adminId
    * @returns
    */
-  async create(createOrderDto: CreateOrderDto, adminId: number) {
+  async create(createOrderDto: CreateOrderDto, adminId?: number) {
     try {
       const { customer_email } = createOrderDto;
 
@@ -38,7 +38,7 @@ export class OrdersService extends BaseService {
       createOrderDto = {
         ...createOrderDto,
         user_id: findUser.id,
-        admin_id: adminId,
+        admin_id: adminId ?? 0,
       };
 
       // if items no repeated by product id, only create orders
@@ -119,13 +119,23 @@ export class OrdersService extends BaseService {
     }
   }
 
+  async findStripeCheckout(stripeCheckoutId: string) {
+    try {
+      const findOrder = await this.orderRepository.findOne({
+        where: { checkout_stripe_id: stripeCheckoutId },
+      });
+
+      return this.createSuccessResponse(findOrder);
+    } catch (error) {}
+  }
+
   /**
    * Update order status
    * @param id
    * @param UpdateOrderDto
    * @returns
    */
-  async updateOrder(id: number, UpdateOrderDto: UpdateOrderDto) {
+  async update(id: number, UpdateOrderDto: UpdateOrderDto) {
     try {
       const findOrder = await this.findOne(id);
 

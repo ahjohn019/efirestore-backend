@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  forwardRef,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, HttpException } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import {
   CheckoutIdStripeDto,
@@ -80,61 +74,60 @@ export class StripeService extends BaseStripeService {
       const session = await this.stripe.checkout.sessions.create(
         createStripeDtoResult,
       );
+
+      const prepareOrderFields = await this.prepareOrderFields(session);
+      await this.ordersService.create(prepareOrderFields);
+
       return this.createSuccessResponse(session);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
   }
 
+  /**
+   * Update stripe checkout
+   * @param updateCheckoutStripeDto
+   * @returns
+   */
   async updateStripeCheckout(updateCheckoutStripeDto: UpdateCheckoutStripeDto) {
     try {
-      const { order_id } = updateCheckoutStripeDto;
+      const { stripeCheckoutId } = updateCheckoutStripeDto;
 
-      const findOrder = await this.ordersService.findOne(order_id);
-
-      const { checkout_stripe_id, user, items } = findOrder.data;
-
-      const findCheckoutStripe = await this.retrieveStripeCheckout({
-        checkoutId: checkout_stripe_id,
+      // find the stripe checkout id from stripe
+      const findStripeCheckout = await this.retrieveStripeCheckout({
+        checkoutId: updateCheckoutStripeDto.stripeCheckoutId,
       });
 
-      if (findCheckoutStripe.data.status !== 'expired') {
-        throw new BadRequestException('Order Already Checkout.');
+      // find stripe from db
+      const findStripeOrder =
+        await this.ordersService.findStripeCheckout(stripeCheckoutId);
+
+      if (!findStripeCheckout) {
+        throw new NotFoundException('Stripe not found.');
       }
 
-      const stripeLineItems = items.map((item) => ({
-        price_data: {
-          currency: 'myr',
-          product_data: {
-            name: item.product.title,
-            metadata: {
-              id: item.product.id,
-            },
-          },
-          unit_amount: item.unit_price * 100,
-        },
-        quantity: item.quantity,
-      }));
+      if (!findStripeOrder) {
+        throw new NotFoundException('Stripe order not found.');
+      }
 
-      const payload = {
-        payment_method_types: [
-          'card',
-          'fpx',
-        ] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
-        line_items: stripeLineItems,
-        customer_email: user.email,
-        mode: 'payment' as 'payment',
-        success_url: 'https://example.com/success',
-        cancel_url: 'https://example.com/cancel',
-      };
-
-      const result = await this.stripe.checkout.sessions.create(payload);
-
-      const orderUpdate = this.ordersService.updateOrder(order_id, {
-        checkout_stripe_id: result.id,
+      // update the order based on stripe checkout id
+      const result = await this.ordersService.update(findStripeOrder.data.id, {
+        status: findStripeCheckout.data.status,
       });
 
-      return this.createSuccessResponse(orderUpdate);
+      return this.createSuccessResponse(result);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      return this.createErrorResponse(error.message);
+    }
+  }
+
+  async retrieveAllStripeCheckout() {
+    try {
+      const findStripeCheckouts = await this.stripe.checkout.sessions.list();
+      return this.createSuccessResponse(findStripeCheckouts);
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
@@ -280,8 +273,12 @@ export class StripeService extends BaseStripeService {
       amount_total,
     } = checkoutGetData;
 
+    const fetchCustomer = await this.stripe.customers.retrieve(
+      String(customer),
+    );
+
     const [fetchCustomerAddress, orderLineItems] = await Promise.all([
-      this.customerAddresses(customer as Stripe.Customer),
+      this.customerAddresses(fetchCustomer as Stripe.Customer),
       this.fetchOrderLineItems(id),
     ]);
 
@@ -309,43 +306,5 @@ export class StripeService extends BaseStripeService {
       tracking_number: '',
       checkout_stripe_id: id,
     };
-  }
-
-  /**
-   * Check if session completed, save the checkout data into order database
-   * @param request
-   * @returns
-   */
-  async postWebhook(request: { headers: string; rawBody: Buffer }) {
-    const signature = request.headers['stripe-signature'];
-    const event = this.stripe.webhooks.constructEvent(
-      request.rawBody,
-      signature,
-      this.stripeEndpointSecret,
-    );
-
-    switch (event.type) {
-      case 'checkout.session.completed':
-        const fetchCheckoutId = event.data?.object?.id || null;
-
-        if (!fetchCheckoutId) {
-          throw new NotFoundException('Checkout ID not found.');
-        }
-
-        const { data: checkoutData } = await this.retrieveStripeCheckout({
-          checkoutId: fetchCheckoutId,
-        });
-        const saveOrderPayload = await this.prepareOrderFields(checkoutData);
-
-        const createOrderSuccess = await this.ordersService.create(
-          saveOrderPayload,
-          null,
-        );
-
-        return this.createSuccessResponse(createOrderSuccess);
-
-      default:
-        throw new NotFoundException('Event type not found.');
-    }
   }
 }

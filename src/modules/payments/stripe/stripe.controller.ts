@@ -42,10 +42,4 @@ export class StripeController {
   checkoutGetLineItems(@Body() checkoutIdStripeDto: CheckoutIdStripeDto) {
     return this.stripeService.checkoutGetLineItems(checkoutIdStripeDto);
   }
-
-  @Post('/webhook')
-  // @UseGuards(AuthGuard)
-  postWebhook(@Request() request) {
-    return this.stripeService.postWebhook(request);
-  }
 }

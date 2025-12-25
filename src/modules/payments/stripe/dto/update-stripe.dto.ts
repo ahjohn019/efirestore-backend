@@ -33,5 +33,5 @@ export class UpdateStripeDto extends CustomerStripeDto {
 
 export class UpdateCheckoutStripeDto {
   @IsNotEmpty()
-  order_id: number;
+  stripeCheckoutId: string;
 }
