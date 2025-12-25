@@ -17,7 +17,7 @@ export class CronjobsService {
     private readonly cartsService: CartsService,
   ) {}
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_SECOND)
   async updateStripeCheckoutStatus() {
     const BATCH_SIZE = 500;
     let page = 0;
@@ -28,7 +28,11 @@ export class CronjobsService {
         skip: page * BATCH_SIZE,
       });
 
-      if (orders.length === 0) break;
+      const countOrderIncomplete = await this.orderRepository.count({
+        where: { status: Not('complete') },
+      });
+
+      if (orders.length === 0 || countOrderIncomplete === 0) break;
 
       const promiseOrders = orders.map(async (value) => {
         if (!value.checkout_stripe_id) return;
