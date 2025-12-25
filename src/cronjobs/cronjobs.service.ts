@@ -15,29 +15,34 @@ export class CronjobsService {
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
-  async updateStripeCheckout() {
-    const findCheckoutStripe = await this.orderRepository.find({
-      where: {
-        status: Not('complete'),
-      },
-    });
+  async updateStripeCheckoutStatus() {
+    const BATCH_SIZE = 500;
+    let page = 0;
 
-    const checkoutStripeIdMapped = findCheckoutStripe.map((value) => {
-      return value.checkout_stripe_id;
-    });
+    while (true) {
+      const orders = await this.orderRepository.find({
+        where: { status: Not('complete') },
+        take: BATCH_SIZE,
+        skip: page * BATCH_SIZE,
+      });
 
-    for (const checkoutId of checkoutStripeIdMapped) {
-      if (!checkoutId) continue;
+      if (orders.length === 0) break;
 
-      const findStripeCheckout =
-        await this.stripeService.retrieveStripeCheckout({
-          checkoutId,
+      const promiseOrders = orders.map(async (value) => {
+        if (!value.checkout_stripe_id) return;
+
+        const stripeSession = await this.stripeService.retrieveStripeCheckout({
+          checkoutId: value.checkout_stripe_id,
         });
 
-      await this.orderRepository.update(
-        { checkout_stripe_id: checkoutId },
-        { status: findStripeCheckout.data.status },
-      );
+        await this.orderRepository.update(
+          { checkout_stripe_id: value.checkout_stripe_id },
+          { status: stripeSession.data.status },
+        );
+      });
+
+      await Promise.all(promiseOrders);
+      page++;
     }
 
     return { success: true, message: 'Orders sync successfully' };
