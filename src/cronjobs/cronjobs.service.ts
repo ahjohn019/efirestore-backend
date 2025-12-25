@@ -4,6 +4,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { Orders } from '../modules/orders/entities/orders.entity';
 import { Repository, Not } from 'typeorm';
 import { StripeService } from '../modules/payments/stripe/stripe.service';
+import { CartsService } from 'src/modules/carts/carts.service';
 
 @Injectable()
 export class CronjobsService {
@@ -12,6 +13,8 @@ export class CronjobsService {
     private orderRepository: Repository<Orders>,
 
     private readonly stripeService: StripeService,
+
+    private readonly cartsService: CartsService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_SECONDS)
@@ -21,7 +24,6 @@ export class CronjobsService {
 
     while (true) {
       const orders = await this.orderRepository.find({
-        where: { status: Not('complete') },
         take: BATCH_SIZE,
         skip: page * BATCH_SIZE,
       });
@@ -30,6 +32,14 @@ export class CronjobsService {
 
       const promiseOrders = orders.map(async (value) => {
         if (!value.checkout_stripe_id) return;
+
+        const findCart = await this.cartsService.findCartByUserId(
+          value.user_id,
+        );
+
+        if (value.status === 'complete' && findCart) {
+          return await this.cartsService.deleteCart(value.user_id);
+        }
 
         const stripeSession = await this.stripeService.retrieveStripeCheckout({
           checkoutId: value.checkout_stripe_id,

@@ -32,11 +32,22 @@ export class CartsService extends BaseService {
     super();
   }
 
-  async findCart(userId: number) {
+  async findCartByUserId(userId: number) {
     try {
-      const findCart = await this.cartsRepository.findOne({
+      return await this.cartsRepository.findOne({
         where: { user_id: userId },
       });
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      return this.createErrorResponse(error.message, error.status);
+    }
+  }
+
+  async findCart(userId: number) {
+    try {
+      const findCart = await this.findCartByUserId(userId);
 
       if (!findCart) {
         return await this.createCart(userId);
