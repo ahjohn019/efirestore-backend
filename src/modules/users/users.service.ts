@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, HttpException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
 import { UpdateUserDetailsDto } from './dto/update-user.dto';
@@ -27,8 +27,14 @@ export class UsersService extends BaseService {
   async create(createUserDto: CreateUserDto) {
     try {
       const user = this.usersRepository.create(createUserDto);
-      return this.createSuccessResponse(user);
+      const findUser = await this.usersRepository.save(user);
+
+      return this.createSuccessResponse(findUser);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       return this.createErrorResponse(error.message);
     }
   }
