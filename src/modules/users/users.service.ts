@@ -140,7 +140,7 @@ export class UsersService extends BaseService {
     try {
       const findEmail = await this.usersRepository.findOne({
         where: {
-          email: email,
+          email,
         },
       });
 

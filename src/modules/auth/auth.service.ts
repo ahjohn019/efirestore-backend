@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ForbiddenException,
   NotFoundException,
+  HttpException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -31,7 +32,7 @@ export class AuthService extends BaseService {
     try {
       const user = await this.usersService.findByEmail(userEmail);
 
-      if (!user) {
+      if (!user.data) {
         throw new UnauthorizedException('User not found');
       }
 
@@ -57,6 +58,9 @@ export class AuthService extends BaseService {
 
       return this.createSuccessResponse(accessToken);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
       return this.createErrorResponse(error.message);
     }
   }
