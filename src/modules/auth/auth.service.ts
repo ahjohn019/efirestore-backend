@@ -68,7 +68,13 @@ export class AuthService extends BaseService {
         from: '"Admin" <' + process.env.EMAIL_ADMIN + '>',
         to: email,
         subject: `Change Password Required`,
-        text: emailLink,
+        template: 'reset-password',
+        context: {
+          subject: 'Change Password Required',
+          email,
+          resetUrl: emailLink,
+          company: 'E-firestore',
+        },
       });
 
       return this.createSuccessResponse(sendEmailResponse);
@@ -90,7 +96,12 @@ export class AuthService extends BaseService {
       const generateEmailToken = await bcrypt.hash(email, 10);
 
       const emailLink =
-        process.env.FRONTEND_URL + '?user_id=' + id + '&email=' + email;
+        process.env.FRONTEND_URL +
+        'resetPassword' +
+        '?user_id=' +
+        id +
+        '&email=' +
+        email;
 
       await this.usersService.update(id, {
         remember_token: generateEmailToken,
