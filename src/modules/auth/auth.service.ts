@@ -58,10 +58,7 @@ export class AuthService extends BaseService {
 
       return this.createSuccessResponse(accessToken);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -76,7 +73,7 @@ export class AuthService extends BaseService {
 
       return this.createSuccessResponse(sendEmailResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -103,7 +100,7 @@ export class AuthService extends BaseService {
 
       return this.createSuccessResponse(emailLink);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -123,7 +120,7 @@ export class AuthService extends BaseService {
 
       return updatePassword;
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -153,7 +150,7 @@ export class AuthService extends BaseService {
 
       return this.createSuccessResponse(true);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 }
