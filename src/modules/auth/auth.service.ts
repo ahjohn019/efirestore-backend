@@ -97,7 +97,7 @@ export class AuthService extends BaseService {
 
       const emailLink =
         process.env.FRONTEND_URL +
-        'resetPassword' +
+        'reset-password' +
         '?user_id=' +
         id +
         '&email=' +
