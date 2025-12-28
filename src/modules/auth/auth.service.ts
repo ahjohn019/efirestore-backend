@@ -65,9 +65,9 @@ export class AuthService extends BaseService {
     }
   }
 
-  sendEmail(email: string, emailLink: string) {
+  async sendEmail(email: string, emailLink: string) {
     try {
-      const sendEmailResponse = this.mailService.sendMail({
+      const sendEmailResponse = await this.mailService.sendMail({
         from: '"Admin" <' + process.env.EMAIL_ADMIN + '>',
         to: email,
         subject: `Change Password Required`,

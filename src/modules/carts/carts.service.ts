@@ -38,10 +38,7 @@ export class CartsService extends BaseService {
         where: { user_id: userId },
       });
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      return this.createErrorResponse(error.message, error.status);
+      throw error;
     }
   }
 
@@ -55,10 +52,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(findCart);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      return this.createErrorResponse(error.message, error.status);
+      throw error;
     }
   }
 
@@ -98,10 +92,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(createCart);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      return this.createErrorResponse(error.message, error.status);
+      throw error;
     }
   }
 
@@ -164,7 +155,7 @@ export class CartsService extends BaseService {
         },
       );
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -228,11 +219,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(cartItem.data);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -245,7 +232,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(viewCartSummary);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -276,10 +263,7 @@ export class CartsService extends BaseService {
       }
       return this.createSuccessResponse(true);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -297,7 +281,7 @@ export class CartsService extends BaseService {
 
       return this.createSuccessResponse(true);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 }
