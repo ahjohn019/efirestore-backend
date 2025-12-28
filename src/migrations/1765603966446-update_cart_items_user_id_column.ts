@@ -17,6 +17,12 @@ export class UpdateCartItemsUserIdColumn1765603966446
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // 1. Drop foreign key constraint
+    await queryRunner.query(`
+      ALTER TABLE cart_items
+      DROP FOREIGN KEY fk_user;
+    `);
+
     await queryRunner.query(`
             ALTER TABLE cart_items
             DROP COLUMN user_id;
