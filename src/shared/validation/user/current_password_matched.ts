@@ -5,7 +5,7 @@ import {
 } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../../../modules/users/users.service';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import * as dayjs from 'dayjs';
 
 @ValidatorConstraint({ name: 'CurrentPasswordMatched', async: false })
@@ -20,7 +20,7 @@ export class CurrentPasswordMatched implements ValidatorConstraintInterface {
     );
 
     if (!existUser.data) {
-      throw new NotFoundException('You have reset password already.');
+      throw new ForbiddenException('Reset password not allowed.');
     }
 
     const resetPasswordExpiredAt = dayjs(
