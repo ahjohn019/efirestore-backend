@@ -178,16 +178,40 @@ export class UsersService extends BaseService {
     }
   }
 
+  async findByResetPasswordToken(token: string) {
+    try {
+      const findToken = await this.usersRepository.findOne({
+        where: {
+          reset_password_token: token,
+        },
+      });
+
+      return this.createSuccessResponse(findToken);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+  }
+
   async update(id: number, updateUserDto: any) {
     try {
-      // const userEntity = await this.findOne(id);
-      // const updateResponse = await this.usersRepository.save(
-      //   Object.assign(userEntity, updateUserDto),
-      // );
-
       const updateResponse = await this.usersRepository.update(
         {
           id,
+        },
+        updateUserDto,
+      );
+
+      return this.createSuccessResponse(updateResponse);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+  }
+
+  async updateByResetPasswordToken(token: string, updateUserDto: any) {
+    try {
+      const updateResponse = await this.usersRepository.update(
+        {
+          reset_password_token: token,
         },
         updateUserDto,
       );

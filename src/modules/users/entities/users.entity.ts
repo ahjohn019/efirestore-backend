@@ -34,6 +34,12 @@ export class Users extends BaseEntity {
   @Column({ nullable: true })
   remember_token: string;
 
+  @Column({ nullable: true })
+  reset_password_token: string;
+
+  @Column({ nullable: true })
+  reset_password_expired_at: Date;
+
   @BeforeInsert()
   async hashPassword() {
     this.password = await bcrypt.hash(this.password, 10);

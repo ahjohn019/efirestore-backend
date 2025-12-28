@@ -93,19 +93,25 @@ export class AuthService extends BaseService {
 
       const { id, email } = user.data;
 
-      const generateEmailToken = await bcrypt.hash(email, 10);
+      const generateResetPasswordToken = await bcrypt.hash(email, 10);
+      const emailTokenExpiresAt = dayjs()
+        .add(1, 'hour')
+        .format('YYYY-MM-DD HH:mm:ss');
+
+      await this.usersService.update(id, {
+        reset_password_token: generateResetPasswordToken,
+        reset_password_expired_at: emailTokenExpiresAt,
+      });
+
+      const findAfterResetEmail = await this.usersService.findByEmail(
+        forgetPasswordDto.email,
+      );
 
       const emailLink =
         process.env.FRONTEND_URL +
         'reset-password' +
-        '?user_id=' +
-        id +
-        '&email=' +
-        email;
-
-      await this.usersService.update(id, {
-        remember_token: generateEmailToken,
-      });
+        '?token=' +
+        findAfterResetEmail.data.reset_password_token;
 
       this.sendEmail(forgetPasswordDto.email, emailLink);
 
@@ -115,9 +121,11 @@ export class AuthService extends BaseService {
     }
   }
 
-  async updatePassword(updatePasswordDto: updatePasswordDto, reqUser) {
+  async updatePassword(updatePasswordDto: updatePasswordDto) {
     try {
-      const user = await this.usersService.findOne(reqUser.id);
+      const user = await this.usersService.findByResetPasswordToken(
+        updatePasswordDto.reset_password_token,
+      );
 
       const generatePasswordHash = await bcrypt.hash(
         updatePasswordDto.password_confirmation,
@@ -126,9 +134,9 @@ export class AuthService extends BaseService {
 
       const updatePassword = await this.usersService.update(user.data.id, {
         password: generatePasswordHash,
-        remember_token: null,
+        reset_password_token: null,
+        reset_password_expired_at: null,
       });
-
       return updatePassword;
     } catch (error) {
       throw error;

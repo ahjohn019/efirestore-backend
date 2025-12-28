@@ -31,4 +31,6 @@ export class updatePasswordDto {
     type: String,
   })
   password_confirmation: string;
+
+  reset_password_token: string;
 }

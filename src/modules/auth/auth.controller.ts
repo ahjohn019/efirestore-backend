@@ -6,7 +6,7 @@ import {
   HttpStatus,
   Request,
   UseGuards,
-  Get
+  Get,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { signInDto } from '../auth/dto/signin.dto';
@@ -20,7 +20,7 @@ import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 @ApiTags('Auth User')
 @ApiBearerAuth()
 export class AuthController {
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService) {}
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -41,10 +41,9 @@ export class AuthController {
   }
 
   // update password
-  @UseGuards(AuthGuard)
   @Post('update-password')
-  updatePassword(@Request() req, @Body() updatePasswordDto: updatePasswordDto) {
-    return this.authService.updatePassword(updatePasswordDto, req.user);
+  updatePassword(@Body() updatePasswordDto: updatePasswordDto) {
+    return this.authService.updatePassword(updatePasswordDto);
   }
 
   @Post('check-reset-password-expired')
