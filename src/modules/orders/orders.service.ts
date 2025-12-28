@@ -66,7 +66,7 @@ export class OrdersService extends BaseService {
 
       return this.createSuccessResponse(saveOrder);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -97,7 +97,7 @@ export class OrdersService extends BaseService {
 
       return this.createSuccessResponse(findAllOrderResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -115,7 +115,7 @@ export class OrdersService extends BaseService {
 
       return this.createSuccessResponse(findOrder);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -150,7 +150,7 @@ export class OrdersService extends BaseService {
 
       return this.createSuccessResponse(updateOrder);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -164,7 +164,7 @@ export class OrdersService extends BaseService {
       const removeOrderResponse = await this.orderRepository.delete(id);
       return this.createSuccessResponse(removeOrderResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 }
