@@ -46,7 +46,7 @@ export class ProductsService extends BaseService {
 
       return this.createSuccessResponse(savedProducts);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -93,7 +93,7 @@ export class ProductsService extends BaseService {
         max_price: parseFloat(priceRange.maxPrice),
       });
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -107,7 +107,7 @@ export class ProductsService extends BaseService {
 
       return this.createSuccessResponse(findBulkResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -121,7 +121,7 @@ export class ProductsService extends BaseService {
 
       return this.createSuccessResponse(findOneResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -145,7 +145,7 @@ export class ProductsService extends BaseService {
 
       return this.createSuccessResponse(productsEntity);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -154,7 +154,7 @@ export class ProductsService extends BaseService {
       const removeProduct = await this.productsRepository.delete(id);
       return this.createSuccessResponse(removeProduct);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 }
