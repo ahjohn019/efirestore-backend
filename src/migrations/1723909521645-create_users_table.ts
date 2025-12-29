@@ -26,16 +26,24 @@ export class CreateUsersTable1723909521645 implements MigrationInterface {
             type: 'text',
           },
           {
+            name: 'role',
+            type: 'enum',
+            enum: ['user', 'admin'],
+          },
+          {
             name: 'remember_token',
             type: 'text',
+            isNullable: true,
           },
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

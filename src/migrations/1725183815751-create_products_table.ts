@@ -14,7 +14,7 @@ export class CreateProductsTable1725183815751 implements MigrationInterface {
             generationStrategy: 'increment',
           },
           {
-            name: 'name',
+            name: 'title',
             type: 'varchar',
           },
           {
@@ -24,22 +24,26 @@ export class CreateProductsTable1725183815751 implements MigrationInterface {
           {
             name: 'description',
             type: 'text',
+            isNullable: true,
           },
           {
             name: 'price',
-            type: 'text',
+            type: 'double',
           },
           {
             name: 'category_id',
             type: 'int',
+            isNullable: true,
           },
           {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

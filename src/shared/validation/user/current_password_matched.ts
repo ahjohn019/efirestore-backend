@@ -5,6 +5,8 @@ import {
 } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../../../modules/users/users.service';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import * as dayjs from 'dayjs';
 
 @ValidatorConstraint({ name: 'CurrentPasswordMatched', async: false })
 export class CurrentPasswordMatched implements ValidatorConstraintInterface {
@@ -12,12 +14,41 @@ export class CurrentPasswordMatched implements ValidatorConstraintInterface {
 
   async validate(value: any, args: ValidationArguments) {
     const { object } = args;
-    const existUser = await this.usersService.findOne(object['id']);
-    if (!existUser) return true;
+
+    const existUser = await this.usersService.findByResetPasswordToken(
+      object['reset_password_token'],
+    );
+
+    if (!existUser.data) {
+      throw new ForbiddenException('Reset password not allowed.');
+    }
+
+    const resetPasswordExpiredAt = dayjs(
+      existUser.data.reset_password_expired_at,
+    ).format('YYYY-MM-DD HH:ss');
+
+    const dateTimeNow = dayjs();
+    const checkDateTimeNowIsAfterResetPasswordExpired = dayjs(
+      dateTimeNow,
+    ).isAfter(resetPasswordExpiredAt);
+
+    if (checkDateTimeNowIsAfterResetPasswordExpired) {
+      await this.usersService.updateByResetPasswordToken(
+        object['reset_password_token'],
+        {
+          reset_password_token: null,
+          reset_password_expired_at: null,
+        },
+      );
+
+      throw new BadRequestException(
+        'Reset password expired, please reset password again.',
+      );
+    }
 
     const currentPasswordMatch = await bcrypt.compare(
       value,
-      existUser.password,
+      existUser.data.password,
     );
 
     return currentPasswordMatch;

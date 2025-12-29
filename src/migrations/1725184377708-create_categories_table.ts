@@ -18,12 +18,18 @@ export class CreateCategoriesTable1725184377708 implements MigrationInterface {
             type: 'varchar',
           },
           {
+            name: 'slug',
+            type: 'varchar',
+          },
+          {
             name: 'created_at',
             type: 'datetime',
+            default: 'now()',
           },
           {
             name: 'updated_at',
             type: 'datetime',
+            default: 'now()',
           },
         ],
       }),

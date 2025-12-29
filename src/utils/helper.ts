@@ -1,0 +1,166 @@
+import { Repository, FindOptionsWhere, SelectQueryBuilder } from 'typeorm';
+import { unlink } from 'node:fs';
+
+interface Filters {
+  [key: string]: string | number;
+  minPrice?: number;
+  maxPrice?: number;
+  column?: string;
+  orderBy?: 'ASC' | 'DESC' | 'asc' | 'desc';
+}
+export class Helper {
+  static async calculatePagination<T>(
+    payload: { take: number; page: number },
+    repository: Repository<T>,
+    where?: FindOptionsWhere<T> | FindOptionsWhere<T>[],
+    relationItems?: (keyof T & string)[],
+  ) {
+    const { take, page } = payload;
+
+    const skip = take * (page - 1);
+    const [list, totalRecord] = await repository.findAndCount({
+      take,
+      skip,
+      where,
+      relations: relationItems,
+    });
+
+    const total_page = Math.max(Math.ceil(totalRecord / take), 1);
+    let current_page = Math.max(page, 1);
+    let next_page = current_page + 1;
+    let previous_page = Math.max(current_page - 1, 1);
+    let total_data = totalRecord;
+
+    // If no data, reset to page 1
+    if (list.length === 0) {
+      current_page = next_page = previous_page = 1;
+    }
+
+    // If all data is retrieved, there's no next page
+    if (list.length === totalRecord) {
+      next_page = 1;
+    }
+
+    return {
+      list,
+      total_page,
+      current_page,
+      next_page,
+      previous_page,
+      total_data,
+    };
+  }
+  static convertUpperCase(name: string) {
+    return name.replace(/\s+/g, ' ').trim().replace(/ /g, '_').toLowerCase();
+  }
+
+  static unlinkFile(path: string) {
+    unlink(path, (err) => {
+      if (err) throw err;
+    });
+  }
+
+  static checkDuplicateIdsExists(idList: number[]) {
+    const idLists = idList.filter(
+      (item, index) => idList.indexOf(item) !== index,
+    );
+
+    const uniqueDuplicateIds = [...new Set(idLists)];
+
+    return uniqueDuplicateIds;
+  }
+
+  static async searchHelpers<T>(
+    repository: Repository<T>,
+    searchParams: any,
+    tableName: string,
+    relations?: string[],
+  ) {
+    try {
+      const query = repository.createQueryBuilder(tableName);
+
+      const { page, take, ...filters } = searchParams;
+      const skip = take * (page - 1);
+
+      if (relations && relations.length > 0) {
+        relations.forEach((relation) => {
+          query.leftJoinAndSelect(`${tableName}.${relation}`, relation);
+        });
+      }
+
+      Object.entries(filters as Record<string, string | number>).forEach(
+        ([key, value]) => {
+          this.applyDynamicSearch(value, key, tableName, query, filters);
+        },
+      );
+
+      query.skip(skip).take(take);
+
+      const [data, total] = await query.getManyAndCount();
+      const total_page = Math.ceil(total / take);
+      const current_page = parseInt(page);
+      const next_page = current_page + 1;
+      const previous_page = Math.max(current_page - 1, 1);
+
+      return {
+        data,
+        total,
+        total_page,
+        current_page,
+        previous_page,
+        next_page,
+      };
+    } catch (error) {
+      console.log('e', error);
+      return error;
+    }
+  }
+
+  static applyDynamicSearch<T>(
+    value: string | number,
+    key: string,
+    tableName: string,
+    query: SelectQueryBuilder<T>,
+    filters: Filters,
+  ): SelectQueryBuilder<T> {
+    try {
+      if (!value) return query;
+
+      if (key.includes('.')) {
+        const [relationAlias, column] = key.split('.');
+        const paramName = `${relationAlias}_${column}`;
+
+        query.andWhere(`${relationAlias}.${column} LIKE :${paramName}`, {
+          [paramName]: `%${value}%`,
+        });
+
+        return query;
+      }
+
+      if (filters.minPrice || filters.maxPrice) {
+        query.andWhere(`${tableName}.price BETWEEN :min AND :max`, {
+          min: filters?.minPrice || 1,
+          max: filters?.maxPrice || 999,
+        });
+      }
+
+      if (filters.orderBy && filters.column) {
+        const direction = filters.orderBy.toUpperCase() as 'ASC' | 'DESC';
+        query.orderBy(`${tableName}.${filters.column}`, direction);
+      }
+
+      const skipKeys = ['minPrice', 'maxPrice', 'orderBy', 'column'];
+
+      if (!skipKeys.includes(key)) {
+        const condition = `${tableName}.${key} LIKE :${key}`;
+        const param = { [key]: `%${value}%` };
+        query.andWhere(condition, param);
+      }
+
+      return query;
+    } catch (error) {
+      console.log('e', error);
+      return error;
+    }
+  }
+}

@@ -1,84 +1,175 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+  NotFoundException,
+  HttpException,
+} from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { MailerService } from '@nestjs-modules/mailer';
 import { forgetPasswordDto } from './dto/forgetPassword.dto';
 import { updatePasswordDto } from './dto/UpdatePassword.dto';
+import { checkResetPasswordExpiredDto } from './dto/checkResetPasswordExpired.dto';
+import { BaseService } from '../base/base.service';
 
+import * as dayjs from 'dayjs';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
 @Injectable()
-export class AuthService {
+export class AuthService extends BaseService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private readonly mailService: MailerService,
-  ) {}
-
-  async signIn(email: string, pass: string): Promise<any> {
-    const user = await this.usersService.findByEmail(email);
-    const passwordMatch = await bcrypt.compare(pass, user.password);
-
-    if (!passwordMatch) {
-      throw new UnauthorizedException('Invalid email or password.');
-    }
-
-    const payload = { username: user.name, email: user.email };
-
-    return {
-      access_token: await this.jwtService.signAsync(payload),
-    };
+  ) {
+    super();
   }
 
-  sendEmail(email: string, emailLink: string) {
-    this.mailService.sendMail({
-      from: '"Admin" <' + process.env.EMAIL_ADMIN + '>',
-      to: email,
-      subject: `Change Password Required`,
-      text: emailLink,
-    });
+  async signIn(userEmail: string, pass: string): Promise<any> {
+    try {
+      const user = await this.usersService.findByEmail(userEmail);
+
+      if (!user.data) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      const { password, id, name, email, role } = user.data;
+
+      const passwordMatch = await bcrypt.compare(pass, password);
+
+      if (!passwordMatch) {
+        throw new UnauthorizedException('Invalid email or password');
+      }
+
+      const payload = {
+        id,
+        username: name,
+        email,
+        role,
+        status: true,
+      };
+
+      const accessToken = await this.jwtService.signAsync(payload, {
+        expiresIn: process.env.JWT_DURATION,
+      });
+
+      return this.createSuccessResponse(accessToken);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async sendEmail(email: string, emailLink: string) {
+    try {
+      const sendEmailResponse = await this.mailService.sendMail({
+        from: '"Admin" <' + process.env.EMAIL_ADMIN + '>',
+        to: email,
+        subject: `Change Password Required`,
+        template: 'reset-password',
+        context: {
+          subject: 'Change Password Required',
+          email,
+          resetUrl: emailLink,
+          company: 'E-firestore',
+        },
+      });
+
+      return this.createSuccessResponse(sendEmailResponse);
+    } catch (error) {
+      throw error;
+    }
   }
 
   async forgetPassword(forgetPasswordDto: forgetPasswordDto) {
-    const user = await this.usersService.findByEmail(forgetPasswordDto.email);
+    try {
+      const user = await this.usersService.findByEmail(forgetPasswordDto.email);
 
-    if (!user) {
-      throw new UnauthorizedException('Email Not Found.');
+      if (!user) {
+        throw new UnauthorizedException('Email Not Found.');
+      }
+
+      const { id, email } = user.data;
+
+      const generateResetPasswordToken = await bcrypt.hash(email, 10);
+      const emailTokenExpiresAt = dayjs()
+        .add(1, 'hour')
+        .format('YYYY-MM-DD HH:mm:ss');
+
+      await this.usersService.update(id, {
+        reset_password_token: generateResetPasswordToken,
+        reset_password_expired_at: emailTokenExpiresAt,
+      });
+
+      const findAfterResetEmail = await this.usersService.findByEmail(
+        forgetPasswordDto.email,
+      );
+
+      const emailLink =
+        process.env.FRONTEND_URL +
+        'reset-password' +
+        '?token=' +
+        findAfterResetEmail.data.reset_password_token;
+
+      this.sendEmail(forgetPasswordDto.email, emailLink);
+
+      return this.createSuccessResponse(emailLink);
+    } catch (error) {
+      throw error;
     }
-
-    const generateEmailToken = await bcrypt.hash(user.email, 10);
-
-    const emailLink =
-      process.env.APP_URL +
-      '/reset-password?token=' +
-      generateEmailToken +
-      '&id=' +
-      user.id;
-
-    await this.usersService.update(user.id, {
-      remember_token: generateEmailToken,
-    });
-
-    this.sendEmail(forgetPasswordDto.email, emailLink);
-
-    return emailLink;
   }
 
   async updatePassword(updatePasswordDto: updatePasswordDto) {
-    const user = await this.usersService.findOne(updatePasswordDto.id);
+    try {
+      const user = await this.usersService.findByResetPasswordToken(
+        updatePasswordDto.reset_password_token,
+      );
 
-    const generatePasswordHash = await bcrypt.hash(
-      updatePasswordDto.password_confirmation,
-      10,
-    );
+      const generatePasswordHash = await bcrypt.hash(
+        updatePasswordDto.password_confirmation,
+        10,
+      );
 
-    const updatePassword = await this.usersService.update(user.id, {
-      password: generatePasswordHash,
-      remember_token: null,
-    });
+      const updatePassword = await this.usersService.update(user.data.id, {
+        password: generatePasswordHash,
+        reset_password_token: null,
+        reset_password_expired_at: null,
+      });
+      return updatePassword;
+    } catch (error) {
+      throw error;
+    }
+  }
 
-    return updatePassword;
+  async checkResetPasswordPageExpired(
+    checkResetPasswordExpiredDto: checkResetPasswordExpiredDto,
+  ) {
+    try {
+      const user = await this.usersService.findOne(
+        checkResetPasswordExpiredDto.id,
+      );
+
+      if (!user || !user.data) {
+        throw new UnauthorizedException('User Not Found.');
+      }
+
+      const { updated_at, remember_token } = user.data;
+
+      const dateNow = dayjs().format('YYYY-MM-DD');
+      const dateUpdatedAt = dayjs(updated_at).format('YYYY-MM-DD');
+      const fetchDateNow = dayjs(dateNow);
+
+      const diffDays = fetchDateNow.diff(dateUpdatedAt, 'day', true);
+
+      if (diffDays >= 1 && remember_token) {
+        throw new ForbiddenException('Page Has Expired');
+      }
+
+      return this.createSuccessResponse(true);
+    } catch (error) {
+      throw error;
+    }
   }
 }

@@ -19,12 +19,14 @@ export class TokenCheck implements ValidatorConstraintInterface {
       const existUser = await this.usersService.findOne(object['id']);
       if (!existUser) return true;
 
-      const generateEmailToken = await bcrypt.hash(existUser.email, 10);
+      const generateEmailToken = await bcrypt.hash(existUser.data.email, 10);
       await this.usersService.update(object['id'], {
         remember_token: generateEmailToken,
       });
 
-      token = (await this.usersService.findOne(object['id'])).remember_token;
+      const findUserById = await this.usersService.findOne(object['id']);
+
+      token = findUserById.data.remember_token;
     }
 
     const user = await this.usersService.findByToken(token);

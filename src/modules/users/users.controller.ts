@@ -7,30 +7,48 @@ import {
   Param,
   Delete,
   UseGuards,
+  Put,
+  Query,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
+import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
+import { UpdateUserDetailsDto } from './dto/update-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../../commons/guards/auth';
+import { RolesGuard } from '../../commons/guards/roles.guard';
+import { Roles } from '../../commons/decorators/roles.decorator';
+import { Role } from '../../enum/role.enum';
+import { AllUserDto } from './dto/all-user.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
 
-  @Post()
-  findByEmail(email: string) {
+  @Post('/user-details/create')
+  createUserDetails(@Body() createUserDetailsDto: CreateUserDetailsDto) {
+    return this.usersService.createUsersDetails(createUserDetailsDto);
+  }
+
+  @Put('/user-details/update')
+  updateUserDetails(@Body() updateUserDetailsDto: UpdateUserDetailsDto) {
+    return this.usersService.updateUsersDetails(updateUserDetailsDto);
+  }
+
+  @Get()
+  findByEmail(@Param('email') email: string) {
     return this.usersService.findByEmail(email);
   }
 
-  @UseGuards(AuthGuard)
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  @Roles(Role.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  findAll(@Query() allProductDto: AllUserDto) {
+    return this.usersService.findAll(allProductDto);
   }
 
   @Get(':id')

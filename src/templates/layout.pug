@@ -1,0 +1,33 @@
+doctype html
+html
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport", content="width=device-width, initial-scale=1.0")
+    title #{subject}
+    style.
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        padding: 20px;
+      }
+      .container {
+        max-width: 600px;
+        margin: auto;
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 6px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 10px 16px;
+        background: #2563eb;
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 4px;
+      }
+  body
+    .container
+      block content
+      hr
+      p(style="font-size:12px;color:#666")
+        | © #{new Date().getFullYear()} #{company}

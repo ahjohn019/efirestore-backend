@@ -1,0 +1,33 @@
+import { IsNotEmpty, IsEnum } from 'class-validator';
+import { PaymentMethod } from '../../../enum/payment-method.enum';
+import { OrderStatus } from '../../../enum/order-status.enum';
+
+export class RefundOrderItemsDto {
+  @IsNotEmpty()
+  product_id: number;
+
+  @IsNotEmpty()
+  quantity: number;
+}
+
+export class RefundOrderDto {
+  @IsNotEmpty()
+  order_id: number;
+
+  @IsNotEmpty()
+  reason: string;
+
+  @IsNotEmpty()
+  @IsEnum(PaymentMethod)
+  method: string;
+
+  @IsNotEmpty()
+  @IsEnum(OrderStatus)
+  status: string;
+
+  items: RefundOrderItemsDto[];
+}
+
+export interface CheckoutSessionStripeDto {
+  checkoutSessionId: string;
+}
