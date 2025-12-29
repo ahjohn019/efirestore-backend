@@ -10,9 +10,9 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { signInDto } from '../auth/dto/signin.dto';
-import { forgetPasswordDto } from '../auth/dto/forgetPassword.dto';
-import { updatePasswordDto } from '../auth/dto/UpdatePassword.dto';
-import { checkResetPasswordExpiredDto } from '../auth/dto/checkResetPasswordExpired.dto';
+import { forgetPasswordDto } from './dto/forget-password.dto';
+import { updatePasswordDto } from './dto/update-password.dto';
+import { checkResetPasswordExpiredDto } from './dto/check-reset-password-expired.dto';
 import { AuthGuard } from '../../commons/guards/auth';
 import { ApiBearerAuth, ApiQuery, ApiTags } from '@nestjs/swagger';
 
