@@ -1,4 +1,5 @@
-import { DataSourceOptions, DataSource } from 'typeorm';
+import { DataSource } from 'typeorm';
+import type { DataSourceOptions } from 'typeorm';
 import { runSeeders, SeederOptions } from 'typeorm-extension';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
