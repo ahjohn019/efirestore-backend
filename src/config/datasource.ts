@@ -1,11 +1,11 @@
-import { DataSource } from 'typeorm';
-import type { DataSourceOptions } from 'typeorm';
-import { runSeeders, SeederOptions } from 'typeorm-extension';
+import { DataSource, type DataSourceOptions } from 'typeorm';
+import { runSeeders } from 'typeorm-extension';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 dotenv.config();
 
-export const dataSourceOptions: DataSourceOptions & SeederOptions = {
+// TypeORM DataSource config
+export const dataSourceOptions: DataSourceOptions = {
   type: (process.env.DATABASE_TYPE as any) ?? 'mysql',
   host: process.env.DATABASE_HOST,
   port: parseInt(process.env.DATABASE_PORT, 10) ?? 3306,
@@ -17,21 +17,24 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   multipleStatements: true,
   logging: true,
   entities: [path.join(__dirname, '/../modules/**/entities/*.entity.{js,ts}')],
-  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+  migrations: [path.join(__dirname, '/../migrations/*{.ts,.js}')],
   migrationsRun: true,
-  seeds: ['src/database/seeder/**/*{.ts,.js}'],
-  factories: ['src/database/factories/**/*{.ts,.js}'],
 };
 
 const dataSource = new DataSource(dataSourceOptions);
 
-async () => {
-  await dataSource.initialize();
-
+// Function to run seeders
+export const seedDatabase = async () => {
   await runSeeders(dataSource, {
-    seeds: ['src/database/seeder/**/*{.ts,.js}'],
-    factories: ['src/database/factories/**/*{.ts,.js}'],
+    seeds: [path.join(__dirname, '/../database/seeder/**/*{.ts,.js}')],
+    factories: [path.join(__dirname, '/../database/factories/**/*{.ts,.js}')],
   });
 };
+
+// Initialize DataSource and run seeders
+(async () => {
+  await dataSource.initialize();
+  await seedDatabase();
+})();
 
 export default dataSource;
