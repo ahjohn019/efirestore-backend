@@ -1,17 +1,8 @@
-import { DataSource } from 'typeorm';
-import type { DataSourceOptions } from 'typeorm';
-import { runSeeders } from 'typeorm-extension';
+import { DataSourceOptions, DataSource } from 'typeorm';
+import { runSeeders, SeederOptions } from 'typeorm-extension';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { join } from 'path';
 dotenv.config();
-
-interface SeederOptions {
-  seeds?: any[];
-  factories?: any[];
-}
-
-const rootDir = process.cwd();
 
 export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   type: (process.env.DATABASE_TYPE as any) ?? 'mysql',
@@ -24,8 +15,8 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   bigNumberStrings: true,
   multipleStatements: true,
   logging: true,
-  entities: [join(rootDir, 'src/modules/**/entities/*.entity.{js,ts}')],
-  migrations: [join(rootDir, '/../migrations/*{.ts,.js}')],
+  entities: [path.join(__dirname, '/../modules/**/entities/*.entity.{js,ts}')],
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   migrationsRun: true,
   seeds: ['src/database/seeder/**/*{.ts,.js}'],
   factories: ['src/database/factories/**/*{.ts,.js}'],
