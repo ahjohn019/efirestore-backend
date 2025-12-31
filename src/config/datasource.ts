@@ -1,18 +1,19 @@
-// src/config/datasource.ts
-import { DataSource, type DataSourceOptions } from 'typeorm';
+import { DataSource } from 'typeorm';
+import type { DataSourceOptions } from 'typeorm';
 import { runSeeders } from 'typeorm-extension';
 import * as dotenv from 'dotenv';
-import { join } from 'path';
-
+import * as path from 'path';
 dotenv.config();
 
-const rootDir = process.cwd();
+interface SeederOptions {
+  seeds?: any[];
+  factories?: any[];
+}
 
-// TypeORM DataSource config
-export const dataSourceOptions: DataSourceOptions = {
+export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   type: (process.env.DATABASE_TYPE as any) ?? 'mysql',
   host: process.env.DATABASE_HOST,
-  port: parseInt(process.env.DATABASE_PORT ?? '3306', 10),
+  port: parseInt(process.env.DATABASE_PORT, 10) ?? 3306,
   username: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
@@ -20,28 +21,24 @@ export const dataSourceOptions: DataSourceOptions = {
   bigNumberStrings: true,
   multipleStatements: true,
   logging: true,
-  entities: [join(rootDir, 'src/modules/**/entities/*.entity.{js,ts}')],
-  migrations: [join(rootDir, 'src/migrations/*{.ts,.js}')],
+  entities: [path.join(__dirname, '/../modules/**/entities/*.entity.{js,ts}')],
+  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
   migrationsRun: true,
+  seeds: ['src/database/seeder/**/*{.ts,.js}'],
+  factories: ['src/database/factories/**/*{.ts,.js}'],
 };
 
 const dataSource = new DataSource(dataSourceOptions);
 
-// Function to run seeders
-export const seedDatabase = async () => {
+async () => {
+  await dataSource.initialize();
+
+  console.log(path.join(__dirname, '/../modules/**/entities/*.entity.{js,ts}'));
+
   await runSeeders(dataSource, {
-    seeds: [join(rootDir, 'src/database/seeder/**/*{.ts,.js}')],
-    factories: [join(rootDir, 'src/database/factories/**/*{.ts,.js}')],
+    seeds: ['src/database/seeder/**/*{.ts,.js}'],
+    factories: ['src/database/factories/**/*{.ts,.js}'],
   });
 };
-
-// Initialize DataSource and run seeders
-(async () => {
-  await dataSource.initialize();
-  console.log('DataSource initialized.');
-
-  await seedDatabase();
-  console.log('Database seeded successfully.');
-})();
 
 export default dataSource;
