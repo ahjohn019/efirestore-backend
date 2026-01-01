@@ -87,7 +87,7 @@ export class AuthService extends BaseService {
     try {
       const user = await this.usersService.findByEmail(forgetPasswordDto.email);
 
-      if (!user) {
+      if (!user.data) {
         throw new UnauthorizedException('Email Not Found.');
       }
 
