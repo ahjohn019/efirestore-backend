@@ -103,7 +103,7 @@ export class Helper {
       const previous_page = Math.max(current_page - 1, 1);
 
       return {
-        data,
+        list: data,
         total,
         total_page,
         current_page,
