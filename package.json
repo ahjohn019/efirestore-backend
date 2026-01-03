@@ -25,11 +25,13 @@
     "migration:revert": "npm run typeorm -- -d ./src/config/datasource.ts migration:revert",
     "seed:run": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:run -d ./src/config/datasource.ts",
     "seed:create": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:create --name src/database/seeder/%npm_config_name%",
-    "pm2:start": "pm2 start dist/main.js --name efirestore-backend || pm2 restart efirestore-backend",
+    "pm2:start": "GOMAXPROCS=1 pm2 start dist/main.js --name efirestore-backend --instances 1 || pm2 restart efirestore-backend",
     "pm2:save": "pm2 save",
     "pm2:deploy": "npm run build && npm run pm2:start && npm run pm2:save",
     "pm2:list": "pm2 list",
-    "pm2:logs": "pm2 logs efirestore-backend"
+    "pm2:logs": "pm2 logs efirestore-backend",
+    "pm2:stop": "pm2 stop efirestore-backend",
+    "pm2:delete": "pm2 delete efirestore-backend"
   },
   "dependencies": {
     "@nestjs-modules/mailer": "^2.0.2",
