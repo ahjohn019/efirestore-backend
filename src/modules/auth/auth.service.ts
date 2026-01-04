@@ -31,31 +31,26 @@ export class AuthService extends BaseService {
   async signIn(userEmail: string, pass: string): Promise<any> {
     try {
       const user = await this.usersService.findByEmail(userEmail);
-
       if (!user.data) {
         throw new UnauthorizedException('User not found');
       }
-
-      const { password, id, name, email, role } = user.data;
-
+      const { password, id, name, email, role, user_details } = user.data;
       const passwordMatch = await bcrypt.compare(pass, password);
-
       if (!passwordMatch) {
         throw new UnauthorizedException('Invalid email or password');
       }
-
       const payload = {
         id,
         username: name,
         email,
         role,
         status: true,
+        user_details,
       };
-
+      console.log('payload', payload);
       const accessToken = await this.jwtService.signAsync(payload, {
         expiresIn: process.env.JWT_DURATION,
       });
-
       return this.createSuccessResponse(accessToken);
     } catch (error) {
       throw error;

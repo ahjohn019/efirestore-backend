@@ -142,6 +142,7 @@ export class UsersService extends BaseService {
         where: {
           email,
         },
+        relations: ['user_details'],
       });
 
       return this.createSuccessResponse(findEmail);
