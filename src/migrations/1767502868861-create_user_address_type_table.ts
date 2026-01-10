@@ -21,8 +21,14 @@ export class CreateUserAddressTypeTable1767502868861
             generationStrategy: 'increment',
           },
           {
-            name: 'address',
+            name: 'address_line_one',
             type: 'text',
+            isNullable: true,
+          },
+          {
+            name: 'address_line_two',
+            type: 'text',
+            isNullable: true,
           },
           {
             name: 'address_type',
