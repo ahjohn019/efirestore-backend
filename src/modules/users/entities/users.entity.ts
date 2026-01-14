@@ -57,6 +57,11 @@ export class Users extends BaseEntity {
 
   @OneToOne(() => StripeUsers, (stripeUsers) => stripeUsers.user)
   stripe_users: StripeUsers;
+
+  @OneToMany(() => UserAddress, (userAddress) => userAddress.users, {
+    cascade: true,
+  })
+  user_addresses: UserAddress[];
 }
 
 // UserDetails Entity
@@ -71,14 +76,14 @@ export class UserDetails extends BaseEntity {
   @Column()
   last_name: string;
 
-  @Column()
-  address_one: string;
+  // @Column()
+  // address_one: string;
 
-  @Column()
-  address_two: string;
+  // @Column()
+  // address_two: string;
 
-  @Column()
-  postal_code: string;
+  // @Column()
+  // postal_code: string;
 
   @Column()
   city: string;
@@ -89,11 +94,11 @@ export class UserDetails extends BaseEntity {
   @Column()
   country: string;
 
-  @Column({ type: 'enum', enum: AddressType })
-  address_type: string;
+  // @Column({ type: 'enum', enum: AddressType })
+  // address_type: string;
 
-  @Column({ default: 0 })
-  is_default: number;
+  // @Column({ default: 0 })
+  // is_default: number;
 
   @Column()
   phone_number: string;
@@ -108,4 +113,30 @@ export class UserDetails extends BaseEntity {
 
   @Column({ type: 'enum', enum: Gender })
   gender: string;
+}
+
+// UserAddress Entity
+@Entity('user_addresses')
+export class UserAddress extends BaseEntity {
+  @Column({ type: 'text', nullable: true })
+  address_line_one: string;
+
+  @Column({ type: 'text', nullable: true })
+  address_line_two: string;
+
+  @Column()
+  address_type: string;
+
+  @Column({ type: 'int' })
+  postal_code: number;
+
+  @Column({ type: 'boolean' })
+  status: boolean;
+
+  @Column()
+  user_id: number;
+
+  @ManyToOne(() => Users, (user) => user.user_addresses)
+  @JoinColumn({ name: 'user_id' })
+  users: Users;
 }

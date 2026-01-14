@@ -9,10 +9,18 @@ import {
   UseGuards,
   Put,
   Query,
+  Request,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto, CreateUserDetailsDto } from './dto/create-user.dto';
-import { UpdateUserDetailsDto } from './dto/update-user.dto';
+import {
+  CreateUserDto,
+  CreateUserDetailsDto,
+  CreateUserAddressDto,
+} from './dto/create-user.dto';
+import {
+  UpdateUserDetailsDto,
+  UpdateUserAddressDto,
+} from './dto/update-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AuthGuard } from '../../commons/guards/auth';
 import { RolesGuard } from '../../commons/guards/roles.guard';
@@ -22,7 +30,7 @@ import { AllUserDto } from './dto/all-user.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
@@ -37,6 +45,48 @@ export class UsersController {
   @Put('/user-details/update')
   updateUserDetails(@Body() updateUserDetailsDto: UpdateUserDetailsDto) {
     return this.usersService.updateUsersDetails(updateUserDetailsDto);
+  }
+
+  @Post('/addresses/create')
+  @UseGuards(AuthGuard)
+  createUserAddress(
+    @Request() req,
+    @Body() createUserAddressDto: CreateUserAddressDto,
+  ) {
+    return this.usersService.createUserAddress(
+      req.user.id,
+      createUserAddressDto,
+    );
+  }
+
+  @Put('/addresses/update')
+  @UseGuards(AuthGuard)
+  updateUserAddress(
+    @Request() req,
+    @Body() updateUserAddressDto: UpdateUserAddressDto,
+  ) {
+    return this.usersService.updateUserAddress(
+      req.user.id,
+      updateUserAddressDto,
+    );
+  }
+
+  @Delete('/addresses/delete/:id')
+  @UseGuards(AuthGuard)
+  deleteUserAddress(@Request() req, @Param('id') id: number) {
+    return this.usersService.deleteUserAddress(req.user.id, id);
+  }
+
+  @Get('/addresses/list')
+  @UseGuards(AuthGuard)
+  listUserAddresses(@Query() allUserDto: AllUserDto, @Request() req) {
+    return this.usersService.listUserAddresses(allUserDto, req.user.id);
+  }
+
+  @Get('/addresses/view/:id')
+  @UseGuards(AuthGuard)
+  viewUserAddress(@Param('id') id: number) {
+    return this.usersService.viewUserAddress(+id);
   }
 
   @Get()

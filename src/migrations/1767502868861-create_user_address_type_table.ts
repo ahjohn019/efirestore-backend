@@ -23,7 +23,6 @@ export class CreateUserAddressTypeTable1767502868861
           {
             name: 'address_line_one',
             type: 'text',
-            isNullable: true,
           },
           {
             name: 'address_line_two',
@@ -45,6 +44,16 @@ export class CreateUserAddressTypeTable1767502868861
           {
             name: 'user_id',
             type: 'int',
+          },
+          {
+            name: 'created_at',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
+          },
+          {
+            name: 'updated_at',
+            type: 'timestamp',
+            default: 'CURRENT_TIMESTAMP',
           },
         ],
       }),

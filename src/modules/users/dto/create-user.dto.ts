@@ -11,15 +11,6 @@ export class CreateUserDetailsDto {
   last_name: string;
 
   @IsNotEmpty()
-  address_one: string;
-
-  @IsNotEmpty()
-  address_two: string;
-
-  @IsNotEmpty()
-  postal_code: string;
-
-  @IsNotEmpty()
   city: string;
 
   @IsNotEmpty()
@@ -27,12 +18,6 @@ export class CreateUserDetailsDto {
 
   @IsNotEmpty()
   country: string;
-
-  @IsNotEmpty()
-  address_type: string;
-
-  @IsNotEmpty()
-  is_default: number;
 
   phone_number: string;
 
@@ -42,7 +27,13 @@ export class CreateUserDetailsDto {
 
   user_id: number;
 
-  // stripe_verification: number;
+  // addresses
+  address_is_active?: boolean;
+  address_line_one?: string;
+  address_line_two?: string;
+  address_type?: string;
+  postal_code?: number;
+  status?: number;
 }
 
 export class CreateUserDto {
@@ -61,13 +52,17 @@ export class CreateUserDto {
   password_confirmation: string;
 }
 
-export interface stripeUserAddressInterface {
-  address: {
-    city: string;
-    country: string;
-    line1: string;
-    line2: string;
-    postal_code: string;
-    state: string;
-  };
+export class CreateUserAddressDto {
+  @IsNotEmpty()
+  address_line_one: string;
+
+  address_line_two: string;
+
+  @IsNotEmpty()
+  address_type: string;
+
+  @IsNotEmpty()
+  postal_code: number;
+  @IsNotEmpty()
+  status: boolean;
 }
