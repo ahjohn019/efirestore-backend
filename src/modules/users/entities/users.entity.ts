@@ -45,7 +45,7 @@ export class Users extends BaseEntity {
     this.password = await bcrypt.hash(this.password, 10);
   }
 
-  @OneToMany(() => UserDetails, (userDetails) => userDetails.users, {
+  @OneToOne(() => UserDetails, (userDetails) => userDetails.users, {
     cascade: true,
   })
   user_details: UserDetails[];
@@ -107,7 +107,7 @@ export class UserDetails extends BaseEntity {
   identity_card_number: string;
   // stripe_verification: number;
 
-  @ManyToOne(() => Users, (user) => user.user_details)
+  @OneToOne(() => Users, (user) => user.user_details)
   @JoinColumn({ name: 'user_id' })
   users: Users;
 
