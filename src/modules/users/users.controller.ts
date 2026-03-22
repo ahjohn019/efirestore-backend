@@ -32,6 +32,12 @@ import { AllUserDto } from './dto/all-user.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @Get()
+  @UseGuards(AuthGuard)
+  findAll(@Query() allUserDto: AllUserDto) {
+    return this.usersService.findAll(allUserDto);
+  }
+
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
@@ -42,9 +48,12 @@ export class UsersController {
     return this.usersService.createUsersDetails(createUserDetailsDto);
   }
 
-  @Put('/user-details/update')
-  updateUserDetails(@Body() updateUserDetailsDto: UpdateUserDetailsDto) {
-    return this.usersService.updateUsersDetails(updateUserDetailsDto);
+  @Put('/user-details/update/:id')
+  updateUserDetails(
+    @Param('id') id: number,
+    @Body() updateUserDetailsDto: UpdateUserDetailsDto,
+  ) {
+    return this.usersService.updateUsersDetails(+id, updateUserDetailsDto);
   }
 
   @Post('/addresses/create')
@@ -92,13 +101,6 @@ export class UsersController {
   @Get()
   findByEmail(@Param('email') email: string) {
     return this.usersService.findByEmail(email);
-  }
-
-  @Get()
-  @Roles(Role.ADMIN)
-  @UseGuards(AuthGuard, RolesGuard)
-  findAll(@Query() allProductDto: AllUserDto) {
-    return this.usersService.findAll(allProductDto);
   }
 
   @Get(':id')

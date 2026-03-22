@@ -112,20 +112,12 @@ export class UsersService extends BaseService {
     }
   }
 
-  async updateUsersDetails(updateUserDetailsDto: UpdateUserDetailsDto) {
+  async updateUsersDetails(
+    id: number,
+    updateUserDetailsDto: UpdateUserDetailsDto,
+  ) {
     try {
-      const {
-        id,
-        user_id,
-        address_is_active,
-        address_line_one,
-        address_line_two,
-        address_type,
-        postal_code,
-        status,
-        ...userDetailsData
-      } = updateUserDetailsDto;
-      const findUser = await this.findOne(user_id);
+      const findUser = await this.findOne(id);
 
       if (!findUser) {
         throw new NotFoundException('User not found');
@@ -134,49 +126,9 @@ export class UsersService extends BaseService {
       const updateUserDetails = await this.userDetailsRepository.update(
         {
           id,
-          user_id,
         },
-        userDetailsData,
+        updateUserDetailsDto,
       );
-
-      // Update or create user address if address_is_active is true and address fields are provided
-      if (
-        address_is_active &&
-        (address_line_one ||
-          address_line_two ||
-          address_type ||
-          postal_code ||
-          status != null)
-      ) {
-        const existingAddress = await this.userAddressRepository.findOne({
-          where: { user_id },
-        });
-
-        const addressUpdateData: Partial<UserAddress> = {};
-        if (address_line_one)
-          addressUpdateData.address_line_one = address_line_one;
-        if (address_line_two)
-          addressUpdateData.address_line_two = address_line_two;
-        if (address_type) addressUpdateData.address_type = address_type;
-        if (postal_code) addressUpdateData.postal_code = postal_code;
-        if (status != null) addressUpdateData.status = Boolean(status);
-
-        if (existingAddress) {
-          await this.userAddressRepository.update(
-            { id: existingAddress.id, user_id },
-            addressUpdateData,
-          );
-        } else {
-          await this.userAddressRepository.save({
-            address_line_one: address_line_one || null,
-            address_line_two: address_line_two || null,
-            address_type: address_type || null,
-            postal_code: postal_code || null,
-            status: status != null ? Boolean(status) : true,
-            user_id,
-          });
-        }
-      }
 
       return this.createSuccessResponse(updateUserDetails);
     } catch (error) {
@@ -186,10 +138,13 @@ export class UsersService extends BaseService {
 
   async findAll(allUserDto: AllUserDto) {
     try {
+      const { take, page, ...searchUserParams } = allUserDto;
+
       const findAllResponse = await Helper.calculatePagination<Users>(
         allUserDto,
         this.usersRepository,
-        null,
+        searchUserParams,
+        ['user_details'],
       );
 
       return this.createSuccessResponse(findAllResponse);
@@ -343,7 +298,6 @@ export class UsersService extends BaseService {
   ) {
     try {
       const {
-        id,
         address_line_one,
         address_line_two,
         address_type,
@@ -353,7 +307,7 @@ export class UsersService extends BaseService {
 
       // Find existing address for this user
       const existingAddress = await this.userAddressRepository.findOne({
-        where: { user_id, id },
+        where: { user_id },
       });
 
       if (!existingAddress) {

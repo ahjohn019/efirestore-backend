@@ -8,12 +8,6 @@ import { IsNotEmpty } from 'class-validator';
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {}
 
-export class UpdateUserDetailsDto extends CreateUserDetailsDto {
-  @IsNotEmpty()
-  id: number;
-}
+export class UpdateUserDetailsDto extends CreateUserDetailsDto {}
 
-export class UpdateUserAddressDto extends PartialType(CreateUserAddressDto) {
-  @IsNotEmpty()
-  id: number;
-}
+export class UpdateUserAddressDto extends PartialType(CreateUserAddressDto) {}
