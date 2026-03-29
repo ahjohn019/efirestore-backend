@@ -28,8 +28,8 @@ export class CartsController {
     type: Number,
     example: 1,
   })
-  findCart(@Param('id') id: number) {
-    return this.cartsService.findCart(id);
+  findCart(@Request() req) {
+    return this.cartsService.findCart(req.user.id);
   }
 
   @Get('find-cart-items')
@@ -97,7 +97,7 @@ export class CartsController {
       },
     },
   })
-  deleteCart(@Body() cart: { userId: number }) {
-    return this.cartsService.deleteCart(cart.userId);
+  deleteCart(@Request() req) {
+    return this.cartsService.deleteCart(req.user.id);
   }
 }

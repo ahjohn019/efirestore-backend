@@ -167,7 +167,7 @@ export class CartsService extends BaseService {
       // find and create new cart
       const findCart = await this.findCart(userId);
 
-      const { product_id, cart_session_id } = createCartItemsDto;
+      const { product_id } = createCartItemsDto;
 
       // find product exists
       const findProduct = await this.productsRepository.findOne({
@@ -182,7 +182,11 @@ export class CartsService extends BaseService {
       const { price } = findProduct;
 
       const findProductInSession = await this.cartItemsRepository.findOne({
-        where: { product_id, cart_session_id },
+        where: {
+          product_id,
+          user_id: userId,
+          cart_id: findCart.data.id,
+        },
       });
 
       // calculate the cart quantity
