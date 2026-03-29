@@ -5,9 +5,10 @@ import { Orders } from '../modules/orders/entities/orders.entity';
 import { StripeService } from 'src/modules/payments/stripe/stripe.service';
 import { OrdersService } from 'src/modules/orders/orders.service';
 import { Users } from 'src/modules/users/entities/users.entity';
+import { Carts } from 'src/modules/carts/entities/carts.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Orders, Users])],
+  imports: [TypeOrmModule.forFeature([Orders, Users, Carts])],
   providers: [CronjobsService, StripeService, OrdersService],
 })
 export class CronjobsModule {}
