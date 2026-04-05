@@ -29,8 +29,8 @@ services:
           path: ./docker-compose.local.yml
     environment:
       APP_MODE: local
-      DATABASE_RUN_MIGRATIONS: "false"
-      DATABASE_RUN_SEEDS: "false"
+      DATABASE_RUN_MIGRATIONS: "true"
+      DATABASE_RUN_SEEDS: "true"
       CHOKIDAR_USEPOLLING: "true"
       CHOKIDAR_INTERVAL: 1000
       WATCHPACK_POLLING: "true"
