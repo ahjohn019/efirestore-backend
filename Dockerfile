@@ -23,7 +23,8 @@ COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/tsconfig.build.json ./tsconfig.build.json
 COPY --from=builder /app/docker/start.sh ./docker/start.sh
 
-RUN chmod +x ./docker/start.sh
+RUN sed -i 's/\r$//' ./docker/start.sh \
+  && chmod +x ./docker/start.sh
 
 EXPOSE 3000
 
