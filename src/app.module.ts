@@ -23,7 +23,11 @@ import { CronjobsModule } from './cronjobs/cronjobs.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    TypeOrmModule.forRoot(dataSourceOptions),
+    TypeOrmModule.forRoot({
+      ...dataSourceOptions,
+      retryAttempts: 20,
+      retryDelay: 3000,
+    }),
     UsersModule,
     AuthModule,
     MailerModule.forRoot(mailerConfig()),

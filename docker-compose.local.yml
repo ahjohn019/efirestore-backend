@@ -1,0 +1,39 @@
+services:
+  app:
+    command: npm run start:dev
+    restart: "no"
+    develop:
+      watch:
+        - action: sync+restart
+          path: ./src
+          target: /app/src
+        - action: sync+restart
+          path: ./public
+          target: /app/public
+        - action: sync+restart
+          path: ./nest-cli.json
+          target: /app/nest-cli.json
+        - action: sync+restart
+          path: ./tsconfig.json
+          target: /app/tsconfig.json
+        - action: sync+restart
+          path: ./tsconfig.build.json
+          target: /app/tsconfig.build.json
+        - action: rebuild
+          path: ./package.json
+        - action: rebuild
+          path: ./package-lock.json
+        - action: rebuild
+          path: ./Dockerfile
+        - action: rebuild
+          path: ./docker-compose.local.yml
+    environment:
+      APP_MODE: local
+      DATABASE_RUN_MIGRATIONS: "false"
+      DATABASE_RUN_SEEDS: "false"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
+      WATCHPACK_POLLING: "true"
+      TSC_WATCHFILE: UsePolling
+      TSC_WATCHDIRECTORY: UsePolling
+      TSC_NONPOLLING_WATCHER: "false"

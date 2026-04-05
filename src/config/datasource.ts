@@ -17,7 +17,7 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   logging: true,
   entities: [path.join(__dirname, '/../modules/**/entities/*.entity.{js,ts}')],
   migrations: [__dirname + '/../migrations/*{.ts,.js}'],
-  migrationsRun: true,
+  migrationsRun: false,
   seeds: ['src/database/seeder/**/*{.ts,.js}'],
   factories: ['src/database/factories/**/*{.ts,.js}'],
 };

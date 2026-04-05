@@ -25,6 +25,9 @@
     "migration:revert": "npm run typeorm -- -d ./src/config/datasource.ts migration:revert",
     "seed:run": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:run -d ./src/config/datasource.ts",
     "seed:create": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:create --name src/database/seeder/%npm_config_name%",
+    "docker:dev": "docker compose -f docker-compose.yml -f docker-compose.local.yml up",
+    "docker:dev:build": "docker compose -f docker-compose.yml -f docker-compose.local.yml up --build",
+    "docker:watch": "docker compose -f docker-compose.yml -f docker-compose.local.yml watch",
     "pm2:start": "pm2 start dist/main.js --name efirestore-backend --instances 1 || pm2 restart efirestore-backend",
     "pm2:save": "pm2 save",
     "pm2:deploy": "npm run build && npm run pm2:start && npm run pm2:save",
@@ -34,6 +37,7 @@
     "pm2:delete": "pm2 delete efirestore-backend"
   },
   "dependencies": {
+    "@faker-js/faker": "^9.0.0",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^10.4.15",
@@ -64,7 +68,6 @@
     "typeorm-extension": "^3.6.1"
   },
   "devDependencies": {
-    "@faker-js/faker": "^9.0.0",
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.4.15",
