@@ -1,73 +1,221 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Efirestore Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS backend for the Efirestore project.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requirements
 
-## Description
+- Docker Desktop
+- Git
+- Node.js and npm if you want to run the npm helper scripts locally
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Environment Setup
 
-## Installation
+Create a `.env` file in the project root.
 
-```bash
-$ npm install
+You can start from [`.env.example`](c:/laragon/www/efirestore-backend/.env.example) and fill in the missing values.
+
+Example Docker-friendly `.env`:
+
+```env
+DATABASE_USER=root
+DATABASE_PASSWORD=
+DATABASE_NAME=db_efirestore
+DATABASE_HOST=mysql
+DATABASE_PORT=3306
+DATABASE_TYPE=mysql
+DATABASE_RUN_MIGRATIONS=false
+APP_MODE=local
+APP_URL=0.0.0.0
+PORT=3000
+JWT_SECRET_KEY=change-me
+EMAIL_HOST=
+EMAIL_USERNAME=
+EMAIL_PASSWORD=
+SESSION_KEY=change-me
+JWT_DURATION=1h
+STRIPE_PAYMENT_DEV_SECRET_KEY=
+STRIPE_ENDPOINT_SECRET=
+FRONT_ENDURL=http://localhost:3001/
 ```
 
-## Running the app
+Notes:
+
+- `DATABASE_HOST=mysql` is required when the app connects to the MySQL container from Docker Compose.
+- `APP_MODE=local` is for Docker local development with watch mode.
+- `APP_URL=0.0.0.0` is correct for Docker containers.
+- Fill in the rest of the app secrets and provider keys for your environment.
+
+## Docker Files
+
+- [Dockerfile](c:/laragon/www/efirestore-backend/Dockerfile): app image
+- [docker-compose.yml](c:/laragon/www/efirestore-backend/docker-compose.yml): base app + MySQL stack
+- [docker-compose.local.yml](c:/laragon/www/efirestore-backend/docker-compose.local.yml): local development override with watch mode
+- [docker/start.sh](c:/laragon/www/efirestore-backend/docker/start.sh): startup script used by the container
+
+## Start With Docker
+
+Build and start the local development stack:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm run docker:dev:build
 ```
 
-## Test
+Or with raw Docker Compose:
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ```
 
-## Support
+This starts:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- `app`: NestJS backend
+- `mysql`: MySQL 8 database
 
-## Stay in touch
+## Local Watch Mode
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+For local development, run the app container and watch mode in separate terminals.
 
-## License
+Terminal 1:
 
-Nest is [MIT licensed](LICENSE).
+```bash
+npm run docker:dev
+```
+
+Terminal 2:
+
+```bash
+npm run docker:watch
+```
+
+Equivalent raw commands:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml up
+docker compose -f docker-compose.yml -f docker-compose.local.yml watch
+```
+
+This setup is intended for `APP_MODE=local`.
+
+When you change files in `src/` or `public/`, Docker Compose watch syncs the changes and restarts the app container.
+
+## Endpoints
+
+Default local endpoints:
+
+- App: `http://localhost`
+- Swagger: `http://localhost/api`
+
+If you add a hosts alias like this:
+
+```txt
+127.0.0.1 efirestore-backend
+```
+
+Then you can use:
+
+- App: `http://efirestore-backend`
+- Swagger: `http://efirestore-backend/api`
+
+## Database Migrations And Seeds
+
+Base Docker Compose enables:
+
+- `DATABASE_RUN_MIGRATIONS=true`
+- `DATABASE_RUN_SEEDS=true`
+
+Local override disables both during watch-mode development:
+
+- `DATABASE_RUN_MIGRATIONS=false`
+- `DATABASE_RUN_SEEDS=false`
+
+Manual commands inside Docker:
+
+Run migration:
+
+```bash
+docker compose exec app npm run migration:run
+```
+
+Revert last migration:
+
+```bash
+docker compose exec app npm run migration:revert
+```
+
+Run seeds:
+
+```bash
+docker compose exec app npm run seed:run
+```
+
+## Useful Commands
+
+Start local dev:
+
+```bash
+npm run docker:dev
+```
+
+Rebuild local dev stack:
+
+```bash
+npm run docker:dev:build
+```
+
+Run watch:
+
+```bash
+npm run docker:watch
+```
+
+Stop containers:
+
+```bash
+docker compose down
+```
+
+Stop and remove volumes:
+
+```bash
+docker compose down -v
+```
+
+View app logs:
+
+```bash
+docker compose logs -f app
+```
+
+View MySQL logs:
+
+```bash
+docker compose logs -f mysql
+```
+
+## Troubleshooting
+
+If the app cannot connect to MySQL:
+
+- make sure `.env` uses `DATABASE_HOST=mysql`
+- restart with:
+
+```bash
+docker compose down -v
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+```
+
+If file changes are not reflected during local development:
+
+- make sure `APP_MODE=local`
+- keep both `npm run docker:dev` and `npm run docker:watch` running
+- check app logs with:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml logs -f app
+```
+
+If dependencies or Docker config change, rebuild the stack:
+
+```bash
+npm run docker:dev:build
+```
