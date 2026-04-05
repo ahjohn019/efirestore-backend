@@ -11,14 +11,17 @@ export class BaseStripeService extends BaseService {
 
   constructor(protected configService: ConfigService) {
     super();
-    this.stripe = new Stripe(
-      this.configService.get<string>('STRIPE_PAYMENT_DEV_SECRET_KEY'),
-      {
+    const stripeSecretKey = this.configService.get<string>('STRIPE_PAYMENT_DEV_SECRET_KEY');
+    if (stripeSecretKey) {
+      this.stripe = new Stripe(stripeSecretKey, {
         apiVersion: '2025-01-27.acacia',
-      },
-    );
-    this.stripeEndpointSecret = this.configService.get<string>(
+      });
+    }
+    const stripeEndpointSecret = this.configService.get<string>(
       'STRIPE_ENDPOINT_SECRET',
     );
+    if (stripeEndpointSecret) {
+      this.stripeEndpointSecret = stripeEndpointSecret;
+    }
   }
 }
