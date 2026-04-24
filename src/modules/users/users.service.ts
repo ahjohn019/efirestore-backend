@@ -15,7 +15,7 @@ import {
   UpdateUserDetailsDto,
   UpdateUserAddressDto,
 } from './dto/update-user.dto';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { Users } from './entities/users.entity';
 import { UserDetails } from './entities/user-details.entity';
 import { UserAddress } from './entities/user-address.entity';
@@ -40,6 +40,28 @@ export class UsersService extends BaseService {
     private readonly userDetailsStripeService: UserDetailsStripeService,
   ) {
     super();
+  }
+
+  private async assertUniqueActiveAddress(
+    userAddressRepository: Repository<UserAddress>,
+    user_id: number,
+    address_type: string,
+    excludeId?: number,
+  ) {
+    const existingActiveAddress = await userAddressRepository.findOne({
+      where: {
+        user_id,
+        address_type,
+        status: true,
+        ...(excludeId ? { id: Not(excludeId) } : {}),
+      },
+    });
+
+    if (existingActiveAddress) {
+      throw new ConflictException(
+        `Active ${address_type} address already exists for this user`,
+      );
+    }
   }
 
   async create(createUserDto: CreateUserDto) {
@@ -283,6 +305,14 @@ export class UsersService extends BaseService {
         status,
       } = createUserAddressDto;
 
+      if (status) {
+        await this.assertUniqueActiveAddress(
+          this.userAddressRepository,
+          user_id,
+          address_type,
+        );
+      }
+
       const userAddress = await this.userAddressRepository.save({
         address_line_one,
         address_line_two,
@@ -312,22 +342,41 @@ export class UsersService extends BaseService {
         status,
       } = updateData;
 
-      const existingAddress = await this.userAddressRepository.findOne({
-        where: { id, user_id },
-      });
+      const response = await this.userAddressRepository.manager.transaction(
+        async (manager) => {
+          const userAddressRepository = manager.getRepository(UserAddress);
 
-      if (!existingAddress) {
-        throw new NotFoundException('User address not found');
-      }
+          const existingAddress = await userAddressRepository.findOne({
+            where: { id, user_id },
+          });
 
-      const response = await this.userAddressRepository.update(
-        { id, user_id },
-        {
-          address_line_one,
-          address_line_two,
-          address_type,
-          postal_code,
-          status,
+          if (!existingAddress) {
+            throw new NotFoundException('User address not found');
+          }
+
+          const nextAddressType =
+            address_type ?? existingAddress.address_type;
+          const nextStatus = status ?? existingAddress.status;
+
+          if (nextStatus) {
+            await this.assertUniqueActiveAddress(
+              userAddressRepository,
+              user_id,
+              nextAddressType,
+              id,
+            );
+          }
+
+          return userAddressRepository.update(
+            { id, user_id },
+            {
+              address_line_one,
+              address_line_two,
+              address_type: nextAddressType,
+              postal_code,
+              status: nextStatus,
+            },
+          );
         },
       );
 
