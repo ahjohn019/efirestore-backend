@@ -1,22 +1,21 @@
 import {
   Entity,
   Column,
-  PrimaryGeneratedColumn,
   BeforeInsert,
   OneToMany,
-  ManyToOne,
   OneToOne,
-  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../../enum/role.enum';
-import { Gender } from '../../../enum/gender.enum';
-import { AddressType } from '../../../enum/address-type.enum';
 import * as bcrypt from 'bcrypt';
 import { Orders } from '../../orders/entities/orders.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
 import { StripeUsers } from '../../payments/stripe/entities/stripe.entity';
+import { UserDetails } from './user-details.entity';
+import { UserAddress } from './user-address.entity';
 
-// Users Entity
+export { UserDetails } from './user-details.entity';
+export { UserAddress } from './user-address.entity';
+
 @Entity()
 export class Users extends BaseEntity {
   @Column()
@@ -48,7 +47,7 @@ export class Users extends BaseEntity {
   @OneToOne(() => UserDetails, (userDetails) => userDetails.users, {
     cascade: true,
   })
-  user_details: UserDetails[];
+  user_details?: any;
 
   @OneToMany(() => Orders, (orders) => orders.user, {
     cascade: true,
@@ -56,87 +55,10 @@ export class Users extends BaseEntity {
   orders: Orders[];
 
   @OneToOne(() => StripeUsers, (stripeUsers) => stripeUsers.user)
-  stripe_users: StripeUsers;
+  stripe_users: any;
 
   @OneToMany(() => UserAddress, (userAddress) => userAddress.users, {
     cascade: true,
   })
   user_addresses: UserAddress[];
-}
-
-// UserDetails Entity
-@Entity()
-export class UserDetails extends BaseEntity {
-  @Column()
-  user_id: number; // Foreign key for the Users entity
-
-  @Column()
-  first_name: string;
-
-  @Column()
-  last_name: string;
-
-  // @Column()
-  // address_one: string;
-
-  // @Column()
-  // address_two: string;
-
-  // @Column()
-  // postal_code: string;
-
-  @Column()
-  city: string;
-
-  @Column()
-  state: string;
-
-  @Column()
-  country: string;
-
-  // @Column({ type: 'enum', enum: AddressType })
-  // address_type: string;
-
-  // @Column({ default: 0 })
-  // is_default: number;
-
-  @Column()
-  phone_number: string;
-
-  @Column()
-  identity_card_number: string;
-  // stripe_verification: number;
-
-  @OneToOne(() => Users, (user) => user.user_details)
-  @JoinColumn({ name: 'user_id' })
-  users: Users;
-
-  @Column({ type: 'enum', enum: Gender })
-  gender: string;
-}
-
-// UserAddress Entity
-@Entity('user_addresses')
-export class UserAddress extends BaseEntity {
-  @Column({ type: 'text', nullable: true })
-  address_line_one: string;
-
-  @Column({ type: 'text', nullable: true })
-  address_line_two: string;
-
-  @Column()
-  address_type: string;
-
-  @Column({ type: 'int' })
-  postal_code: number;
-
-  @Column({ type: 'boolean' })
-  status: boolean;
-
-  @Column()
-  user_id: number;
-
-  @ManyToOne(() => Users, (user) => user.user_addresses)
-  @JoinColumn({ name: 'user_id' })
-  users: Users;
 }

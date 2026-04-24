@@ -2,7 +2,9 @@ import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StripeCustomerService } from 'src/modules/payments/stripe/customer/customer.service';
-import { Users, UserAddress, UserDetails } from 'src/modules/users/entities/users.entity';
+import { Users } from 'src/modules/users/entities/users.entity';
+import { UserAddress } from 'src/modules/users/entities/user-address.entity';
+import { UserDetails } from 'src/modules/users/entities/user-details.entity';
 import { CreateUserDetailsDto } from 'src/modules/users/dto/create-user.dto';
 import { BaseService } from 'src/modules/base/base.service';
 

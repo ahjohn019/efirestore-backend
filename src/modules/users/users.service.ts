@@ -16,7 +16,9 @@ import {
   UpdateUserAddressDto,
 } from './dto/update-user.dto';
 import { Repository } from 'typeorm';
-import { Users, UserDetails, UserAddress } from './entities/users.entity';
+import { Users } from './entities/users.entity';
+import { UserDetails } from './entities/user-details.entity';
+import { UserAddress } from './entities/user-address.entity';
 import { UserDetailsStripeService } from 'src/modules/users/stripe/user-details.service';
 import { BaseService } from 'src/modules/base/base.service';
 import { Helper } from '../../utils/helper';
@@ -123,11 +125,15 @@ export class UsersService extends BaseService {
         throw new NotFoundException('User not found');
       }
 
+      const { ...updateUserDetailsData } = updateUserDetailsDto;
+
       const updateUserDetails = await this.userDetailsRepository.update(
         {
           id,
         },
-        updateUserDetailsDto,
+        {
+          ...updateUserDetailsData,
+        },
       );
 
       return this.createSuccessResponse(updateUserDetails);

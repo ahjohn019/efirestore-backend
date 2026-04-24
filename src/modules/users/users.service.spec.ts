@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from './users.service';
 import { Repository } from 'typeorm';
-import { Users, UserDetails } from './entities/users.entity';
+import { Users } from './entities/users.entity';
+import { UserDetails } from './entities/user-details.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserDetailsStripeService } from './stripe/user-details.service';
 import { StripeCustomerService } from '../payments/stripe/customer/customer.service';

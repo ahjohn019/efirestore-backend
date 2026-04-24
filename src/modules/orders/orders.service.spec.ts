@@ -13,7 +13,7 @@ import {
 } from './dto/create-order.dto';
 import { DeepPartial } from 'typeorm';
 import { UsersService } from '../users/users.service';
-import { UserDetails } from '../users/entities/users.entity';
+import { UserDetails } from '../users/entities/user-details.entity';
 import { UserDetailsStripeService } from '../users/stripe/user-details.service';
 import { StripeCustomerService } from '../payments/stripe/customer/customer.service';
 import { ConfigService } from '@nestjs/config';
