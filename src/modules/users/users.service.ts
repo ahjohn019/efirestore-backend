@@ -303,37 +303,32 @@ export class UsersService extends BaseService {
     updateUserAddressDto: UpdateUserAddressDto,
   ) {
     try {
+      const { id, ...updateData } = updateUserAddressDto;
       const {
         address_line_one,
         address_line_two,
         address_type,
         postal_code,
         status,
-      } = updateUserAddressDto;
+      } = updateData;
 
-      // Find existing address for this user
       const existingAddress = await this.userAddressRepository.findOne({
-        where: { user_id },
+        where: { id, user_id },
       });
 
       if (!existingAddress) {
         throw new NotFoundException('User address not found');
       }
 
-      let addressUpdateData: Partial<UserAddress> = {};
-
-      addressUpdateData = {
-        ...addressUpdateData,
-        address_line_one,
-        address_line_two,
-        address_type,
-        postal_code,
-        status,
-      };
-
       const response = await this.userAddressRepository.update(
-        { id: existingAddress.id, user_id },
-        addressUpdateData,
+        { id, user_id },
+        {
+          address_line_one,
+          address_line_two,
+          address_type,
+          postal_code,
+          status,
+        },
       );
 
       return this.createSuccessResponse(response);
