@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, HttpException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  HttpException,
+} from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import {
   CheckoutIdStripeDto,
@@ -8,10 +13,12 @@ import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { BaseStripeService } from './base-stripe.service';
 import { Users } from 'src/modules/users/entities/users.entity';
 import { UpdateCheckoutStripeDto } from './dto/update-stripe.dto';
+import { UserAddress } from 'src/modules/users/entities/user-address.entity';
+import { AddressType } from 'src/enum/address-type.enum';
 
 @Injectable()
 export class StripeService extends BaseStripeService {
@@ -22,6 +29,9 @@ export class StripeService extends BaseStripeService {
 
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
+
+    @InjectRepository(UserAddress)
+    private userAddressRepository: Repository<UserAddress>,
   ) {
     super(configService);
   }
@@ -42,6 +52,10 @@ export class StripeService extends BaseStripeService {
 
       return this.createSuccessResponse(checkoutSession);
     } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       return this.createErrorResponse(error.message);
     }
   }
@@ -56,12 +70,46 @@ export class StripeService extends BaseStripeService {
       throw new NotFoundException('User not found.');
     }
 
+    await this.validateCheckoutAddresses(user.id);
+
     const { customer_email, ...stripeData } = createStripeDto;
 
     return {
       ...stripeData,
       customer: user.stripe_users?.stripe_account_id ?? null,
     };
+  }
+
+  private async validateCheckoutAddresses(userId: number) {
+    const activeAddresses = await this.userAddressRepository.find({
+      where: {
+        user_id: userId,
+        status: true,
+        address_type: In([AddressType.BILLING, AddressType.SHIPPING]),
+      },
+    });
+
+    const hasBillingAddress = activeAddresses.some(
+      (address) => address.address_type === AddressType.BILLING,
+    );
+    const hasShippingAddress = activeAddresses.some(
+      (address) => address.address_type === AddressType.SHIPPING,
+    );
+
+    if (hasBillingAddress && hasShippingAddress) {
+      return;
+    }
+
+    const missingAddressTypes = [
+      !hasBillingAddress ? AddressType.BILLING : null,
+      !hasShippingAddress ? AddressType.SHIPPING : null,
+    ].filter(Boolean);
+
+    throw new BadRequestException(
+      `Please add an active ${missingAddressTypes.join(
+        ' and ',
+      )} address before checkout.`,
+    );
   }
 
   /**

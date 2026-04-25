@@ -4,17 +4,19 @@ import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Users } from '../../users/entities/users.entity';
+import { UserAddress } from '../../users/entities/user-address.entity';
 import { Repository } from 'typeorm';
 import { PaymentMethodType } from '../../../enum/stripe-payment-method.enum';
 import { PaymentMode } from '../../../enum/stripe-payment-mode.enum';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 
 describe('StripeService', () => {
   let service: StripeService;
   let mockStripe: any;
   let mockUsersRepository: Partial<Repository<Users>>;
+  let mockUserAddressRepository: Partial<Repository<UserAddress>>;
   let mockOrdersService: Partial<OrdersService>;
 
   const mockUser = {
@@ -130,6 +132,13 @@ describe('StripeService', () => {
       findOne: jest.fn().mockResolvedValue(mockUser),
     };
 
+    mockUserAddressRepository = {
+      find: jest.fn().mockResolvedValue([
+        { user_id: mockUser.id, address_type: 'billing', status: true },
+        { user_id: mockUser.id, address_type: 'shipping', status: true },
+      ]),
+    };
+
     mockOrdersService = {
       create: jest.fn().mockResolvedValue({ success: true }),
     };
@@ -159,6 +168,10 @@ describe('StripeService', () => {
         {
           provide: getRepositoryToken(Users),
           useValue: mockUsersRepository,
+        },
+        {
+          provide: getRepositoryToken(UserAddress),
+          useValue: mockUserAddressRepository,
         },
       ],
     }).compile();
@@ -220,6 +233,13 @@ describe('StripeService', () => {
         where: { email: mockCreateStripeDto.customer_email },
         relations: ['stripe_users'],
       });
+      expect(mockUserAddressRepository.find).toHaveBeenCalledWith({
+        where: {
+          user_id: mockUser.id,
+          status: true,
+          address_type: expect.anything(),
+        },
+      });
     });
 
     it('should throw NotFoundException when user not found', async () => {
@@ -228,6 +248,15 @@ describe('StripeService', () => {
       await expect(service.createStripeCheckoutField(mockCreateStripeDto)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('should block checkout when user has no active billing and shipping address', async () => {
+      mockUserAddressRepository.find = jest.fn().mockResolvedValue([]);
+
+      await expect(service.checkout(mockCreateStripeDto)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockStripe.checkout.sessions.create).not.toHaveBeenCalled();
     });
   });
 

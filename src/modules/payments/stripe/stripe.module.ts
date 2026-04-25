@@ -11,12 +11,13 @@ import { StripeUsers } from './entities/stripe.entity';
 import { StripeCustomerController } from './customer/customer.controller';
 import { StripeCustomerService } from './customer/customer.service';
 import { Users } from 'src/modules/users/entities/users.entity';
+import { UserAddress } from 'src/modules/users/entities/user-address.entity';
 
 @Module({
   imports: [
     OrdersModule,
     ProductsModule,
-    TypeOrmModule.forFeature([StripeUsers, Users]),
+    TypeOrmModule.forFeature([StripeUsers, Users, UserAddress]),
   ],
   controllers: [StripeController, StripeCustomerController],
   providers: [
