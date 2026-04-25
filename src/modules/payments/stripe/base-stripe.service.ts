@@ -1,7 +1,6 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from 'src/modules/users/users.service';
 import { BaseService } from 'src/modules/base/base.service';
 
 @Injectable()
@@ -11,7 +10,9 @@ export class BaseStripeService extends BaseService {
 
   constructor(protected configService: ConfigService) {
     super();
-    const stripeSecretKey = this.configService.get<string>('STRIPE_PAYMENT_DEV_SECRET_KEY');
+    const stripeSecretKey = this.configService.get<string>(
+      'STRIPE_PAYMENT_DEV_SECRET_KEY',
+    );
     if (stripeSecretKey) {
       this.stripe = new Stripe(stripeSecretKey, {
         apiVersion: '2025-01-27.acacia',

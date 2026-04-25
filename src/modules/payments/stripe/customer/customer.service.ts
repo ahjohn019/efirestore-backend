@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  NotFoundException,
-  forwardRef,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { BaseStripeService } from '../base-stripe.service';
 import { CustomerStripeDto } from '../dto/customer-stripe.dto';
@@ -15,6 +10,8 @@ import { Users } from 'src/modules/users/entities/users.entity';
 
 @Injectable()
 export class StripeCustomerService extends BaseStripeService {
+  private readonly logger = new Logger(StripeCustomerService.name);
+
   constructor(
     protected configService: ConfigService,
 
@@ -34,10 +31,20 @@ export class StripeCustomerService extends BaseStripeService {
    */
   async create(customerStripeDto: CustomerStripeDto) {
     try {
+      this.logger.log(
+        `Preparing Stripe customer create: email=${customerStripeDto.email} hasBilling=${Boolean(
+          customerStripeDto.address,
+        )} hasShipping=${Boolean(customerStripeDto.shipping)}`,
+      );
+
       const checkUserByEmail = await this.usersRepository.findOne({
         where: { email: customerStripeDto.email },
         relations: ['stripe_users'],
       });
+
+      if (!checkUserByEmail) {
+        throw new NotFoundException('User not found.');
+      }
 
       const { stripe_users } = checkUserByEmail;
 
@@ -45,12 +52,12 @@ export class StripeCustomerService extends BaseStripeService {
         throw new NotFoundException('Stripe user already exists.');
       }
 
-      if (!checkUserByEmail) {
-        throw new NotFoundException('User not found.');
-      }
-
       const stripeCreateCustomerResponse =
         await this.createCustomerStripe(customerStripeDto);
+
+      this.logger.log(
+        `Stripe customer create API success: stripe_customer_id=${stripeCreateCustomerResponse.id} user_id=${checkUserByEmail.id}`,
+      );
 
       const payload = {
         user_id: checkUserByEmail.id,
@@ -61,6 +68,10 @@ export class StripeCustomerService extends BaseStripeService {
 
       return this.createSuccessResponse(response);
     } catch (error) {
+      this.logger.error(
+        `Stripe customer create failed: email=${customerStripeDto?.email} error=${error.message}`,
+        error.stack,
+      );
       return this.createErrorResponse(error.message);
     }
   }
@@ -85,6 +96,16 @@ export class StripeCustomerService extends BaseStripeService {
         where: { user_id: id },
       });
 
+      if (!checkStripeUserExist) {
+        this.logger.log(
+          `No local Stripe customer mapping found for user_id=${id}`,
+        );
+      } else {
+        this.logger.log(
+          `Local Stripe customer mapping found for user_id=${id}: stripe_customer_id=${checkStripeUserExist.stripe_account_id}`,
+        );
+      }
+
       const response = checkStripeUserExist
         ? await this.stripe.customers.retrieve(
             checkStripeUserExist.stripe_account_id,
@@ -93,6 +114,10 @@ export class StripeCustomerService extends BaseStripeService {
 
       return this.createSuccessResponse(response);
     } catch (error) {
+      this.logger.error(
+        `Stripe customer retrieve failed: user_id=${id} error=${error.message}`,
+        error.stack,
+      );
       return this.createErrorResponse(error.message);
     }
   }
@@ -108,6 +133,14 @@ export class StripeCustomerService extends BaseStripeService {
         where: { user_id: updateStripeDto.metadata.user_id },
       });
 
+      this.logger.log(
+        `Preparing Stripe customer update: user_id=${updateStripeDto.metadata.user_id} stripe_customer_id=${
+          checkStripeUserExist?.stripe_account_id || 'missing'
+        } hasBilling=${Boolean(updateStripeDto.address)} hasShipping=${Boolean(
+          updateStripeDto.shipping,
+        )}`,
+      );
+
       const stripeUpdateCustomerResponse = checkStripeUserExist
         ? await this.stripe.customers.update(
             checkStripeUserExist.stripe_account_id,
@@ -115,8 +148,22 @@ export class StripeCustomerService extends BaseStripeService {
           )
         : null;
 
+      if (!checkStripeUserExist) {
+        this.logger.warn(
+          `Stripe customer update skipped: no local mapping for user_id=${updateStripeDto.metadata.user_id}`,
+        );
+      } else {
+        this.logger.log(
+          `Stripe customer update API success: user_id=${updateStripeDto.metadata.user_id} stripe_customer_id=${checkStripeUserExist.stripe_account_id}`,
+        );
+      }
+
       return this.createSuccessResponse(stripeUpdateCustomerResponse);
     } catch (error) {
+      this.logger.error(
+        `Stripe customer update failed: user_id=${updateStripeDto?.metadata?.user_id} error=${error.message}`,
+        error.stack,
+      );
       return this.createErrorResponse(error.message);
     }
   }

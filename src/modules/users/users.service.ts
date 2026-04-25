@@ -4,6 +4,8 @@ import {
   HttpException,
   ConflictException,
   BadRequestException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -27,6 +29,8 @@ import { Gender } from 'src/enum/gender.enum';
 
 @Injectable()
 export class UsersService extends BaseService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
@@ -62,6 +66,65 @@ export class UsersService extends BaseService {
         `Active ${address_type} address already exists for this user`,
       );
     }
+  }
+
+  private async syncUserAddressesWithStripe(
+    user_id: number,
+    shouldSync: boolean,
+  ) {
+    if (!shouldSync) {
+      this.logger.log(
+        `Skipping Stripe address sync for user_id=${user_id}: address is not active`,
+      );
+      return;
+    }
+
+    this.logger.log(`Starting Stripe address sync for user_id=${user_id}`);
+
+    const userDetails = await this.userDetailsRepository.findOne({
+      where: { user_id },
+    });
+
+    if (!userDetails) {
+      this.logger.warn(
+        `Skipping Stripe address sync for user_id=${user_id}: user details not found`,
+      );
+      return;
+    }
+
+    const stripeSyncResponse =
+      await this.userDetailsStripeService.syncWithStripeDetails({
+        first_name: userDetails.first_name,
+        last_name: userDetails.last_name,
+        city: userDetails.city,
+        state: userDetails.state,
+        country: userDetails.country,
+        phone_number: userDetails.phone_number,
+        identity_card_number: userDetails.identity_card_number,
+        gender: userDetails.gender as Gender,
+        user_id,
+      });
+
+    if (
+      typeof stripeSyncResponse === 'string' ||
+      stripeSyncResponse?.status === 'error'
+    ) {
+      this.logger.error(
+        `Stripe address sync failed for user_id=${user_id}: ${
+          typeof stripeSyncResponse === 'string'
+            ? stripeSyncResponse
+            : stripeSyncResponse.data
+        }`,
+      );
+
+      throw new InternalServerErrorException(
+        typeof stripeSyncResponse === 'string'
+          ? stripeSyncResponse
+          : stripeSyncResponse.data,
+      );
+    }
+
+    this.logger.log(`Stripe address sync completed for user_id=${user_id}`);
   }
 
   async create(createUserDto: CreateUserDto) {
@@ -322,6 +385,12 @@ export class UsersService extends BaseService {
         user_id,
       });
 
+      this.logger.log(
+        `Created user address id=${userAddress.id} user_id=${user_id} type=${userAddress.address_type} active=${userAddress.status}`,
+      );
+
+      await this.syncUserAddressesWithStripe(user_id, userAddress.status);
+
       return this.createSuccessResponse(userAddress);
     } catch (error) {
       throw error;
@@ -354,8 +423,7 @@ export class UsersService extends BaseService {
             throw new NotFoundException('User address not found');
           }
 
-          const nextAddressType =
-            address_type ?? existingAddress.address_type;
+          const nextAddressType = address_type ?? existingAddress.address_type;
           const nextStatus = status ?? existingAddress.status;
 
           if (nextStatus) {
@@ -367,20 +435,45 @@ export class UsersService extends BaseService {
             );
           }
 
-          return userAddressRepository.update(
+          const nextAddress = {
+            ...existingAddress,
+            address_line_one:
+              address_line_one ?? existingAddress.address_line_one,
+            address_line_two:
+              address_line_two ?? existingAddress.address_line_two,
+            address_type: nextAddressType,
+            postal_code: postal_code ?? existingAddress.postal_code,
+            status: nextStatus,
+          };
+
+          const updateResult = await userAddressRepository.update(
             { id, user_id },
             {
-              address_line_one,
-              address_line_two,
+              address_line_one: nextAddress.address_line_one,
+              address_line_two: nextAddress.address_line_two,
               address_type: nextAddressType,
-              postal_code,
+              postal_code: nextAddress.postal_code,
               status: nextStatus,
             },
           );
+
+          return {
+            updateResult,
+            userAddress: nextAddress,
+          };
         },
       );
 
-      return this.createSuccessResponse(response);
+      await this.syncUserAddressesWithStripe(
+        user_id,
+        response.userAddress.status,
+      );
+
+      this.logger.log(
+        `Updated user address id=${id} user_id=${user_id} type=${response.userAddress.address_type} active=${response.userAddress.status}`,
+      );
+
+      return this.createSuccessResponse(response.updateResult);
     } catch (error) {
       throw error;
     }
