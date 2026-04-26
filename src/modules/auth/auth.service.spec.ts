@@ -16,6 +16,7 @@ describe('AuthService', () => {
   let usersService: UsersService;
   let jwtService: JwtService;
   let mailService: MailerService;
+  const originalEnv = process.env;
 
   const mockUsersService = {
     findByEmail: jest.fn(),
@@ -34,6 +35,8 @@ describe('AuthService', () => {
   };
 
   beforeEach(async () => {
+    process.env = { ...originalEnv };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -59,6 +62,7 @@ describe('AuthService', () => {
   });
 
   afterEach(() => {
+    process.env = originalEnv;
     jest.clearAllMocks();
   });
 
@@ -131,17 +135,20 @@ describe('AuthService', () => {
     };
 
     it('should successfully send forget password email', async () => {
+      process.env.APP_MODE = 'local';
+      process.env.FRONTEND_URL = 'http://efirestore';
+      process.env.FRONTEND_URL_PORT = '8081';
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
       jest
         .spyOn(bcrypt, 'hash')
-        .mockImplementation(() => Promise.resolve('hashedToken'));
+        .mockImplementation(() => Promise.resolve('hashed/Token+='));
       mockUsersService.update.mockResolvedValue({ success: true });
       mockUsersService.findByEmail
         .mockResolvedValueOnce(mockUser)
         .mockResolvedValueOnce({
           data: {
             ...mockUser.data,
-            reset_password_token: 'hashedToken',
+            reset_password_token: 'hashed/Token+=',
           },
         });
       mockMailService.sendMail.mockResolvedValue({ success: true });
@@ -154,7 +161,14 @@ describe('AuthService', () => {
         mockForgetPasswordDto.email,
       );
       expect(mockUsersService.update).toHaveBeenCalled();
-      expect(mockMailService.sendMail).toHaveBeenCalled();
+      expect(mockMailService.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            resetUrl:
+              'http://efirestore:8081/reset-password?token=hashed%2FToken%2B%3D',
+          }),
+        }),
+      );
     });
 
     it('should return error when email not found', async () => {
@@ -198,6 +212,12 @@ describe('AuthService', () => {
         reset_password_token: null,
         reset_password_expired_at: null,
       });
+      expect(mockUsersService.update).not.toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          password: mockUpdatePasswordDto.new_password,
+        }),
+      );
     });
 
     it('should reject an invalid reset password token', async () => {

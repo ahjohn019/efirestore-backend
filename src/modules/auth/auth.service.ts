@@ -27,6 +27,32 @@ export class AuthService extends BaseService {
     super();
   }
 
+  private buildResetPasswordLink(resetPasswordToken: string) {
+    const frontendUrl = process.env.FRONTEND_URL;
+
+    if (!frontendUrl) {
+      throw new Error('FRONTEND_URL is not configured');
+    }
+
+    const frontendUrlWithProtocol = /^https?:\/\//i.test(frontendUrl)
+      ? frontendUrl
+      : `http://${frontendUrl}`;
+    const resetPasswordUrl = new URL(frontendUrlWithProtocol);
+
+    if (
+      process.env.APP_MODE === 'local' &&
+      process.env.FRONTEND_URL_PORT &&
+      !resetPasswordUrl.port
+    ) {
+      resetPasswordUrl.port = process.env.FRONTEND_URL_PORT;
+    }
+
+    resetPasswordUrl.pathname = '/reset-password';
+    resetPasswordUrl.searchParams.set('token', resetPasswordToken);
+
+    return resetPasswordUrl.toString();
+  }
+
   async signIn(userEmail: string, pass: string): Promise<any> {
     try {
       const user = await this.usersService.findByEmail(userEmail);
@@ -101,18 +127,9 @@ export class AuthService extends BaseService {
         forgetPasswordDto.email,
       );
 
-      let frontendUrl = process.env.FRONTEND_URL;
-
-      if (process.env.NODE_ENV === 'local') {
-        frontendUrl =
-          process.env.FRONTEND_URL + ':' + process.env.FRONTEND_URL_PORT;
-      }
-
-      const emailLink =
-        String(frontendUrl) +
-        '/reset-password' +
-        '?token=' +
-        findAfterResetEmail.data.reset_password_token;
+      const emailLink = this.buildResetPasswordLink(
+        findAfterResetEmail.data.reset_password_token,
+      );
 
       await this.sendEmail(forgetPasswordDto.email, emailLink);
 
