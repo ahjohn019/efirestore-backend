@@ -41,6 +41,7 @@ export class AuthController {
   }
 
   // update password
+  @HttpCode(HttpStatus.OK)
   @Post('update-password')
   updatePassword(@Body() updatePasswordDto: updatePasswordDto) {
     return this.authService.updatePassword(updatePasswordDto);

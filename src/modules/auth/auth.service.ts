@@ -101,9 +101,16 @@ export class AuthService extends BaseService {
         forgetPasswordDto.email,
       );
 
+      let frontendUrl = process.env.FRONTEND_URL;
+
+      if (process.env.NODE_ENV === 'local') {
+        frontendUrl =
+          process.env.FRONTEND_URL + ':' + process.env.FRONTEND_URL_PORT;
+      }
+
       const emailLink =
-        process.env.FRONTEND_URL +
-        'reset-password' +
+        String(frontendUrl) +
+        '/reset-password' +
         '?token=' +
         findAfterResetEmail.data.reset_password_token;
 
