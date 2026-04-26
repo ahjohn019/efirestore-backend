@@ -3,6 +3,8 @@ import {
   UnauthorizedException,
   ForbiddenException,
   BadRequestException,
+  HttpException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -84,8 +86,6 @@ export class AuthService extends BaseService {
 
   async sendEmail(email: string, emailLink: string) {
     try {
-      console.log('p', process.env.APP_MODE);
-
       const sendEmailResponse = await this.mailService.sendMail({
         from: '"Admin" <' + process.env.EMAIL_ADMIN + '>',
         to: email,
@@ -137,7 +137,16 @@ export class AuthService extends BaseService {
 
       return this.createSuccessResponse(emailLink);
     } catch (error) {
-      throw error;
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+
+      throw new InternalServerErrorException({
+        message: errorMessage,
+      });
     }
   }
 
