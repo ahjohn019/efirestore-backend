@@ -35,6 +35,32 @@ async function bootstrap() {
     }),
   );
 
+  app.use((req, _res, next) => {
+    const requestPath = req.url.split('?')[0];
+    const swaggerRoutes = [
+      '/api',
+      '/api/',
+      '/api-json',
+      '/api-yaml',
+      '/api/favicon-16x16.png',
+      '/api/favicon-32x32.png',
+      '/api/oauth2-redirect.html',
+      '/api/swagger-ui-bundle.js',
+      '/api/swagger-ui-init.js',
+      '/api/swagger-ui-standalone-preset.js',
+      '/api/swagger-ui.css',
+    ];
+
+    if (
+      requestPath.startsWith('/api/') &&
+      !swaggerRoutes.some((route) => requestPath === route)
+    ) {
+      req.url = req.url.replace(/^\/api/, '');
+    }
+
+    next();
+  });
+
   const config = new DocumentBuilder()
     .setTitle('Efirestore Backend')
     .setDescription('efirestore ecommerce backend')
