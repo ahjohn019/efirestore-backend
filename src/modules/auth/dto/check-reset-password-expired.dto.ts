@@ -4,8 +4,8 @@ import { ApiProperty } from '@nestjs/swagger';
 export class checkResetPasswordExpiredDto {
   @IsNotEmpty()
   @ApiProperty({
-    type: Number,
-    example: 1,
+    type: String,
+    example: '$2b$10$resetPasswordToken',
   })
-  id: number;
+  reset_password_token: string;
 }

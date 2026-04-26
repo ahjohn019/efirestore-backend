@@ -2,8 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ForbiddenException,
-  NotFoundException,
-  HttpException,
+  BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -108,7 +107,7 @@ export class AuthService extends BaseService {
         '?token=' +
         findAfterResetEmail.data.reset_password_token;
 
-      this.sendEmail(forgetPasswordDto.email, emailLink);
+      await this.sendEmail(forgetPasswordDto.email, emailLink);
 
       return this.createSuccessResponse(emailLink);
     } catch (error) {
@@ -122,8 +121,31 @@ export class AuthService extends BaseService {
         updatePasswordDto.reset_password_token,
       );
 
+      if (!user || !user.data) {
+        throw new ForbiddenException('Reset password not allowed.');
+      }
+
+      const resetPasswordExpiredAt = dayjs(user.data.reset_password_expired_at);
+
+      if (
+        !resetPasswordExpiredAt.isValid() ||
+        dayjs().isAfter(resetPasswordExpiredAt)
+      ) {
+        await this.usersService.updateByResetPasswordToken(
+          updatePasswordDto.reset_password_token,
+          {
+            reset_password_token: null,
+            reset_password_expired_at: null,
+          },
+        );
+
+        throw new BadRequestException(
+          'Reset password expired, please reset password again.',
+        );
+      }
+
       const generatePasswordHash = await bcrypt.hash(
-        updatePasswordDto.password_confirmation,
+        updatePasswordDto.new_password,
         10,
       );
 
@@ -142,23 +164,28 @@ export class AuthService extends BaseService {
     checkResetPasswordExpiredDto: checkResetPasswordExpiredDto,
   ) {
     try {
-      const user = await this.usersService.findOne(
-        checkResetPasswordExpiredDto.id,
+      const user = await this.usersService.findByResetPasswordToken(
+        checkResetPasswordExpiredDto.reset_password_token,
       );
 
       if (!user || !user.data) {
-        throw new UnauthorizedException('User Not Found.');
+        throw new UnauthorizedException('Reset password not allowed.');
       }
 
-      const { updated_at, remember_token } = user.data;
+      const resetPasswordExpiredAt = dayjs(user.data.reset_password_expired_at);
 
-      const dateNow = dayjs().format('YYYY-MM-DD');
-      const dateUpdatedAt = dayjs(updated_at).format('YYYY-MM-DD');
-      const fetchDateNow = dayjs(dateNow);
+      if (
+        !resetPasswordExpiredAt.isValid() ||
+        dayjs().isAfter(resetPasswordExpiredAt)
+      ) {
+        await this.usersService.updateByResetPasswordToken(
+          checkResetPasswordExpiredDto.reset_password_token,
+          {
+            reset_password_token: null,
+            reset_password_expired_at: null,
+          },
+        );
 
-      const diffDays = fetchDateNow.diff(dateUpdatedAt, 'day', true);
-
-      if (diffDays >= 1 && remember_token) {
         throw new ForbiddenException('Page Has Expired');
       }
 

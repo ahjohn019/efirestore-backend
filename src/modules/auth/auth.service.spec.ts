@@ -3,7 +3,11 @@ import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { MailerService } from '@nestjs-modules/mailer';
-import { UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 
@@ -16,7 +20,9 @@ describe('AuthService', () => {
   const mockUsersService = {
     findByEmail: jest.fn(),
     findOne: jest.fn(),
+    findByResetPasswordToken: jest.fn(),
     update: jest.fn(),
+    updateByResetPasswordToken: jest.fn(),
   };
 
   const mockJwtService = {
@@ -75,7 +81,9 @@ describe('AuthService', () => {
 
     it('should successfully sign in a user', async () => {
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(true));
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true));
       mockJwtService.signAsync.mockResolvedValue(mockToken);
 
       const result = await service.signIn('test@example.com', 'password123');
@@ -83,29 +91,29 @@ describe('AuthService', () => {
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
       expect(result.data).toBe(mockToken);
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith('test@example.com');
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+        'test@example.com',
+      );
       expect(mockJwtService.signAsync).toHaveBeenCalled();
     });
 
     it('should return error when user not found', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue({ data: null });
 
-      const result = await service.signIn('nonexistent@example.com', 'password123');
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('User not found');
+      await expect(
+        service.signIn('nonexistent@example.com', 'password123'),
+      ).rejects.toThrow(UnauthorizedException);
     });
 
     it('should return error when password does not match', async () => {
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      jest.spyOn(bcrypt, 'compare').mockImplementation(() => Promise.resolve(false));
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(false));
 
-      const result = await service.signIn('test@example.com', 'wrongpassword');
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Invalid email or password');
+      await expect(
+        service.signIn('test@example.com', 'wrongpassword'),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
@@ -124,35 +132,43 @@ describe('AuthService', () => {
 
     it('should successfully send forget password email', async () => {
       mockUsersService.findByEmail.mockResolvedValue(mockUser);
-      jest.spyOn(bcrypt, 'hash').mockImplementation(() => Promise.resolve('hashedToken'));
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockImplementation(() => Promise.resolve('hashedToken'));
       mockUsersService.update.mockResolvedValue({ success: true });
+      mockUsersService.findByEmail
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce({
+          data: {
+            ...mockUser.data,
+            reset_password_token: 'hashedToken',
+          },
+        });
       mockMailService.sendMail.mockResolvedValue({ success: true });
 
       const result = await service.forgetPassword(mockForgetPasswordDto);
 
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
-      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(mockForgetPasswordDto.email);
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+        mockForgetPasswordDto.email,
+      );
       expect(mockUsersService.update).toHaveBeenCalled();
       expect(mockMailService.sendMail).toHaveBeenCalled();
     });
 
     it('should return error when email not found', async () => {
-      mockUsersService.findByEmail.mockResolvedValue(null);
+      mockUsersService.findByEmail.mockResolvedValue({ data: null });
 
-      const result = await service.forgetPassword(mockForgetPasswordDto);
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Email Not Found.');
+      await expect(
+        service.forgetPassword(mockForgetPasswordDto),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('updatePassword', () => {
     const mockUpdatePasswordDto = {
-      id: 1,
-      token: 'valid-token',
-      current_password: 'currentPassword',
+      reset_password_token: 'valid-token',
       new_password: 'newPassword',
       password_confirmation: 'newPassword',
     };
@@ -160,45 +176,84 @@ describe('AuthService', () => {
     const mockUser = {
       data: {
         id: 1,
+        reset_password_expired_at: dayjs().add(1, 'hour').format(),
       },
     };
 
     it('should successfully update password', async () => {
-      mockUsersService.findOne.mockResolvedValue(mockUser);
-      jest.spyOn(bcrypt, 'hash').mockImplementation(() => Promise.resolve('hashedPassword'));
+      mockUsersService.findByResetPasswordToken.mockResolvedValue(mockUser);
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockImplementation(() => Promise.resolve('hashedPassword'));
       mockUsersService.update.mockResolvedValue({ success: true });
 
       const result = await service.updatePassword(mockUpdatePasswordDto);
 
-      expect(result.status).toBe('success');
-      expect(result.code).toBe(200);
-      expect(mockUsersService.findOne).toHaveBeenCalledWith(mockUpdatePasswordDto.id);
-      expect(mockUsersService.update).toHaveBeenCalled();
+      expect(result).toEqual({ success: true });
+      expect(mockUsersService.findByResetPasswordToken).toHaveBeenCalledWith(
+        mockUpdatePasswordDto.reset_password_token,
+      );
+      expect(mockUsersService.update).toHaveBeenCalledWith(1, {
+        password: 'hashedPassword',
+        reset_password_token: null,
+        reset_password_expired_at: null,
+      });
+    });
+
+    it('should reject an invalid reset password token', async () => {
+      mockUsersService.findByResetPasswordToken.mockResolvedValue({
+        data: null,
+      });
+
+      await expect(
+        service.updatePassword(mockUpdatePasswordDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should clear an expired reset password token', async () => {
+      mockUsersService.findByResetPasswordToken.mockResolvedValue({
+        data: {
+          id: 1,
+          reset_password_expired_at: dayjs().subtract(1, 'minute').format(),
+        },
+      });
+
+      await expect(
+        service.updatePassword(mockUpdatePasswordDto),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockUsersService.updateByResetPasswordToken).toHaveBeenCalledWith(
+        mockUpdatePasswordDto.reset_password_token,
+        {
+          reset_password_token: null,
+          reset_password_expired_at: null,
+        },
+      );
     });
   });
 
   describe('checkResetPasswordPageExpired', () => {
     const mockCheckResetPasswordExpiredDto = {
-      id: 1,
+      reset_password_token: 'valid-token',
     };
 
     const mockUser = {
       data: {
         id: 1,
-        updated_at: dayjs().subtract(2, 'day').format(),
-        remember_token: 'someToken',
+        reset_password_expired_at: dayjs().subtract(2, 'day').format(),
       },
     };
 
     it('should return true when reset password page is valid', async () => {
-      mockUsersService.findOne.mockResolvedValue({
+      mockUsersService.findByResetPasswordToken.mockResolvedValue({
         data: {
           ...mockUser.data,
-          updated_at: dayjs().format(),
+          reset_password_expired_at: dayjs().add(1, 'hour').format(),
         },
       });
 
-      const result = await service.checkResetPasswordPageExpired(mockCheckResetPasswordExpiredDto);
+      const result = await service.checkResetPasswordPageExpired(
+        mockCheckResetPasswordExpiredDto,
+      );
 
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
@@ -206,23 +261,21 @@ describe('AuthService', () => {
     });
 
     it('should return error when page has expired', async () => {
-      mockUsersService.findOne.mockResolvedValue(mockUser);
+      mockUsersService.findByResetPasswordToken.mockResolvedValue(mockUser);
 
-      const result = await service.checkResetPasswordPageExpired(mockCheckResetPasswordExpiredDto);
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Page Has Expired');
+      await expect(
+        service.checkResetPasswordPageExpired(mockCheckResetPasswordExpiredDto),
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should return error when user not found', async () => {
-      mockUsersService.findOne.mockResolvedValue({ data: null });
+      mockUsersService.findByResetPasswordToken.mockResolvedValue({
+        data: null,
+      });
 
-      const result = await service.checkResetPasswordPageExpired(mockCheckResetPasswordExpiredDto);
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('User Not Found.');
+      await expect(
+        service.checkResetPasswordPageExpired(mockCheckResetPasswordExpiredDto),
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 });
