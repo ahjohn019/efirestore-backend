@@ -4,12 +4,26 @@ import { join } from 'path';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
+const isLocal = process.env.APP_MODE === 'local';
+
 export const mailerConfig = (): MailerOptions => ({
   transport: {
-    host: process.env.EMAIL_HOST,
+    host: isLocal ? process.env.MAILTRAP_HOST : process.env.EMAIL_HOST,
+    port: Number(
+      isLocal
+        ? (process.env.MAILTRAP_PORT ?? 2525)
+        : (process.env.EMAIL_PORT ?? 587),
+    ),
+    secure: isLocal
+      ? process.env.MAILTRAP_SECURE === 'true'
+      : process.env.EMAIL_SECURE === 'true',
     auth: {
-      user: process.env.EMAIL_USERNAME,
-      pass: process.env.EMAIL_PASSWORD,
+      user: isLocal
+        ? process.env.MAILTRAP_USERNAME
+        : process.env.EMAIL_USERNAME,
+      pass: isLocal
+        ? process.env.MAILTRAP_PASSWORD
+        : process.env.EMAIL_PASSWORD,
     },
   },
   template: {

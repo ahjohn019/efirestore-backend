@@ -84,6 +84,8 @@ export class AuthService extends BaseService {
 
   async sendEmail(email: string, emailLink: string) {
     try {
+      console.log('p', process.env.APP_MODE);
+
       const sendEmailResponse = await this.mailService.sendMail({
         from: '"Admin" <' + process.env.EMAIL_ADMIN + '>',
         to: email,
