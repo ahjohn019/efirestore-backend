@@ -49,7 +49,10 @@ export class AuthService extends BaseService {
       resetPasswordUrl.port = process.env.FRONTEND_URL_PORT;
     }
 
-    resetPasswordUrl.pathname = '/reset-password';
+    resetPasswordUrl.pathname = `${resetPasswordUrl.pathname.replace(
+      /\/+$/,
+      '',
+    )}/reset-password`;
     resetPasswordUrl.searchParams.set('token', resetPasswordToken);
 
     return resetPasswordUrl.toString();

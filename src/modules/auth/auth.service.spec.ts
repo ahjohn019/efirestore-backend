@@ -171,6 +171,37 @@ describe('AuthService', () => {
       );
     });
 
+    it('should add reset password slash when frontend url has no trailing slash', async () => {
+      process.env.APP_MODE = 'staging';
+      process.env.FRONTEND_URL = 'https://staging.efirestore.com';
+      delete process.env.FRONTEND_URL_PORT;
+      mockUsersService.findByEmail.mockResolvedValue(mockUser);
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockImplementation(() => Promise.resolve('$2b$10$abc'));
+      mockUsersService.update.mockResolvedValue({ success: true });
+      mockUsersService.findByEmail
+        .mockResolvedValueOnce(mockUser)
+        .mockResolvedValueOnce({
+          data: {
+            ...mockUser.data,
+            reset_password_token: '$2b$10$abc',
+          },
+        });
+      mockMailService.sendMail.mockResolvedValue({ success: true });
+
+      await service.forgetPassword(mockForgetPasswordDto);
+
+      expect(mockMailService.sendMail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          context: expect.objectContaining({
+            resetUrl:
+              'https://staging.efirestore.com/reset-password?token=%242b%2410%24abc',
+          }),
+        }),
+      );
+    });
+
     it('should return error when email not found', async () => {
       mockUsersService.findByEmail.mockResolvedValue({ data: null });
 
