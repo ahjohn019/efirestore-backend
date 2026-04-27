@@ -30,29 +30,10 @@ export class AuthService extends BaseService {
   }
 
   private buildResetPasswordLink(resetPasswordToken: string) {
-    const frontendUrl = process.env.FRONTEND_URL;
-
-    if (!frontendUrl) {
-      throw new Error('FRONTEND_URL is not configured');
-    }
-
-    const frontendUrlWithProtocol = /^https?:\/\//i.test(frontendUrl)
-      ? frontendUrl
-      : `http://${frontendUrl}`;
-    const resetPasswordUrl = new URL(frontendUrlWithProtocol);
-
-    if (
-      process.env.APP_MODE === 'local' &&
-      process.env.FRONTEND_URL_PORT &&
-      !resetPasswordUrl.port
-    ) {
-      resetPasswordUrl.port = process.env.FRONTEND_URL_PORT;
-    }
-
-    resetPasswordUrl.pathname = `${resetPasswordUrl.pathname.replace(
-      /\/+$/,
-      '',
-    )}/reset-password`;
+    const resetPasswordUrl = new URL(
+      '/reset-password',
+      process.env.FRONTEND_URL,
+    );
     resetPasswordUrl.searchParams.set('token', resetPasswordToken);
 
     return resetPasswordUrl.toString();
