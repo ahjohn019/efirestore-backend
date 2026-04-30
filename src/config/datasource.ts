@@ -1,7 +1,13 @@
-import { DataSourceOptions, DataSource } from 'typeorm';
-import { runSeeders, SeederOptions } from 'typeorm-extension';
+import { DataSource } from 'typeorm';
+import type { DataSourceOptions } from 'typeorm';
+import { runSeeders } from 'typeorm-extension';
+import type { SeederOptions } from 'typeorm-extension';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 dotenv.config();
 
 export const dataSourceOptions: DataSourceOptions & SeederOptions = {

@@ -15,7 +15,7 @@ import { updatePasswordDto } from './dto/update-password.dto';
 import { checkResetPasswordExpiredDto } from './dto/check-reset-password-expired.dto';
 import { BaseService } from '../base/base.service';
 
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import * as dotenv from 'dotenv';
 dotenv.config();
 
