@@ -1,14 +1,16 @@
 import { DataSource } from 'typeorm';
 import type { DataSourceOptions } from 'typeorm';
-import { runSeeders } from 'typeorm-extension';
 import type { SeederOptions } from 'typeorm-extension';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const rootDir = process.cwd();
+
 dotenv.config();
+
+function globPath(...segments: string[]): string {
+  return path.resolve(...segments).replace(/\\/g, '/');
+}
 
 export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   type: (process.env.DATABASE_TYPE as any) ?? 'mysql',
@@ -21,22 +23,13 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   bigNumberStrings: true,
   multipleStatements: true,
   logging: true,
-  entities: [path.join(__dirname, '/../modules/**/entities/*.entity.{js,ts}')],
-  migrations: [__dirname + '/../migrations/*{.ts,.js}'],
+  entities: [globPath(rootDir, 'src/modules/**/entities/*.entity.{js,ts}')],
+  migrations: [globPath(rootDir, 'src/migrations/*{.ts,.js}')],
   migrationsRun: false,
-  seeds: ['src/database/seeder/**/*{.ts,.js}'],
-  factories: ['src/database/factories/**/*{.ts,.js}'],
+  seeds: [globPath(rootDir, 'src/database/seeder/**/*{.ts,.js}')],
+  factories: [globPath(rootDir, 'src/database/factories/**/*{.ts,.js}')],
 };
 
 const dataSource = new DataSource(dataSourceOptions);
-
-async () => {
-  await dataSource.initialize();
-
-  await runSeeders(dataSource, {
-    seeds: ['src/database/seeder/**/*{.ts,.js}'],
-    factories: ['src/database/factories/**/*{.ts,.js}'],
-  });
-};
 
 export default dataSource;
