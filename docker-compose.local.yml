@@ -1,6 +1,6 @@
 services:
   app:
-    command: npm run start:dev
+    command: ./docker/start.sh
     restart: "no"
     develop:
       watch:
