@@ -8,6 +8,9 @@ const rootDir = process.cwd();
 
 dotenv.config();
 
+const typeormRuntime = process.env.TYPEORM_RUNTIME ?? 'src';
+const runtimeRoot = typeormRuntime === 'dist' ? 'dist' : 'src';
+
 function globPath(...segments: string[]): string {
   return path.resolve(...segments).replace(/\\/g, '/');
 }
@@ -15,7 +18,7 @@ function globPath(...segments: string[]): string {
 export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   type: (process.env.DATABASE_TYPE as any) ?? 'mysql',
   host: process.env.DATABASE_HOST,
-  port: parseInt(process.env.DATABASE_PORT, 10) ?? 3306,
+  port: Number.parseInt(process.env.DATABASE_PORT ?? '', 10) || 3306,
   username: process.env.DATABASE_USER,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
@@ -23,11 +26,35 @@ export const dataSourceOptions: DataSourceOptions & SeederOptions = {
   bigNumberStrings: true,
   multipleStatements: true,
   logging: true,
-  entities: [globPath(rootDir, 'src/modules/**/entities/*.entity.{js,ts}')],
-  migrations: [globPath(rootDir, 'src/migrations/*{.ts,.js}')],
+  entities: [
+    globPath(
+      rootDir,
+      runtimeRoot,
+      'modules/**/entities/*.entity.' + (runtimeRoot === 'dist' ? 'js' : 'ts'),
+    ),
+  ],
+  migrations: [
+    globPath(
+      rootDir,
+      runtimeRoot,
+      'migrations/*.' + (runtimeRoot === 'dist' ? 'js' : 'ts'),
+    ),
+  ],
   migrationsRun: false,
-  seeds: [globPath(rootDir, 'src/database/seeder/**/*{.ts,.js}')],
-  factories: [globPath(rootDir, 'src/database/factories/**/*{.ts,.js}')],
+  seeds: [
+    globPath(
+      rootDir,
+      runtimeRoot,
+      'database/seeder/**/*.' + (runtimeRoot === 'dist' ? 'js' : 'ts'),
+    ),
+  ],
+  factories: [
+    globPath(
+      rootDir,
+      runtimeRoot,
+      'database/factories/**/*.' + (runtimeRoot === 'dist' ? 'js' : 'ts'),
+    ),
+  ],
 };
 
 const dataSource = new DataSource(dataSourceOptions);

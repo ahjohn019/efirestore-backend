@@ -29,6 +29,8 @@ services:
           path: ./docker-compose.local.yml
     environment:
       APP_MODE: local
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
       DATABASE_RUN_MIGRATIONS: "true"
       DATABASE_RUN_SEEDS: "true"
       CHOKIDAR_USEPOLLING: "true"
