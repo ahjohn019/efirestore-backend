@@ -6,6 +6,7 @@ import { MailerService } from '@nestjs-modules/mailer';
 import {
   BadRequestException,
   ForbiddenException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -337,6 +338,37 @@ describe('AuthService', () => {
           reset_password_expired_at: null,
         },
       );
+    });
+  });
+
+  describe('getProfile', () => {
+    it('should return the authenticated user profile with related data', async () => {
+      const mockProfile = {
+        id: 1,
+        email: 'test@example.com',
+        user_addresses: [{ id: 10, user_id: 1 }],
+      };
+
+      mockUsersService.findOne.mockResolvedValue({
+        status: 'success',
+        code: 200,
+        data: mockProfile,
+      });
+
+      const result = await service.getProfile(1);
+
+      expect(result).toEqual({
+        status: 'success',
+        code: 200,
+        data: mockProfile,
+      });
+      expect(mockUsersService.findOne).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw when the authenticated user profile is missing', async () => {
+      mockUsersService.findOne.mockResolvedValue({ data: null });
+
+      await expect(service.getProfile(1)).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -1,8 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { Repository } from 'typeorm';
 import { Users } from './entities/users.entity';
 import { UserDetails } from './entities/user-details.entity';
+import { UserAddress } from './entities/user-address.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { UserDetailsStripeService } from './stripe/user-details.service';
 import { StripeCustomerService } from '../payments/stripe/customer/customer.service';
@@ -29,6 +31,10 @@ describe('UsersService', () => {
         },
         {
           provide: getRepositoryToken(UserDetails),
+          useClass: Repository,
+        },
+        {
+          provide: getRepositoryToken(UserAddress),
           useClass: Repository,
         },
         {
@@ -92,7 +98,7 @@ describe('UsersService', () => {
     expect(result).toEqual({ data: mockUser, status: 'success', code: 200 });
     expect(findOneSpy).toHaveBeenCalledWith({
       where: { id: mockUser.id },
-      relations: ['user_details', 'orders', 'stripe_users'],
+      relations: ['user_details', 'orders', 'stripe_users', 'user_addresses'],
     });
   });
 
@@ -191,17 +197,19 @@ describe('UsersService', () => {
       .spyOn(userDetailsStripeService, 'syncWithStripeDetails')
       .mockResolvedValue(userDetailsPayload);
 
-    const resultUserDetailsTest =
-      await service.createUsersDetails(userDetailsPayload);
-    const { result, userDetailsPayloadResult } = resultUserDetailsTest;
+    const result = await service.createUsersDetails(userDetailsPayload);
 
     const { user_id, ...noUserIdPayload } = userDetailsPayload;
 
-    expect(result).toEqual(userDetailsPayloadResult);
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: userDetailsPayload,
+    });
 
     expect(saveUserDetailsSpy).toHaveBeenCalledWith(noUserIdPayload);
 
-    expect(syncWithStripeDetailsSpy).toHaveBeenCalledWith(userDetailsPayload);
+    expect(syncWithStripeDetailsSpy).not.toHaveBeenCalled();
   });
 
   it('Check create user details - without stripe verification', async () => {
@@ -262,13 +270,16 @@ describe('UsersService', () => {
       .spyOn(userDetailsStripeService, 'syncWithStripeDetails')
       .mockResolvedValue(userDetailsPayload);
 
-    const result = await service.updateUsersDetails(userDetailsPayload);
+    const result = await service.updateUsersDetails(id, userDetailsPayload);
 
-    expect(result).toEqual(userDetailsPayload);
+    expect(result).toEqual({
+      status: 'success',
+      code: 200,
+      data: userDetailsPayload,
+    });
 
     expect(userDetailsRepository.update).toHaveBeenCalledWith(
       {
-        user_id: 1,
         id,
       },
       userDetailsPayload,
@@ -305,7 +316,7 @@ describe('UsersService', () => {
       .spyOn(userDetailsRepository, 'findOne')
       .mockResolvedValue(userDetailsPayload);
 
-    const result = await service.updateUsersDetails(userDetailsPayload);
+    const result = await service.updateUsersDetails(id, userDetailsPayload);
 
     expect(result).toEqual({
       status: 'success',
@@ -315,7 +326,6 @@ describe('UsersService', () => {
 
     expect(userDetailsRepository.update).toHaveBeenCalledWith(
       {
-        user_id: 1,
         id,
       },
       userDetailsPayload,
@@ -339,7 +349,7 @@ describe('UsersService', () => {
 
   it('check find all users exists', async () => {
     const mockPaginationResponse = {
-      data: [
+      list: [
         { id: 1, name: 'User1' },
         { id: 2, name: 'User2' },
       ],
@@ -543,7 +553,7 @@ describe('UsersService', () => {
     };
 
     const paginationResult = {
-      data: mockUsers,
+      list: mockUsers,
       total_page: 1,
       current_page: 1,
       next_page: null,
@@ -563,7 +573,8 @@ describe('UsersService', () => {
     expect(Helper.calculatePagination).toHaveBeenCalledWith(
       paginationDto,
       usersRepository,
-      null,
+      {},
+      ['user_details'],
     );
   });
 
@@ -595,7 +606,7 @@ describe('UsersService', () => {
       last_name: 'Doe',
       address_one: '123 Street',
       address_two: 'Apt 4',
-      postal_code: '12345',
+      postal_code: 12345,
       city: 'Test City',
       state: 'Test State',
       country: 'Test Country',
@@ -608,12 +619,8 @@ describe('UsersService', () => {
 
     jest.spyOn(service, 'findOne').mockResolvedValue(null);
 
-    const result = await service.createUsersDetails(userDetailsDto);
-
-    expect(result).toEqual({
-      status: 'error',
-      code: 500,
-      data: 'Cannot read properties of null (reading \'data\')',
-    });
+    await expect(service.createUsersDetails(userDetailsDto)).rejects.toThrow(
+      NotFoundException,
+    );
   });
 });

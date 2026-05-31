@@ -250,7 +250,7 @@ export class UsersService extends BaseService {
         where: {
           id,
         },
-        relations: ['user_details', 'orders', 'stripe_users'],
+        relations: ['user_details', 'orders', 'stripe_users', 'user_addresses'],
       });
 
       return this.createSuccessResponse(findUser);

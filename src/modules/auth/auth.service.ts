@@ -5,6 +5,7 @@ import {
   BadRequestException,
   HttpException,
   InternalServerErrorException,
+  NotFoundException,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
@@ -86,6 +87,16 @@ export class AuthService extends BaseService {
 
   async adminSignIn(userEmail: string, pass: string): Promise<any> {
     return this.signInWithRoleCheck(userEmail, pass, Role.ADMIN);
+  }
+
+  async getProfile(userId: number): Promise<any> {
+    const user = await this.usersService.findOne(userId);
+
+    if (!user?.data) {
+      throw new NotFoundException('User not found');
+    }
+
+    return this.createSuccessResponse(user.data);
   }
 
   async sendEmail(email: string, emailLink: string) {

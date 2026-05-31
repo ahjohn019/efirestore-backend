@@ -15,6 +15,7 @@ describe('AuthController', () => {
           provide: AuthService,
           useValue: {
             signIn: jest.fn(),
+            getProfile: jest.fn(),
             forgetPassword: jest.fn(),
             updatePassword: jest.fn(),
             updateAccountPassword: jest.fn(),
