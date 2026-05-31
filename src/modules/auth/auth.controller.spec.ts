@@ -17,6 +17,7 @@ describe('AuthController', () => {
             signIn: jest.fn(),
             forgetPassword: jest.fn(),
             updatePassword: jest.fn(),
+            updateAccountPassword: jest.fn(),
             checkResetPasswordPageExpired: jest.fn(),
           },
         },
@@ -44,6 +45,20 @@ describe('AuthController', () => {
     const requestMethod = Reflect.getMetadata(
       METHOD_METADATA,
       controller.updatePassword,
+    );
+
+    expect(statusCode).toBe(200);
+    expect(requestMethod).toBe(1);
+  });
+
+  it('should return 200 for account password update', () => {
+    const statusCode = Reflect.getMetadata(
+      '__httpCode__',
+      controller.updateAccountPassword,
+    );
+    const requestMethod = Reflect.getMetadata(
+      METHOD_METADATA,
+      controller.updateAccountPassword,
     );
 
     expect(statusCode).toBe(200);

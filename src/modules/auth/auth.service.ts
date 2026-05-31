@@ -12,13 +12,16 @@ import * as bcrypt from 'bcrypt';
 import { MailerService } from '@nestjs-modules/mailer';
 import { forgetPasswordDto } from './dto/forget-password.dto';
 import { updatePasswordDto } from './dto/update-password.dto';
+import { updateAccountPasswordDto } from './dto/update-account-password.dto';
 import { checkResetPasswordExpiredDto } from './dto/check-reset-password-expired.dto';
 import { BaseService } from '../base/base.service';
 import { Role } from 'src/enum/role.enum';
 
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import * as dotenv from 'dotenv';
 dotenv.config();
+
+const dayjsFn = (dayjs as any).default ?? dayjs;
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -117,7 +120,7 @@ export class AuthService extends BaseService {
       const { id, email } = user.data;
 
       const generateResetPasswordToken = await bcrypt.hash(email, 10);
-      const emailTokenExpiresAt = dayjs()
+      const emailTokenExpiresAt = dayjsFn()
         .add(1, 'hour')
         .format('YYYY-MM-DD HH:mm:ss');
 
@@ -161,11 +164,11 @@ export class AuthService extends BaseService {
         throw new ForbiddenException('Reset password not allowed.');
       }
 
-      const resetPasswordExpiredAt = dayjs(user.data.reset_password_expired_at);
+      const resetPasswordExpiredAt = dayjsFn(user.data.reset_password_expired_at);
 
       if (
         !resetPasswordExpiredAt.isValid() ||
-        dayjs().isAfter(resetPasswordExpiredAt)
+        dayjsFn().isAfter(resetPasswordExpiredAt)
       ) {
         await this.usersService.updateByResetPasswordToken(
           updatePasswordDto.reset_password_token,
@@ -196,6 +199,41 @@ export class AuthService extends BaseService {
     }
   }
 
+  async updateAccountPassword(
+    userId: number,
+    updateAccountPasswordDto: updateAccountPasswordDto,
+  ) {
+    try {
+      const user = await this.usersService.findOne(userId);
+
+      if (!user?.data) {
+        throw new UnauthorizedException('User not found');
+      }
+
+      const currentPasswordMatch = await bcrypt.compare(
+        updateAccountPasswordDto.current_password,
+        user.data.password,
+      );
+
+      if (!currentPasswordMatch) {
+        throw new UnauthorizedException('Current password is incorrect.');
+      }
+
+      const generatePasswordHash = await bcrypt.hash(
+        updateAccountPasswordDto.new_password,
+        10,
+      );
+
+      const updatePassword = await this.usersService.update(userId, {
+        password: generatePasswordHash,
+      });
+
+      return updatePassword;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async checkResetPasswordPageExpired(
     checkResetPasswordExpiredDto: checkResetPasswordExpiredDto,
   ) {
@@ -208,11 +246,11 @@ export class AuthService extends BaseService {
         throw new UnauthorizedException('Reset password not allowed.');
       }
 
-      const resetPasswordExpiredAt = dayjs(user.data.reset_password_expired_at);
+      const resetPasswordExpiredAt = dayjsFn(user.data.reset_password_expired_at);
 
       if (
         !resetPasswordExpiredAt.isValid() ||
-        dayjs().isAfter(resetPasswordExpiredAt)
+        dayjsFn().isAfter(resetPasswordExpiredAt)
       ) {
         await this.usersService.updateByResetPasswordToken(
           checkResetPasswordExpiredDto.reset_password_token,

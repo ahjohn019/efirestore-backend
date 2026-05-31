@@ -12,6 +12,8 @@ import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 import { Role } from 'src/enum/role.enum';
 
+const dayjsFn = (dayjs as any).default ?? dayjs;
+
 describe('AuthService', () => {
   let service: AuthService;
   let usersService: UsersService;
@@ -221,7 +223,7 @@ describe('AuthService', () => {
         expect.objectContaining({
           context: expect.objectContaining({
             resetUrl:
-              'http://efirestore:8081/reset-password?token=hashed%2FToken%2B%3D',
+              'http://efirestore/reset-password?token=hashed%2FToken%2B%3D',
           }),
         }),
       );
@@ -277,7 +279,7 @@ describe('AuthService', () => {
     const mockUser = {
       data: {
         id: 1,
-        reset_password_expired_at: dayjs().add(1, 'hour').format(),
+        reset_password_expired_at: dayjsFn().add(1, 'hour').format(),
       },
     };
 
@@ -319,11 +321,11 @@ describe('AuthService', () => {
 
     it('should clear an expired reset password token', async () => {
       mockUsersService.findByResetPasswordToken.mockResolvedValue({
-        data: {
-          id: 1,
-          reset_password_expired_at: dayjs().subtract(1, 'minute').format(),
-        },
-      });
+      data: {
+        id: 1,
+        reset_password_expired_at: dayjsFn().subtract(1, 'minute').format(),
+      },
+    });
 
       await expect(
         service.updatePassword(mockUpdatePasswordDto),
@@ -338,6 +340,69 @@ describe('AuthService', () => {
     });
   });
 
+  describe('updateAccountPassword', () => {
+    const mockUpdateAccountPasswordDto = {
+      current_password: 'ahrui123',
+      new_password: '1111aaaa',
+      password_confirmation: '1111aaaa',
+    };
+
+    const mockUser = {
+      data: {
+        id: 1,
+        password: 'hashedCurrentPassword',
+      },
+    };
+
+    it('should successfully update the authenticated user password', async () => {
+      mockUsersService.findOne.mockResolvedValue(mockUser);
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true));
+      jest
+        .spyOn(bcrypt, 'hash')
+        .mockImplementation(() => Promise.resolve('hashedNewPassword'));
+      mockUsersService.update.mockResolvedValue({ success: true });
+
+      const result = await service.updateAccountPassword(
+        1,
+        mockUpdateAccountPasswordDto,
+      );
+
+      expect(result).toEqual({ success: true });
+      expect(mockUsersService.findOne).toHaveBeenCalledWith(1);
+      expect(mockUsersService.update).toHaveBeenCalledWith(1, {
+        password: 'hashedNewPassword',
+      });
+      expect(mockUsersService.update).not.toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          password: mockUpdateAccountPasswordDto.new_password,
+        }),
+      );
+    });
+
+    it('should reject when the current password does not match', async () => {
+      mockUsersService.findOne.mockResolvedValue(mockUser);
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(false));
+
+      await expect(
+        service.updateAccountPassword(1, mockUpdateAccountPasswordDto),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockUsersService.update).not.toHaveBeenCalled();
+    });
+
+    it('should reject when the authenticated user is not found', async () => {
+      mockUsersService.findOne.mockResolvedValue({ data: null });
+
+      await expect(
+        service.updateAccountPassword(1, mockUpdateAccountPasswordDto),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
   describe('checkResetPasswordPageExpired', () => {
     const mockCheckResetPasswordExpiredDto = {
       reset_password_token: 'valid-token',
@@ -346,7 +411,7 @@ describe('AuthService', () => {
     const mockUser = {
       data: {
         id: 1,
-        reset_password_expired_at: dayjs().subtract(2, 'day').format(),
+        reset_password_expired_at: dayjsFn().subtract(2, 'day').format(),
       },
     };
 
@@ -354,7 +419,7 @@ describe('AuthService', () => {
       mockUsersService.findByResetPasswordToken.mockResolvedValue({
         data: {
           ...mockUser.data,
-          reset_password_expired_at: dayjs().add(1, 'hour').format(),
+          reset_password_expired_at: dayjsFn().add(1, 'hour').format(),
         },
       });
 
