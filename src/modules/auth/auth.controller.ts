@@ -28,6 +28,12 @@ export class AuthController {
     return this.authService.signIn(signInDto.email, signInDto.password);
   }
 
+  @HttpCode(HttpStatus.OK)
+  @Post('admin-login')
+  adminSignIn(@Body() signInDto: signInDto) {
+    return this.authService.adminSignIn(signInDto.email, signInDto.password);
+  }
+
   @UseGuards(AuthGuard)
   @Get('profile')
   getProfile(@Request() req) {

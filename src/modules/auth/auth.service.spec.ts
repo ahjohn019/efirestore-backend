@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
+import { Role } from 'src/enum/role.enum';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -77,7 +78,7 @@ describe('AuthService', () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'hashedPassword',
-        role: 'user',
+        role: Role.USER,
       },
     };
 
@@ -99,6 +100,61 @@ describe('AuthService', () => {
         'test@example.com',
       );
       expect(mockJwtService.signAsync).toHaveBeenCalled();
+    });
+
+    it('should reject admin users on user login', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        data: {
+          ...mockUser.data,
+          role: Role.ADMIN,
+        },
+      });
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true));
+
+      await expect(
+        service.signIn('test@example.com', 'password123'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
+    });
+
+    it('should successfully sign in an admin user', async () => {
+      mockUsersService.findByEmail.mockResolvedValue({
+        data: {
+          ...mockUser.data,
+          role: Role.ADMIN,
+        },
+      });
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true));
+      mockJwtService.signAsync.mockResolvedValue(mockToken);
+
+      const result = await service.adminSignIn(
+        'test@example.com',
+        'password123',
+      );
+
+      expect(result.status).toBe('success');
+      expect(result.code).toBe(200);
+      expect(result.data).toBe(mockToken);
+      expect(mockUsersService.findByEmail).toHaveBeenCalledWith(
+        'test@example.com',
+      );
+      expect(mockJwtService.signAsync).toHaveBeenCalled();
+    });
+
+    it('should reject non-admin users on admin login', async () => {
+      mockUsersService.findByEmail.mockResolvedValue(mockUser);
+      jest
+        .spyOn(bcrypt, 'compare')
+        .mockImplementation(() => Promise.resolve(true));
+
+      await expect(
+        service.adminSignIn('test@example.com', 'password123'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockJwtService.signAsync).not.toHaveBeenCalled();
     });
 
     it('should return error when user not found', async () => {

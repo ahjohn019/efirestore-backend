@@ -14,6 +14,7 @@ import { forgetPasswordDto } from './dto/forget-password.dto';
 import { updatePasswordDto } from './dto/update-password.dto';
 import { checkResetPasswordExpiredDto } from './dto/check-reset-password-expired.dto';
 import { BaseService } from '../base/base.service';
+import { Role } from 'src/enum/role.enum';
 
 import dayjs from 'dayjs';
 import * as dotenv from 'dotenv';
@@ -39,13 +40,22 @@ export class AuthService extends BaseService {
     return resetPasswordUrl.toString();
   }
 
-  async signIn(userEmail: string, pass: string): Promise<any> {
+  private async signInWithRoleCheck(
+    userEmail: string,
+    pass: string,
+    allowedRole?: Role,
+  ): Promise<any> {
     try {
       const user = await this.usersService.findByEmail(userEmail);
       if (!user.data) {
         throw new UnauthorizedException('User not found');
       }
       const { password, id, name, email, role, user_details } = user.data;
+      if (allowedRole && role !== allowedRole) {
+        throw new ForbiddenException(
+          allowedRole === Role.ADMIN ? 'Admin access only' : 'User access only',
+        );
+      }
       const passwordMatch = await bcrypt.compare(pass, password);
       if (!passwordMatch) {
         throw new UnauthorizedException('Invalid email or password');
@@ -58,7 +68,6 @@ export class AuthService extends BaseService {
         status: true,
         user_details,
       };
-      console.log('payload', payload);
       const accessToken = await this.jwtService.signAsync(payload, {
         expiresIn: process.env.JWT_DURATION,
       });
@@ -66,6 +75,14 @@ export class AuthService extends BaseService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async signIn(userEmail: string, pass: string): Promise<any> {
+    return this.signInWithRoleCheck(userEmail, pass, Role.USER);
+  }
+
+  async adminSignIn(userEmail: string, pass: string): Promise<any> {
+    return this.signInWithRoleCheck(userEmail, pass, Role.ADMIN);
   }
 
   async sendEmail(email: string, emailLink: string) {
