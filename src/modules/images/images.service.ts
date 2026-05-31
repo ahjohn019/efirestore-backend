@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { AllImageDto } from './dto/all-image.dto';
 import { Images } from '../images/entities/images.entity';
 import { unlink, mkdirSync, existsSync } from 'node:fs';
+import { rename } from 'node:fs/promises';
 import { Helper } from '../../utils/helper';
 import * as path from 'path';
 import { UpdateEntityImageDto } from './dto/update-entity-image.dto';
@@ -23,27 +24,61 @@ export class ImagesService extends BaseService {
     super();
   }
 
-  async uploadFiles(files: Array<Express.Multer.File>) {
+  async uploadFiles(
+    files: Array<Express.Multer.File>,
+    entityType = 'products',
+  ) {
     try {
-      const uploadDir = path.join(__dirname, '..', 'public', 'uploads');
+      const normalizedEntityType = this.normalizeEntityType(entityType);
+      const uploadDir = path.join(
+        process.cwd(),
+        'public',
+        'uploads',
+        normalizedEntityType,
+      );
 
       // Check if directory exists, if not, create it
       if (!existsSync(uploadDir)) {
         mkdirSync(uploadDir, { recursive: true });
       }
 
-      const fileList = files.map((file) => ({
-        name: file.filename,
-        path: file.path,
-        size: file.size,
-        mime_type: file.mimetype,
-        destination: file.destination,
-      }));
+      if (!files || files.length === 0) {
+        throw new BadRequestException('No files uploaded.');
+      }
+
+      const fileList = [];
+
+      for (const file of files) {
+        const sourcePath = file.path;
+        const targetPath = path.join(uploadDir, file.filename);
+
+        if (sourcePath && sourcePath !== targetPath) {
+          await rename(sourcePath, targetPath);
+        }
+
+        fileList.push({
+          name: file.filename,
+          path: this.getPublicPath(normalizedEntityType, file.filename),
+          size: file.size,
+          mime_type: file.mimetype,
+          destination: uploadDir,
+          category: '',
+          entity_id: 0,
+          entity_type: '',
+        });
+      }
 
       await this.imagesRepository.save(fileList);
 
       return this.createSuccessResponse(fileList);
     } catch (error) {
+      if (files?.length) {
+        files.forEach((file) => {
+          if (file?.path && existsSync(file.path)) {
+            Helper.unlinkFile(file.path);
+          }
+        });
+      }
       console.log('error', error);
       return this.createErrorResponse(error.message);
     }
@@ -102,6 +137,27 @@ export class ImagesService extends BaseService {
     }
   }
 
+  async findByEntity(data: { entity_id: number; entity_type: string }) {
+    try {
+      const image = await this.imagesRepository.findOne({
+        where: {
+          entity_id: data.entity_id,
+          entity_type: data.entity_type,
+        },
+      });
+
+      console.log('image', image);
+
+      if (!image) {
+        return this.createErrorResponse('Image not found', 404);
+      }
+
+      return this.createSuccessResponse(image);
+    } catch (error) {
+      return this.createErrorResponse(error.message);
+    }
+  }
+
   async update(id: number, file: Express.Multer.File) {
     try {
       const findFile = await this.imagesRepository.findOne({
@@ -117,11 +173,16 @@ export class ImagesService extends BaseService {
       }
 
       // Delete the old file
-      Helper.unlinkFile(findFile.path);
+      Helper.unlinkFile(this.resolveStoredFilePath(findFile.path));
 
       await this.imagesRepository.update(id, {
         name: file.filename,
-        path: file.path,
+        path: this.getPublicPath(
+          this.normalizeEntityType(
+            this.getEntityTypeFromDestination(file.destination),
+          ),
+          file.filename,
+        ),
         size: file.size,
         mime_type: file.mimetype,
         destination: file.destination,
@@ -152,7 +213,7 @@ export class ImagesService extends BaseService {
       }
 
       findFiles.data.forEach((file: Images) => {
-        unlink(file.path, (err) => {
+        unlink(this.resolveStoredFilePath(file.path), (err) => {
           if (err) throw err;
           this.imagesRepository.remove(file);
         });
@@ -162,5 +223,43 @@ export class ImagesService extends BaseService {
     } catch (error) {
       return this.createErrorResponse(error.message);
     }
+  }
+
+  private resolveStoredFilePath(storedPath: string) {
+    if (!storedPath) {
+      return storedPath;
+    }
+
+    if (storedPath.startsWith('/uploads/')) {
+      return path.join(process.cwd(), 'public', storedPath.replace(/^\/+/, ''));
+    }
+
+    if (path.isAbsolute(storedPath)) {
+      return storedPath;
+    }
+
+    return path.join(process.cwd(), 'public', storedPath.replace(/^\/+/, ''));
+  }
+
+  private getPublicPath(entityType: string, filename: string) {
+    return `/uploads/${entityType}/${filename}`;
+  }
+
+  private getEntityTypeFromDestination(destination?: string) {
+    if (!destination) {
+      return 'products';
+    }
+
+    return path.basename(destination) || 'products';
+  }
+
+  private normalizeEntityType(entityType: string) {
+    return (
+      entityType
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || 'products'
+    );
   }
 }

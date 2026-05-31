@@ -36,7 +36,9 @@ describe('ImagesService', () => {
     }).compile();
 
     service = module.get<ImagesService>(ImagesService);
-    imagesRepository = module.get<Repository<Images>>(getRepositoryToken(Images));
+    imagesRepository = module.get<Repository<Images>>(
+      getRepositoryToken(Images),
+    );
   });
 
   afterEach(() => {
@@ -49,6 +51,12 @@ describe('ImagesService', () => {
 
   describe('uploadFiles', () => {
     it('should successfully upload files', async () => {
+      const expectedDestination = path.join(
+        process.cwd(),
+        'public',
+        'uploads',
+        'products',
+      );
       const mockFiles = [
         {
           filename: 'test1.jpg',
@@ -68,10 +76,13 @@ describe('ImagesService', () => {
 
       const expectedFileList = mockFiles.map((file) => ({
         name: file.filename,
-        path: file.path,
+        path: `/uploads/products/${file.filename}`,
         size: file.size,
         mime_type: file.mimetype,
-        destination: file.destination
+        destination: expectedDestination,
+        category: '',
+        entity_id: 0,
+        entity_type: '',
       }));
 
       // Mock the repository save method
@@ -80,6 +91,9 @@ describe('ImagesService', () => {
       // Mock the existsSync and mkdirSync functions
       jest.spyOn(require('node:fs'), 'existsSync').mockReturnValue(false);
       jest.spyOn(require('node:fs'), 'mkdirSync').mockImplementation(() => {});
+      jest
+        .spyOn(require('node:fs/promises'), 'rename')
+        .mockResolvedValue(undefined);
 
       const result = await service.uploadFiles(mockFiles as any);
 
@@ -106,6 +120,9 @@ describe('ImagesService', () => {
       // Mock the existsSync and mkdirSync functions
       jest.spyOn(require('node:fs'), 'existsSync').mockReturnValue(false);
       jest.spyOn(require('node:fs'), 'mkdirSync').mockImplementation(() => {});
+      jest
+        .spyOn(require('node:fs/promises'), 'rename')
+        .mockResolvedValue(undefined);
 
       const result = await service.uploadFiles(mockFiles as any);
 
@@ -218,7 +235,7 @@ describe('ImagesService', () => {
       };
 
       const mockPaginationResponse = {
-        data: [
+        list: [
           { id: 1, name: 'Image 1', path: '/path/to/image1.jpg' },
           { id: 2, name: 'Image 2', path: '/path/to/image2.jpg' },
         ],
@@ -229,7 +246,9 @@ describe('ImagesService', () => {
         total_data: 2,
       };
 
-      jest.spyOn(Helper, 'calculatePagination').mockResolvedValue(mockPaginationResponse);
+      jest
+        .spyOn(Helper, 'calculatePagination')
+        .mockResolvedValue(mockPaginationResponse);
 
       const result = await service.findAll(allImageDto);
 
@@ -250,7 +269,7 @@ describe('ImagesService', () => {
       };
 
       const mockEmptyPaginationResponse = {
-        data: [],
+        list: [],
         total_page: 1,
         current_page: 1,
         next_page: 1,
@@ -258,14 +277,16 @@ describe('ImagesService', () => {
         total_data: 0,
       };
 
-      jest.spyOn(Helper, 'calculatePagination').mockResolvedValue(mockEmptyPaginationResponse);
+      jest
+        .spyOn(Helper, 'calculatePagination')
+        .mockResolvedValue(mockEmptyPaginationResponse);
 
       const result = await service.findAll(allImageDto);
 
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
       expect(result.data).toEqual(mockEmptyPaginationResponse);
-      expect(result.data.data).toHaveLength(0);
+      expect(result.data.list).toHaveLength(0);
     });
 
     it('should handle errors during image retrieval', async () => {
@@ -275,7 +296,9 @@ describe('ImagesService', () => {
       };
 
       const errorMessage = 'Database error';
-      jest.spyOn(Helper, 'calculatePagination').mockRejectedValue(new Error(errorMessage));
+      jest
+        .spyOn(Helper, 'calculatePagination')
+        .mockRejectedValue(new Error(errorMessage));
 
       const result = await service.findAll(allImageDto);
 
@@ -333,6 +356,47 @@ describe('ImagesService', () => {
     });
   });
 
+  describe('findByEntity', () => {
+    it('should successfully retrieve image by entity', async () => {
+      const data = { entity_id: 123, entity_type: 'products' };
+      const mockImage = {
+        id: 1,
+        name: 'Image 1',
+        path: '/uploads/products/image1.jpg',
+        entity_id: 123,
+        entity_type: 'products',
+      };
+
+      mockImagesRepository.findOne.mockResolvedValue(mockImage);
+
+      const result = await service.findByEntity(data);
+
+      expect(result.status).toBe('success');
+      expect(result.code).toBe(200);
+      expect(result.data).toEqual(mockImage);
+      expect(mockImagesRepository.findOne).toHaveBeenCalledWith({
+        where: {
+          entity_id: data.entity_id,
+          entity_type: data.entity_type,
+        },
+        order: {
+          id: 'DESC',
+        },
+      });
+    });
+
+    it('should handle missing image by entity', async () => {
+      const data = { entity_id: 999, entity_type: 'products' };
+      mockImagesRepository.findOne.mockResolvedValue(null);
+
+      const result = await service.findByEntity(data);
+
+      expect(result.status).toBe('error');
+      expect(result.code).toBe(404);
+      expect(result.data).toBe('Image not found');
+    });
+  });
+
   describe('update', () => {
     it('should successfully update an image', async () => {
       const id = 1;
@@ -341,13 +405,13 @@ describe('ImagesService', () => {
         path: '/path/to/updated.jpg',
         size: 2048,
         mimetype: 'image/jpeg',
-        destination: '/path/to/destination',
+        destination: '/path/to/products',
       };
 
       const mockExistingImage = {
         id: 1,
         name: 'old.jpg',
-        path: '/path/to/old.jpg',
+        path: '/uploads/old.jpg',
         size: 1024,
         mime_type: 'image/jpeg',
         destination: '/path/to/destination',
@@ -356,7 +420,7 @@ describe('ImagesService', () => {
       const mockUpdatedImage = {
         id: 1,
         name: 'updated.jpg',
-        path: '/path/to/updated.jpg',
+        path: '/uploads/updated.jpg',
         size: 2048,
         mime_type: 'image/jpeg',
         destination: '/path/to/destination',
@@ -364,7 +428,9 @@ describe('ImagesService', () => {
 
       mockImagesRepository.findOne.mockResolvedValue(mockExistingImage);
       mockImagesRepository.update.mockResolvedValue({ affected: 1 });
-      mockImagesRepository.findOne.mockResolvedValueOnce(mockExistingImage).mockResolvedValueOnce(mockUpdatedImage);
+      mockImagesRepository.findOne
+        .mockResolvedValueOnce(mockExistingImage)
+        .mockResolvedValueOnce(mockUpdatedImage);
 
       // Mock the Helper.unlinkFile function
       jest.spyOn(Helper, 'unlinkFile').mockImplementation(() => {});
@@ -379,14 +445,16 @@ describe('ImagesService', () => {
       });
       expect(mockImagesRepository.update).toHaveBeenCalledWith(id, {
         name: mockFile.filename,
-        path: mockFile.path,
+        path: `/uploads/products/${mockFile.filename}`,
         size: mockFile.size,
         mime_type: mockFile.mimetype,
         destination: mockFile.destination,
         created_at: expect.any(Date),
         updated_at: expect.any(Date),
       });
-      expect(Helper.unlinkFile).toHaveBeenCalledWith(mockExistingImage.path);
+      expect(Helper.unlinkFile).toHaveBeenCalledWith(
+        path.join(process.cwd(), 'public', 'uploads', 'old.jpg'),
+      );
     });
 
     it('should handle non-existent image', async () => {
@@ -396,7 +464,7 @@ describe('ImagesService', () => {
         path: '/path/to/updated.jpg',
         size: 2048,
         mimetype: 'image/jpeg',
-        destination: '/path/to/destination',
+        destination: '/path/to/products',
       };
 
       mockImagesRepository.findOne.mockResolvedValue(null);
@@ -419,7 +487,7 @@ describe('ImagesService', () => {
         path: '/path/to/updated.jpg',
         size: 2048,
         mimetype: 'image/jpeg',
-        destination: '/path/to/destination',
+        destination: '/path/to/products',
       };
 
       const mockExistingImage = {
@@ -443,7 +511,7 @@ describe('ImagesService', () => {
       expect(result.status).toBe('error');
       expect(result.code).toBe(500);
       expect(result.data).toBe(errorMessage);
-      expect(Helper.unlinkFile).toHaveBeenCalledWith(mockExistingImage.path);
+      expect(Helper.unlinkFile).toHaveBeenCalledWith(mockFile.path);
     });
   });
 

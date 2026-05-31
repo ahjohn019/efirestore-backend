@@ -2,6 +2,8 @@ services:
   app:
     command: ./docker/start.sh
     restart: "no"
+    volumes:
+      - ./public:/app/public
     develop:
       watch:
         - action: sync+restart

@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    volumes:
+      - ./public:/app/public
     ports:
       - '80:3000'
     env_file:
