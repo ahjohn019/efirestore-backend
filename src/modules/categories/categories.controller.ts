@@ -3,7 +3,7 @@ import {
   Get,
   Post,
   Body,
-  Patch,
+  Put,
   Param,
   Delete,
   UseGuards,
@@ -50,15 +50,15 @@ export class CategoriesController {
     return this.categoriesService.findOne(slug);
   }
 
-  @Patch(':id')
+  @Put(':id')
   @Roles(Role.ADMIN)
   @UseGuards(AuthGuard, RolesGuard)
-  @ApiParam({ name: 'slug', required: true, type: Number })
+  @ApiParam({ name: 'id', required: true, type: Number })
   update(
-    @Param('slug') slug: string,
+    @Param('id') id: number,
     @Body() updateCategoryDto: UpdateCategoryDto,
   ) {
-    return this.categoriesService.update(slug, updateCategoryDto);
+    return this.categoriesService.update(+id, updateCategoryDto);
   }
 
   @Delete(':id')

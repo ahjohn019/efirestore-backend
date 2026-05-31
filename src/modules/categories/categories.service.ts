@@ -1,4 +1,4 @@
-import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -60,15 +60,28 @@ export class CategoriesService extends BaseService {
     }
   }
 
-  async update(slug: string, updateCategoryDto: UpdateCategoryDto) {
+  async update(id: number, updateCategoryDto: UpdateCategoryDto) {
     try {
-      const categoryEntity = await this.findOne(slug);
+      const categoryEntity = await this.categoriesRepository.findOne({
+        where: {
+          id,
+        },
+      });
+
+      if (!categoryEntity) {
+        throw new NotFoundException('Category not found');
+      }
+
+      if (updateCategoryDto.name) {
+        categoryEntity.slug = Helper.convertUpperCase(updateCategoryDto.name);
+      }
+
       const categoryResponse = await this.categoriesRepository.save(
         Object.assign(categoryEntity, updateCategoryDto),
       );
       return this.createSuccessResponse(categoryResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      return this.createErrorResponse(error.message, error.status);
     }
   }
 

@@ -8,7 +8,6 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { AllCategoryDto } from './dto/all-category.dto';
 import { Helper } from '../../utils/helper';
-import { NotFoundException } from '@nestjs/common';
 
 describe('CategoriesService', () => {
   let service: CategoriesService;
@@ -129,7 +128,7 @@ describe('CategoriesService', () => {
       };
 
       const mockPaginationResponse = {
-        data: [
+        list: [
           { id: 1, name: 'Category 1', slug: 'category_1' },
           { id: 2, name: 'Category 2', slug: 'category_2' },
         ],
@@ -160,7 +159,7 @@ describe('CategoriesService', () => {
       };
 
       const mockEmptyPaginationResponse = {
-        data: [],
+        list: [],
         total_page: 1,
         current_page: 1,
         next_page: 1,
@@ -175,7 +174,7 @@ describe('CategoriesService', () => {
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
       expect(result.data).toEqual(mockEmptyPaginationResponse);
-      expect(result.data.data).toHaveLength(0);
+      expect(result.data.list).toHaveLength(0);
     });
 
     it('should handle errors during category retrieval', async () => {
@@ -212,8 +211,8 @@ describe('CategoriesService', () => {
   });
 
   describe('findOne', () => {
-    it('should successfully retrieve a category by id', async () => {
-      const id = 1;
+    it('should successfully retrieve a category by slug', async () => {
+      const slug = 'test_category';
       const mockCategory = {
         id: 1,
         name: 'Test Category',
@@ -224,33 +223,33 @@ describe('CategoriesService', () => {
 
       mockCategoriesRepository.findOne.mockResolvedValue(mockCategory);
 
-      const result = await service.findOne(id);
+      const result = await service.findOne(slug);
 
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
       expect(result.data).toEqual(mockCategory);
       expect(mockCategoriesRepository.findOne).toHaveBeenCalledWith({
-        where: { id },
+        where: { slug },
       });
     });
 
-    it('should handle non-existent category id', async () => {
-      const id = 999; // Non-existent ID
+    it('should handle non-existent category slug', async () => {
+      const slug = 'missing-category';
       mockCategoriesRepository.findOne.mockResolvedValue(null);
 
-      const result = await service.findOne(id);
+      const result = await service.findOne(slug);
 
       expect(result.status).toBe('success');
       expect(result.code).toBe(200);
       expect(result.data).toBeNull();
     });
 
-    it('should handle errors during category retrieval by id', async () => {
-      const id = 1;
+    it('should handle errors during category retrieval by slug', async () => {
+      const slug = 'test_category';
       const errorMessage = 'Database error';
       mockCategoriesRepository.findOne.mockRejectedValue(new Error(errorMessage));
 
-      const result = await service.findOne(id);
+      const result = await service.findOne(slug);
 
       expect(result.status).toBe('error');
       expect(result.code).toBe(500);
@@ -273,25 +272,14 @@ describe('CategoriesService', () => {
         updated_at: new Date(),
       };
 
-      // Mock the findOne method to return the full response object
-      jest.spyOn(service, 'findOne').mockResolvedValue({
-        status: 'success',
-        code: 200,
-        data: mockExistingCategory,
-      });
-
-      // Create the expected object that will be passed to save
-      const expectedSaveObject = {
-        status: 'success',
-        code: 200,
-        data: mockExistingCategory,
-        ...updateCategoryDto,
-      };
+      mockCategoriesRepository.findOne.mockResolvedValue(mockExistingCategory);
+      jest.spyOn(Helper, 'convertUpperCase').mockReturnValue('updated_category');
 
       // Mock the save method to return the updated category
       mockCategoriesRepository.save.mockResolvedValue({
         ...mockExistingCategory,
         ...updateCategoryDto,
+        slug: 'updated_category',
       });
 
       const result = await service.update(id, updateCategoryDto);
@@ -301,34 +289,33 @@ describe('CategoriesService', () => {
       expect(result.data).toEqual({
         ...mockExistingCategory,
         ...updateCategoryDto,
+        slug: 'updated_category',
       });
-      
-      // Verify that save was called with the correct object
-      expect(mockCategoriesRepository.save).toHaveBeenCalledWith(expectedSaveObject);
+
+      expect(mockCategoriesRepository.findOne).toHaveBeenCalledWith({
+        where: { id },
+      });
+      expect(Helper.convertUpperCase).toHaveBeenCalledWith(updateCategoryDto.name);
+      expect(mockCategoriesRepository.save).toHaveBeenCalledWith({
+        ...mockExistingCategory,
+        ...updateCategoryDto,
+        slug: 'updated_category',
+      });
     });
 
     it('should handle updating a non-existent category', async () => {
-      const id = 999; // Non-existent ID
+      const id = 999;
       const updateCategoryDto: UpdateCategoryDto = {
         name: 'Updated Category',
       };
 
-      // Mock the findOne method to return null data
-      jest.spyOn(service, 'findOne').mockResolvedValue({
-        status: 'success',
-        code: 200,
-        data: null,
-      });
-
-      // Mock the save method to return null
-      mockCategoriesRepository.save.mockResolvedValue(null);
+      mockCategoriesRepository.findOne.mockResolvedValue(null);
 
       const result = await service.update(id, updateCategoryDto);
 
-      // The service actually returns success even when the category doesn't exist
-      expect(result.status).toBe('success');
-      expect(result.code).toBe(200);
-      expect(result.data).toBeNull();
+      expect(result.status).toBe('error');
+      expect(result.code).toBe(404);
+      expect(result.data).toBe('Category not found');
     });
 
     it('should handle errors during category update', async () => {
@@ -338,7 +325,7 @@ describe('CategoriesService', () => {
       };
 
       const errorMessage = 'Database error';
-      jest.spyOn(service, 'findOne').mockRejectedValue(new Error(errorMessage));
+      mockCategoriesRepository.findOne.mockRejectedValue(new Error(errorMessage));
 
       const result = await service.update(id, updateCategoryDto);
 
@@ -361,11 +348,7 @@ describe('CategoriesService', () => {
         updated_at: new Date(),
       };
 
-      jest.spyOn(service, 'findOne').mockResolvedValue({
-        status: 'success',
-        code: 200,
-        data: mockExistingCategory,
-      });
+      mockCategoriesRepository.findOne.mockResolvedValue(mockExistingCategory);
 
       const errorMessage = 'name should not be empty';
       mockCategoriesRepository.save.mockRejectedValue(new Error(errorMessage));
@@ -402,15 +385,18 @@ describe('CategoriesService', () => {
       expect(mockCategoriesRepository.delete).toHaveBeenCalledWith(id);
     });
 
-    it('should handle errors when no products are found for the category', async () => {
+    it('should remove a category even when no products are linked to it', async () => {
       const id = 1;
       mockProductsRepository.find.mockResolvedValue([]);
+      mockCategoriesRepository.delete.mockResolvedValue({ affected: 1 });
 
       const result = await service.remove(id);
 
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Category not found');
+      expect(result.status).toBe('success');
+      expect(result.code).toBe(200);
+      expect(result.data).toEqual({ affected: 1 });
+      expect(mockProductsRepository.save).not.toHaveBeenCalled();
+      expect(mockCategoriesRepository.delete).toHaveBeenCalledWith(id);
     });
 
     it('should handle errors during category removal', async () => {
