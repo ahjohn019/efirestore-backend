@@ -80,7 +80,7 @@ export class ImagesService extends BaseService {
         });
       }
       console.log('error', error);
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -105,7 +105,7 @@ export class ImagesService extends BaseService {
 
       return this.createSuccessResponse(updatedEntityFile);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -119,7 +119,7 @@ export class ImagesService extends BaseService {
 
       return this.createSuccessResponse(findAllResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -133,28 +133,26 @@ export class ImagesService extends BaseService {
 
       return this.createSuccessResponse(findBulkImageResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
   async findByEntity(data: { entity_id: number; entity_type: string }) {
     try {
-      const image = await this.imagesRepository.findOne({
+      const image = await this.imagesRepository.find({
         where: {
           entity_id: data.entity_id,
           entity_type: data.entity_type,
         },
       });
 
-      console.log('image', image);
-
-      if (!image) {
-        return this.createErrorResponse('Image not found', 404);
+      if (image.length === 0) {
+        throw new NotFoundException('Image not found');
       }
 
       return this.createSuccessResponse(image);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -169,7 +167,7 @@ export class ImagesService extends BaseService {
       if (!findFile) {
         // Delete the uploaded file since we can't associate it with an existing image
         Helper.unlinkFile(file.path);
-        return this.createErrorResponse('Image not found', 404);
+        throw new NotFoundException('Image not found');
       }
 
       // Delete the old file
@@ -200,7 +198,7 @@ export class ImagesService extends BaseService {
       if (file && file.path) {
         Helper.unlinkFile(file.path);
       }
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -221,7 +219,7 @@ export class ImagesService extends BaseService {
 
       return this.createSuccessResponse(findFiles);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
