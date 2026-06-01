@@ -134,11 +134,7 @@ export class UsersService extends BaseService {
 
       return this.createSuccessResponse(findUser);
     } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 

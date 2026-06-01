@@ -29,7 +29,7 @@ export class CategoriesService extends BaseService {
 
       return this.createSuccessResponse(productResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -42,7 +42,7 @@ export class CategoriesService extends BaseService {
 
       return this.createSuccessResponse(findAllResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -56,7 +56,7 @@ export class CategoriesService extends BaseService {
 
       return this.createSuccessResponse(findCategoryResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -81,7 +81,7 @@ export class CategoriesService extends BaseService {
       );
       return this.createSuccessResponse(categoryResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message, error.status);
+      throw error;
     }
   }
 
@@ -108,7 +108,7 @@ export class CategoriesService extends BaseService {
       const deleteResponse = await this.categoriesRepository.delete(id);
       return this.createSuccessResponse(deleteResponse);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 }
