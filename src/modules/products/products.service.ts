@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllProductDto } from './dto/all-product.dto';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -127,7 +127,15 @@ export class ProductsService extends BaseService {
 
   async update(id: number, updateProductDto: UpdateProductDto) {
     try {
-      const productsEntity = await this.findOne(id);
+      const productsEntity = await this.productsRepository.findOne({
+        where: {
+          id,
+        },
+      });
+
+      if (!productsEntity) {
+        throw new NotFoundException('Product not found');
+      }
 
       const categories = await this.categoriesRepository.findOne({
         where: {
@@ -136,14 +144,14 @@ export class ProductsService extends BaseService {
       });
 
       if (!categories) {
-        throw new Error('Category not found');
+        throw new NotFoundException('Category not found');
       }
 
-      await this.productsRepository.save(
+      const updatedProduct = await this.productsRepository.save(
         Object.assign(productsEntity, { ...updateProductDto, categories }),
       );
 
-      return this.createSuccessResponse(productsEntity);
+      return this.createSuccessResponse(updatedProduct);
     } catch (error) {
       throw error;
     }
