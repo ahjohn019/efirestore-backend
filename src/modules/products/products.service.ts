@@ -73,13 +73,6 @@ export class ProductsService extends BaseService {
           ['categories'],
         );
 
-        if (productSearchResponse.errno) {
-          return this.createErrorResponse(
-            productSearchResponse.sqlMessage,
-            productSearchResponse.errno,
-          );
-        }
-
         return this.createSuccessResponse({
           ...productSearchResponse,
           min_price: parseFloat(priceRange.minPrice),
