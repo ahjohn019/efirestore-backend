@@ -1,7 +1,7 @@
 services:
   app:
     command: ./docker/start.sh
-    restart: "no"
+    restart: 'no'
     volumes:
       - ./public:/app/public
     develop:
@@ -33,11 +33,11 @@ services:
       APP_MODE: local
       DATABASE_HOST: mysql
       DATABASE_PORT: 3306
-      DATABASE_RUN_MIGRATIONS: "true"
-      DATABASE_RUN_SEEDS: "true"
-      CHOKIDAR_USEPOLLING: "true"
+      DATABASE_RUN_MIGRATIONS: 'false'
+      DATABASE_RUN_SEEDS: 'false'
+      CHOKIDAR_USEPOLLING: 'true'
       CHOKIDAR_INTERVAL: 1000
-      WATCHPACK_POLLING: "true"
+      WATCHPACK_POLLING: 'true'
       TSC_WATCHFILE: UsePolling
       TSC_WATCHDIRECTORY: UsePolling
-      TSC_NONPOLLING_WATCHER: "false"
+      TSC_NONPOLLING_WATCHER: 'false'
