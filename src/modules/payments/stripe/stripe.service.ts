@@ -19,6 +19,7 @@ import { Users } from 'src/modules/users/entities/users.entity';
 import { UpdateCheckoutStripeDto } from './dto/update-stripe.dto';
 import { UserAddress } from 'src/modules/users/entities/user-address.entity';
 import { AddressType } from 'src/enum/address-type.enum';
+import { Request as ExpressRequest } from 'express';
 
 @Injectable()
 export class StripeService extends BaseStripeService {
@@ -215,6 +216,38 @@ export class StripeService extends BaseStripeService {
     }
   }
 
+  async postWebhook(request: ExpressRequest & { rawBody?: Buffer }) {
+    const signature = request.headers['stripe-signature'];
+
+    if (!request.rawBody || !signature || Array.isArray(signature)) {
+      throw new BadRequestException('Missing Stripe webhook signature.');
+    }
+
+    const event = this.stripe.webhooks.constructEvent(
+      request.rawBody,
+      signature,
+      this.stripeEndpointSecret,
+    );
+
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+
+        if (!session.id) {
+          throw new NotFoundException('Stripe checkout session not found.');
+        }
+
+        const order = await this.syncCheckoutSession(session.id);
+        return this.createSuccessResponse(order);
+      }
+      default:
+        return this.createSuccessResponse({
+          received: true,
+          event_type: event.type,
+        });
+    }
+  }
+
   /**
    * Fetch Stripe Product
    * @param productId
@@ -321,9 +354,10 @@ export class StripeService extends BaseStripeService {
       amount_total,
     } = checkoutGetData;
 
-    const fetchCustomer = await this.stripe.customers.retrieve(
-      String(customer),
-    );
+    const fetchCustomer =
+      typeof customer === 'string'
+        ? await this.stripe.customers.retrieve(customer)
+        : (customer as Stripe.Customer);
 
     const [fetchCustomerAddress, orderLineItems] = await Promise.all([
       this.customerAddresses(fetchCustomer as Stripe.Customer),
@@ -354,5 +388,23 @@ export class StripeService extends BaseStripeService {
       tracking_number: '',
       checkout_stripe_id: id,
     };
+  }
+
+  private async syncCheckoutSession(checkoutId: string) {
+    const session = await this.stripe.checkout.sessions.retrieve(checkoutId);
+    const prepareOrderFields = await this.prepareOrderFields(session);
+    const findStripeOrder =
+      await this.ordersService.findStripeCheckout(checkoutId);
+
+    if (findStripeOrder?.data?.id) {
+      await this.ordersService.update(findStripeOrder.data.id, {
+        status: prepareOrderFields.status,
+      });
+
+      return findStripeOrder.data;
+    }
+
+    const createOrder = await this.ordersService.create(prepareOrderFields);
+    return createOrder.data ?? createOrder;
   }
 }

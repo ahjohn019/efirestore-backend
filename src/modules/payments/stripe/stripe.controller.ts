@@ -1,17 +1,17 @@
 import {
   Controller,
-  Get,
   Post,
   Body,
   UseGuards,
-  Request,
   Put,
+  Req,
 } from '@nestjs/common';
 import { StripeService } from './stripe.service';
 import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { UpdateCheckoutStripeDto } from './dto/update-stripe.dto';
 import { AuthGuard } from '../../../commons/guards/auth';
+import { Request as ExpressRequest } from 'express';
 
 @Controller('stripe')
 export class StripeController {
@@ -41,5 +41,10 @@ export class StripeController {
   @UseGuards(AuthGuard)
   checkoutGetLineItems(@Body() checkoutIdStripeDto: CheckoutIdStripeDto) {
     return this.stripeService.checkoutGetLineItems(checkoutIdStripeDto);
+  }
+
+  @Post('/webhook')
+  postWebhook(@Req() request: ExpressRequest & { rawBody?: Buffer }) {
+    return this.stripeService.postWebhook(request);
   }
 }

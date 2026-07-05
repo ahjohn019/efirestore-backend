@@ -116,6 +116,9 @@ describe('StripeService', () => {
       products: {
         retrieve: jest.fn().mockResolvedValue(mockProduct),
       },
+      customers: {
+        retrieve: jest.fn().mockResolvedValue(mockCheckoutSession.customer),
+      },
       webhooks: {
         constructEvent: jest.fn().mockReturnValue({
           type: 'checkout.session.completed',
@@ -141,6 +144,16 @@ describe('StripeService', () => {
 
     mockOrdersService = {
       create: jest.fn().mockResolvedValue({ success: true }),
+      findStripeCheckout: jest.fn().mockResolvedValue({
+        status: 'success',
+        code: 200,
+        data: null,
+      }),
+      update: jest.fn().mockResolvedValue({
+        status: 'success',
+        code: 200,
+        data: { affected: 1 },
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -365,9 +378,14 @@ describe('StripeService', () => {
         type: 'unknown.event',
       });
 
-      await expect(service.postWebhook(mockRequest)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.postWebhook(mockRequest)).resolves.toEqual({
+        status: 'success',
+        code: 200,
+        data: {
+          received: true,
+          event_type: 'unknown.event',
+        },
+      });
     });
 
     it('should handle missing checkout ID', async () => {
