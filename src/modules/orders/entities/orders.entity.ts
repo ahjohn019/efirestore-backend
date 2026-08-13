@@ -10,6 +10,7 @@ import { Users } from '../../users/entities/users.entity';
 import { BaseEntity } from '../../base/entities/base.entity';
 import { OrderRefunds } from './order-refunds.entity';
 import { Products } from '../../products/entities/products.entity';
+import { Shipments } from './shipments.entity';
 
 @Entity()
 export class Orders extends BaseEntity {
@@ -63,6 +64,9 @@ export class Orders extends BaseEntity {
 
   @OneToOne(() => OrderRefunds, (orderRefunds) => orderRefunds.orders)
   refunds: OrderRefunds;
+
+  @OneToMany(() => Shipments, (shipment) => shipment.order)
+  shipments: Shipments[];
 
   @Column()
   checkout_stripe_id: string;

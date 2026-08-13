@@ -5,10 +5,7 @@ import {
   HttpException,
 } from '@nestjs/common';
 import { CreateStripeDto } from './dto/create-stripe.dto';
-import {
-  CheckoutIdStripeDto,
-  CheckoutLineItemsStripeDto,
-} from './dto/checkout-stripe.dto';
+import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { OrdersService } from '../../orders/orders.service';
@@ -57,7 +54,7 @@ export class StripeService extends BaseStripeService {
         throw error;
       }
 
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -129,7 +126,7 @@ export class StripeService extends BaseStripeService {
 
       return this.createSuccessResponse(session);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -169,7 +166,7 @@ export class StripeService extends BaseStripeService {
       if (error instanceof HttpException) {
         throw error;
       }
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -178,7 +175,7 @@ export class StripeService extends BaseStripeService {
       const findStripeCheckouts = await this.stripe.checkout.sessions.list();
       return this.createSuccessResponse(findStripeCheckouts);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -196,7 +193,7 @@ export class StripeService extends BaseStripeService {
 
       return this.createSuccessResponse(session);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -212,7 +209,7 @@ export class StripeService extends BaseStripeService {
       );
       return this.createSuccessResponse(session);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -258,7 +255,7 @@ export class StripeService extends BaseStripeService {
       const fetchProduct = await this.stripe.products.retrieve(productId);
       return this.createSuccessResponse(fetchProduct);
     } catch (error) {
-      return this.createErrorResponse(error.message);
+      throw error;
     }
   }
 
@@ -268,16 +265,9 @@ export class StripeService extends BaseStripeService {
    * @returns
    */
   async productDetailList(getProductIdList: string[]) {
-    const productDetailList = [];
-
-    await Promise.all(
-      getProductIdList.map(async (productId: string) => {
-        const productMetaData = await this.fetchProduct(productId);
-        productDetailList.push(productMetaData);
-      }),
+    return Promise.all(
+      getProductIdList.map((productId) => this.fetchProduct(productId)),
     );
-
-    return productDetailList;
   }
 
   /**
@@ -318,15 +308,28 @@ export class StripeService extends BaseStripeService {
       checkoutId: id,
     });
 
-    const getProductIdList = data.map(
-      (item: CheckoutLineItemsStripeDto) => item.price.product,
-    );
+    const getProductIdList = data.map(({ price }) => {
+      if (!price) {
+        throw new BadRequestException('Stripe line item is missing its price.');
+      }
+
+      return typeof price.product === 'string'
+        ? price.product
+        : price.product.id;
+    });
 
     const productDetailList = await this.productDetailList(getProductIdList);
 
-    return data.map((item: CheckoutLineItemsStripeDto, index: number) => {
+    return data.map((item, index) => {
       const { quantity, price, amount_subtotal } = item;
-      const { id: productId } = productDetailList[index].data.metadata || {};
+
+      if (!price || price.unit_amount === null || quantity === null) {
+        throw new BadRequestException(
+          'Stripe line item has incomplete price or quantity data.',
+        );
+      }
+
+      const productId = Number(productDetailList[index].data.metadata?.id);
 
       return {
         unit_price: parseFloat((price.unit_amount / 100).toFixed(2)),
