@@ -17,6 +17,7 @@ import { UpdateCheckoutStripeDto } from './dto/update-stripe.dto';
 import { UserAddress } from 'src/modules/users/entities/user-address.entity';
 import { AddressType } from 'src/enum/address-type.enum';
 import { Request as ExpressRequest } from 'express';
+import { Session } from 'node:inspector';
 
 @Injectable()
 export class StripeService extends BaseStripeService {
@@ -395,6 +396,12 @@ export class StripeService extends BaseStripeService {
 
   private async syncCheckoutSession(checkoutId: string) {
     const session = await this.stripe.checkout.sessions.retrieve(checkoutId);
+    const fetchCourierData = await this.stripe.shippingRates.retrieve(
+      session.shipping_cost.shipping_rate as string,
+    );
+
+    console.log('session', fetchCourierData);
+
     const prepareOrderFields = await this.prepareOrderFields(session);
     const findStripeOrder =
       await this.ordersService.findStripeCheckout(checkoutId);

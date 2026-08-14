@@ -1,9 +1,8 @@
-import { DataSource } from 'typeorm';
-import { Seeder, SeederFactoryManager } from 'typeorm-extension';
+import type { DataSource } from 'typeorm';
+import type { Seeder, SeederFactoryManager } from 'typeorm-extension';
 import { Products } from '../../modules/products/entities/products.entity';
 import { Categories } from '../../modules/categories/entities/categories.entity';
 import { Images } from '../../modules/images/entities/images.entity';
-import * as dayjs from 'dayjs';
 import { PRODUCT_CATALOG } from '../seed-data/products.catalog';
 
 export class ProductsSeeder1725618100032 implements Seeder {
@@ -26,7 +25,7 @@ export class ProductsSeeder1725618100032 implements Seeder {
       order: { id: 'ASC' },
     });
 
-    const currentDate = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    const currentDate = new Date();
     const productRows = PRODUCT_CATALOG.map((item, index) => {
       const category =
         categories.length > 0 ? categories[index % categories.length] : null;
@@ -41,8 +40,8 @@ export class ProductsSeeder1725618100032 implements Seeder {
         description: item.description,
         price: Number((25 + index * 2.5).toFixed(2)),
         categories: category,
-        created_at: new Date(currentDate),
-        updated_at: new Date(currentDate),
+        created_at: currentDate,
+        updated_at: currentDate,
       });
     });
 
@@ -61,8 +60,8 @@ export class ProductsSeeder1725618100032 implements Seeder {
         destination: 'public/uploads/products',
         entity_id: product.id,
         entity_type: 'product',
-        created_at: new Date(currentDate),
-        updated_at: new Date(currentDate),
+        created_at: currentDate,
+        updated_at: currentDate,
       };
     });
 
