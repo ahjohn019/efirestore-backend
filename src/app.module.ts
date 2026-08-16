@@ -18,6 +18,7 @@ import { StripeModule } from './modules/payments/stripe/stripe.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronjobsModule } from './cronjobs/cronjobs.module';
+import { EasyparcelModule } from './modules/easyparcel/easyparcel.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -40,6 +41,7 @@ import { CronjobsModule } from './cronjobs/cronjobs.module';
     OrdersModule,
     ScheduleModule.forRoot(),
     CronjobsModule,
+    EasyparcelModule,
   ],
   controllers: [AppController],
   providers: [AppService, IsUnique],
