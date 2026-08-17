@@ -1,9 +1,11 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
-import { LoginEasyparcelDto } from './dto/login-easyparcel.dto';
+import { Repository } from 'typeorm';
 import { ShipmentQuotationDto } from './dto/shipment-quotation.dto';
+import { SubmitOrderDto } from './dto/submit-order.dto';
+import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 
 interface EasyparcelQuotation {
   courier: {
@@ -28,51 +30,89 @@ interface EasyparcelQuotationResponse {
 export class EasyparcelService {
   constructor(
     private readonly httpService: HttpService,
-    private readonly configService: ConfigService,
+    @InjectRepository(EasyParcelAuth)
+    private readonly easyParcelAuthRepository: Repository<EasyParcelAuth>,
   ) {}
 
-  async login(payload: LoginEasyparcelDto) {
-    const form = new URLSearchParams();
-    form.append('grant_type', 'refresh_token');
-    form.append('refresh_token', payload.refresh_token);
-    form.append(
-      'redirect_uri',
-      this.configService.getOrThrow<string>('EASY_PARCEL_REDIRECT_URL'),
-    );
+  async login() {
+    try {
+      const easyParcelAuth = await this.easyParcelAuthRepository.findOne({
+        order: { id: 'DESC' },
+      });
 
-    const response = await firstValueFrom(
-      this.httpService.post('oauth/token', form, {
-        headers: {
-          Authorization:
-            'Basic ' +
-            this.configService.getOrThrow<string>('EASY_PARCEL_AUTH_KEY'),
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }),
-    );
+      if (!easyParcelAuth) {
+        throw new InternalServerErrorException(
+          'EasyParcel authentication record not found.',
+        );
+      }
 
-    return { status: true, data: response.data };
+      const form = new URLSearchParams();
+      form.append('grant_type', 'refresh_token');
+      form.append('refresh_token', easyParcelAuth.refresh_token);
+      form.append('redirect_uri', easyParcelAuth.redirect_url);
+
+      const response = await firstValueFrom(
+        this.httpService.post('oauth/token', form, {
+          headers: {
+            Authorization: 'Basic ' + easyParcelAuth.auth_token,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }),
+      );
+
+      return { status: true, data: response.data };
+    } catch (error) {
+      throw error;
+    }
   }
 
   async getStripeShipmentQuotations(payload: ShipmentQuotationDto) {
     try {
+      const easyParcelAuth = await this.easyParcelAuthRepository.findOne({
+        order: { id: 'DESC' },
+      });
+
       const url =
-        this.configService.getOrThrow<string>('EASY_PARCEL_ENDPOINT') +
-        this.configService.getOrThrow<string>('EASY_PARCEL_VERSION') +
+        easyParcelAuth.endpoint +
+        easyParcelAuth.version +
         `shipment/quotations`;
 
       const response = await firstValueFrom(
         this.httpService.post(url, payload, {
           headers: {
-            Authorization:
-              'Bearer ' +
-              this.configService.getOrThrow<string>('EASY_PARCEL_ACCESS_TOKEN'),
+            Authorization: 'Bearer ' + easyParcelAuth.auth_token,
             'Content-Type': 'application/json',
           },
         }),
       );
 
       return { status: true, data: this.toShippingRates(response.data) };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async submitOrder(payload: SubmitOrderDto) {
+    try {
+      const easyParcelAuth = await this.easyParcelAuthRepository.findOne({
+        order: { id: 'DESC' },
+      });
+
+      const url =
+        easyParcelAuth.endpoint +
+        easyParcelAuth.version +
+        'shipment/submit_orders';
+
+      const response = await firstValueFrom(
+        this.httpService.post(url, payload, {
+          headers: {
+            Authorization: 'Bearer ' + easyParcelAuth.auth_token,
+            'Content-Type': 'application/json',
+          },
+        }),
+      );
+
+      return { status: true, data: response.data };
     } catch (error) {
       throw error;
     }

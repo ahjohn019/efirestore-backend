@@ -1,27 +1,40 @@
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { AxiosResponse } from 'axios';
 import { of } from 'rxjs';
 import { EasyparcelService } from './easyparcel.service';
+import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 
 describe('EasyparcelService', () => {
   let service: EasyparcelService;
   let httpService: { post: jest.Mock };
+  let easyParcelAuthRepository: { findOne: jest.Mock };
 
   beforeEach(async () => {
     httpService = { post: jest.fn() };
+    easyParcelAuthRepository = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 1,
+        auth_token: 'database-auth-token',
+        refresh_token: 'database-refresh-token',
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EasyparcelService,
         { provide: HttpService, useValue: httpService },
         {
+          provide: getRepositoryToken(EasyParcelAuth),
+          useValue: easyParcelAuthRepository,
+        },
+        {
           provide: ConfigService,
           useValue: {
             getOrThrow: jest.fn((key: string) => {
               const config = {
-                EASY_PARCEL_AUTH_KEY: 'credentials',
                 EASY_PARCEL_ACCESS_TOKEN: 'access-token',
                 EASY_PARCEL_ENDPOINT: 'https://api.easyparcel.com/',
                 EASY_PARCEL_REDIRECT_URL: 'https://example.com/callback',
@@ -56,7 +69,7 @@ describe('EasyparcelService', () => {
       expect.any(URLSearchParams),
       {
         headers: {
-          Authorization: 'Basic credentials',
+          Authorization: 'Basic database-auth-token',
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       },
@@ -66,6 +79,20 @@ describe('EasyparcelService', () => {
     expect(form.toString()).toBe(
       'grant_type=refresh_token&refresh_token=refresh-token&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
     );
+    expect(easyParcelAuthRepository.findOne).toHaveBeenCalledWith({
+      order: { id: 'DESC' },
+    });
+  });
+
+  it('rejects login when no EasyParcel authentication record exists', async () => {
+    easyParcelAuthRepository.findOne.mockResolvedValue(null);
+
+    await expect(
+      service.login({
+        refresh_token: 'refresh-token',
+      }),
+    ).rejects.toThrow('EasyParcel authentication record not found.');
+    expect(httpService.post).not.toHaveBeenCalled();
   });
 
   it('posts shipment quotation requests to the configured API version', async () => {
@@ -164,6 +191,87 @@ describe('EasyparcelService', () => {
     );
     expect(httpService.post).toHaveBeenCalledWith(
       'https://api.easyparcel.com/open_api/2026-06/shipment/quotations',
+      payload,
+      {
+        headers: {
+          Authorization: 'Bearer access-token',
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+  });
+
+  it('submits an order using the EasyParcel shipment order payload', async () => {
+    const payload = {
+      shipment: [
+        {
+          service_id: 'EP-CS09R',
+          collection_date: '2026-08-17',
+          weight: 0.5,
+          height: 10,
+          length: 10,
+          width: 10,
+          item: [
+            {
+              content: 'Electronics 2',
+              weight: 0.5,
+              height: 100,
+              length: 100,
+              width: 100,
+              currency_code: 'MYR',
+              value: 200,
+              quantity: 1,
+              insurance_purchase: {
+                insurance_service_id: 23,
+                invoices: 'https://example.com/invoice.webp',
+                photos: 'https://example.com/photo.jpg',
+              },
+            },
+          ],
+          sender: {
+            name: 'John Doe',
+            phone_number_country_code: 'MY',
+            phone_number: '1163642281',
+            alternate_phone_number: '1163642281',
+            alternate_phone_number_country_code: 'MY',
+            email: 'sender@example.com',
+            company_name: 'ABC Corp',
+            address_1: '123 Main St',
+            address_2: 'Suite 1',
+            city: 'Penang',
+            subdivision_code: 'MY-07',
+            postcode: '10150',
+            country_code: 'MY',
+          },
+          receiver: {
+            name: 'Jane Smith',
+            phone_number_country_code: 'MY',
+            phone_number: '1163642281',
+            email: 'receiver@example.com',
+            address_1: '456 High St',
+            city: 'Bayan Lepas',
+            subdivision_code: 'MY-07',
+            postcode: '10150',
+            country_code: 'MY',
+          },
+          feature: {
+            cod: { cod_amount: '', cod_currency: '' },
+            email_tracking: false,
+            whatsapp_tracking: 1 as const,
+            awb_branding: false,
+          },
+        },
+      ],
+    };
+    const response = { data: { data: [{ order_number: 'EP123' }] } };
+    httpService.post.mockReturnValue(of(response));
+
+    await expect(service.submitOrder(payload)).resolves.toEqual({
+      status: true,
+      data: response.data,
+    });
+    expect(httpService.post).toHaveBeenCalledWith(
+      'https://api.easyparcel.com/open_api/2026-06/shipment/submit_orders',
       payload,
       {
         headers: {
