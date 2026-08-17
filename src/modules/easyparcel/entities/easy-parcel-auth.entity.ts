@@ -7,6 +7,9 @@ export class EasyParcelAuth extends BaseEntity {
   auth_token: string;
 
   @Column({ type: 'text' })
+  auth_key: string;
+
+  @Column({ type: 'text' })
   refresh_token: string;
 
   @Column({ type: 'varchar' })
@@ -17,4 +20,7 @@ export class EasyParcelAuth extends BaseEntity {
 
   @Column({ type: 'varchar' })
   version: string;
+
+  @Column({ type: 'varchar', default: 'demo' })
+  type: string;
 }

@@ -44,6 +44,11 @@ export class CreateEasyParcelAuthTable1786941606994
             length: '255',
           },
           {
+            name: 'type',
+            type: 'varchar',
+            length: '255',
+          },
+          {
             name: 'created_at',
             type: 'timestamp',
             default: 'CURRENT_TIMESTAMP',

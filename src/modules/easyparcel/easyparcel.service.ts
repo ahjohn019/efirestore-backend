@@ -1,8 +1,10 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
+import { LoginDto } from './dto/login.dto';
 import { ShipmentQuotationDto } from './dto/shipment-quotation.dto';
 import { SubmitOrderDto } from './dto/submit-order.dto';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
@@ -32,13 +34,21 @@ export class EasyparcelService {
     private readonly httpService: HttpService,
     @InjectRepository(EasyParcelAuth)
     private readonly easyParcelAuthRepository: Repository<EasyParcelAuth>,
+    private readonly configService: ConfigService,
   ) {}
 
-  async login() {
+  async fetchEasyParcelAuth() {
+    return await this.easyParcelAuthRepository.findOne({
+      where: {
+        type: this.configService.getOrThrow<string>('EASY_PARCEL_ENVIRONMENT'),
+      },
+      order: { id: 'DESC' },
+    });
+  }
+
+  async login(payload: LoginDto) {
     try {
-      const easyParcelAuth = await this.easyParcelAuthRepository.findOne({
-        order: { id: 'DESC' },
-      });
+      const easyParcelAuth = await this.fetchEasyParcelAuth();
 
       if (!easyParcelAuth) {
         throw new InternalServerErrorException(
@@ -47,18 +57,30 @@ export class EasyparcelService {
       }
 
       const form = new URLSearchParams();
-      form.append('grant_type', 'refresh_token');
-      form.append('refresh_token', easyParcelAuth.refresh_token);
+      form.append('grant_type', payload.grant_type);
+      form.append(
+        payload.grant_type === 'refresh_token' ? 'refresh_token' : 'code',
+        payload.type === 'refresh_token'
+          ? easyParcelAuth.refresh_token
+          : easyParcelAuth.auth_token,
+      );
       form.append('redirect_uri', easyParcelAuth.redirect_url);
 
       const response = await firstValueFrom(
         this.httpService.post('oauth/token', form, {
           headers: {
-            Authorization: 'Basic ' + easyParcelAuth.auth_token,
+            Authorization: 'Basic ' + easyParcelAuth.auth_key,
             'Content-Type': 'application/x-www-form-urlencoded',
           },
         }),
       );
+
+      const tokenData = {
+        auth_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+      };
+
+      await this.easyParcelAuthRepository.update(easyParcelAuth.id, tokenData);
 
       return { status: true, data: response.data };
     } catch (error) {
@@ -66,24 +88,40 @@ export class EasyparcelService {
     }
   }
 
+  async submitEndpoint(
+    accessToken: string,
+    url: string,
+    payload: SubmitOrderDto | ShipmentQuotationDto,
+  ) {
+    return await firstValueFrom(
+      this.httpService.post(url, payload, {
+        headers: {
+          Authorization: 'Bearer ' + accessToken,
+          'Content-Type': 'application/json',
+        },
+      }),
+    );
+  }
+
   async getStripeShipmentQuotations(payload: ShipmentQuotationDto) {
     try {
-      const easyParcelAuth = await this.easyParcelAuthRepository.findOne({
-        order: { id: 'DESC' },
-      });
+      const easyParcelAuth = await this.fetchEasyParcelAuth();
+
+      if (!easyParcelAuth) {
+        throw new InternalServerErrorException(
+          'EasyParcel authentication record not found.',
+        );
+      }
 
       const url =
         easyParcelAuth.endpoint +
         easyParcelAuth.version +
         `shipment/quotations`;
 
-      const response = await firstValueFrom(
-        this.httpService.post(url, payload, {
-          headers: {
-            Authorization: 'Bearer ' + easyParcelAuth.auth_token,
-            'Content-Type': 'application/json',
-          },
-        }),
+      const response = await this.submitEndpoint(
+        easyParcelAuth.auth_token,
+        url,
+        payload,
       );
 
       return { status: true, data: this.toShippingRates(response.data) };
@@ -93,28 +131,43 @@ export class EasyparcelService {
   }
 
   async submitOrder(payload: SubmitOrderDto) {
+    const easyParcelAuth = await this.fetchEasyParcelAuth();
+
+    if (!easyParcelAuth) {
+      throw new InternalServerErrorException(
+        'EasyParcel authentication record not found.',
+      );
+    }
+
+    const url =
+      easyParcelAuth.endpoint +
+      easyParcelAuth.version +
+      'shipment/submit_orders';
+
     try {
-      const easyParcelAuth = await this.easyParcelAuthRepository.findOne({
-        order: { id: 'DESC' },
-      });
-
-      const url =
-        easyParcelAuth.endpoint +
-        easyParcelAuth.version +
-        'shipment/submit_orders';
-
-      const response = await firstValueFrom(
-        this.httpService.post(url, payload, {
-          headers: {
-            Authorization: 'Bearer ' + easyParcelAuth.auth_token,
-            'Content-Type': 'application/json',
-          },
-        }),
+      const response = await this.submitEndpoint(
+        easyParcelAuth.auth_token,
+        url,
+        payload,
       );
 
       return { status: true, data: response.data };
     } catch (error) {
-      throw error;
+      const loginResponse = await this.login({
+        grant_type: 'refresh_token',
+        type: 'refresh_token',
+      });
+      const newAccessToken = loginResponse.data?.access_token;
+
+      if (!newAccessToken) {
+        throw new InternalServerErrorException(
+          'EasyParcel token refresh did not return an access token.',
+        );
+      }
+
+      const response = await this.submitEndpoint(newAccessToken, url, payload);
+
+      return { status: true, data: response.data };
     }
   }
 

@@ -3,14 +3,17 @@ import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AxiosResponse } from 'axios';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { EasyparcelService } from './easyparcel.service';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 
 describe('EasyparcelService', () => {
   let service: EasyparcelService;
   let httpService: { post: jest.Mock };
-  let easyParcelAuthRepository: { findOne: jest.Mock };
+  let easyParcelAuthRepository: {
+    findOne: jest.Mock;
+    update: jest.Mock;
+  };
 
   beforeEach(async () => {
     httpService = { post: jest.fn() };
@@ -18,8 +21,14 @@ describe('EasyparcelService', () => {
       findOne: jest.fn().mockResolvedValue({
         id: 1,
         auth_token: 'database-auth-token',
+        auth_key: 'database-auth-key',
         refresh_token: 'database-refresh-token',
+        code: 'database-code',
+        redirect_url: 'https://example.com/callback',
+        endpoint: 'https://api.easyparcel.com/',
+        version: 'open_api/2026-06/',
       }),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -37,6 +46,7 @@ describe('EasyparcelService', () => {
               const config = {
                 EASY_PARCEL_ACCESS_TOKEN: 'access-token',
                 EASY_PARCEL_ENDPOINT: 'https://api.easyparcel.com/',
+                EASY_PARCEL_ENVIRONMENT: 'demo',
                 EASY_PARCEL_REDIRECT_URL: 'https://example.com/callback',
                 EASY_PARCEL_VERSION: 'open_api/2026-06/',
               };
@@ -53,10 +63,14 @@ describe('EasyparcelService', () => {
   it('posts the login payload to the EasyParcel OAuth token endpoint', async () => {
     const payload = {
       grant_type: 'refresh_token' as const,
-      refresh_token: 'refresh-token',
+      type: 'refresh_token',
     };
     const response = {
-      data: { access_token: 'access-token', token_type: 'Bearer' },
+      data: {
+        access_token: 'access-token',
+        refresh_token: 'new-refresh-token',
+        token_type: 'Bearer',
+      },
     } as AxiosResponse;
     httpService.post.mockReturnValue(of(response));
 
@@ -69,7 +83,7 @@ describe('EasyparcelService', () => {
       expect.any(URLSearchParams),
       {
         headers: {
-          Authorization: 'Basic database-auth-token',
+          Authorization: 'Basic database-auth-key',
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       },
@@ -77,10 +91,15 @@ describe('EasyparcelService', () => {
 
     const form = httpService.post.mock.calls[0][1] as URLSearchParams;
     expect(form.toString()).toBe(
-      'grant_type=refresh_token&refresh_token=refresh-token&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
+      'grant_type=refresh_token&refresh_token=database-refresh-token&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
     );
     expect(easyParcelAuthRepository.findOne).toHaveBeenCalledWith({
+      where: { type: 'demo' },
       order: { id: 'DESC' },
+    });
+    expect(easyParcelAuthRepository.update).toHaveBeenCalledWith(1, {
+      auth_token: 'access-token',
+      refresh_token: 'new-refresh-token',
     });
   });
 
@@ -89,10 +108,28 @@ describe('EasyparcelService', () => {
 
     await expect(
       service.login({
-        refresh_token: 'refresh-token',
+        grant_type: 'refresh_token',
+        type: 'refresh-token',
       }),
     ).rejects.toThrow('EasyParcel authentication record not found.');
     expect(httpService.post).not.toHaveBeenCalled();
+  });
+
+  it('posts an authorization code using the stored authentication value', async () => {
+    const response = {
+      data: { access_token: 'access-token', token_type: 'Bearer' },
+    } as AxiosResponse;
+    httpService.post.mockReturnValue(of(response));
+
+    await service.login({
+      grant_type: 'authorization_code',
+      type: 'easyparcel',
+    });
+
+    const form = httpService.post.mock.calls[0][1] as URLSearchParams;
+    expect(form.toString()).toBe(
+      'grant_type=authorization_code&code=database-auth-token&redirect_uri=https%3A%2F%2Fexample.com%2Fcallback',
+    );
   });
 
   it('posts shipment quotation requests to the configured API version', async () => {
@@ -194,7 +231,7 @@ describe('EasyparcelService', () => {
       payload,
       {
         headers: {
-          Authorization: 'Bearer access-token',
+          Authorization: 'Bearer database-auth-token',
           'Content-Type': 'application/json',
         },
       },
@@ -275,7 +312,36 @@ describe('EasyparcelService', () => {
       payload,
       {
         headers: {
-          Authorization: 'Bearer access-token',
+          Authorization: 'Bearer database-auth-token',
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    httpService.post.mockReset();
+    httpService.post
+      .mockReturnValueOnce(throwError(() => new Error('Unauthorized')))
+      .mockReturnValueOnce(of(response));
+    jest.spyOn(service, 'login').mockResolvedValue({
+      status: true,
+      data: { access_token: 'refreshed-access-token' },
+    });
+
+    await expect(service.submitOrder(payload)).resolves.toEqual({
+      status: true,
+      data: response.data,
+    });
+    expect(service.login).toHaveBeenCalledWith({
+      grant_type: 'refresh_token',
+      type: 'refresh_token',
+    });
+    expect(httpService.post).toHaveBeenNthCalledWith(
+      2,
+      'https://api.easyparcel.com/open_api/2026-06/shipment/submit_orders',
+      payload,
+      {
+        headers: {
+          Authorization: 'Bearer refreshed-access-token',
           'Content-Type': 'application/json',
         },
       },
