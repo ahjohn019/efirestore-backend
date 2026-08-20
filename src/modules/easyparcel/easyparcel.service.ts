@@ -11,27 +11,12 @@ import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto';
 import { ShipmentQuotationDto } from './dto/shipment-quotation.dto';
-import { SubmitOrderDto, EasyParcelError } from './dto/submit-order.dto';
+import {
+  SubmitOrderDto,
+  EasyParcelError,
+  EasyParcelQuotationResponse,
+} from './dto/submit-order.dto';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
-
-interface EasyparcelQuotation {
-  courier: {
-    service_name: string;
-    courier_name: string;
-    courier_code?: string;
-    service_id?: string;
-    delivery_duration: string | null;
-    courier_id?: string;
-  };
-  pricing: {
-    currency: string;
-    total_amount: string;
-  };
-}
-
-interface EasyparcelQuotationResponse {
-  data?: Array<{ quotations?: EasyparcelQuotation[] }>;
-}
 
 @Injectable()
 export class EasyparcelService {
@@ -182,7 +167,7 @@ export class EasyparcelService {
     return { status: true, data: response.data };
   }
 
-  private toShippingRates(response: EasyparcelQuotationResponse) {
+  private toShippingRates(response: EasyParcelQuotationResponse) {
     const fetchQuotations = response.data?.[0]?.quotations ?? [];
 
     return fetchQuotations.map((quotation) => {

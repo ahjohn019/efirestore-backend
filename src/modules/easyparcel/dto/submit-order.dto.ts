@@ -203,3 +203,22 @@ export interface EasyParcelError {
   status?: number;
   message?: string;
 }
+
+export interface EasyParcelQuotation {
+  courier: {
+    service_name: string;
+    courier_name: string;
+    courier_code?: string;
+    service_id?: string;
+    delivery_duration: string | null;
+    courier_id?: string;
+  };
+  pricing: {
+    currency: string;
+    total_amount: string;
+  };
+}
+
+export interface EasyParcelQuotationResponse {
+  data?: Array<{ quotations?: EasyParcelQuotation[] }>;
+}
