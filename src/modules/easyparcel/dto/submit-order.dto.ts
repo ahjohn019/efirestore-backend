@@ -190,9 +190,16 @@ export class SubmitOrderShipmentDto {
 }
 
 export class SubmitOrderDto {
+  order_id: number;
+
   @IsArray()
   @ArrayNotEmpty()
   @ValidateNested({ each: true })
   @Type(() => SubmitOrderShipmentDto)
   shipment: SubmitOrderShipmentDto[];
+}
+
+export interface EasyParcelError {
+  status?: number;
+  message?: string;
 }
