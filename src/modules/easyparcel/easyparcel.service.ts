@@ -11,12 +11,18 @@ import { firstValueFrom } from 'rxjs';
 import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto';
 import { ShipmentQuotationDto } from './dto/shipment-quotation.dto';
+import { ShipmentTrackingDto } from './dto/shipment-tracking.dto';
 import {
   SubmitOrderDto,
   EasyParcelError,
   EasyParcelQuotationResponse,
+  EasyParcelSubmitOrderResponse,
 } from './dto/submit-order.dto';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
+import {
+  Shipments,
+  ShipmentTrackingEvents,
+} from '../orders/entities/shipments.entity';
 
 @Injectable()
 export class EasyparcelService {
@@ -24,6 +30,10 @@ export class EasyparcelService {
     private readonly httpService: HttpService,
     @InjectRepository(EasyParcelAuth)
     private readonly easyParcelAuthRepository: Repository<EasyParcelAuth>,
+    @InjectRepository(Shipments)
+    private readonly shipmentsRepository: Repository<Shipments>,
+    @InjectRepository(ShipmentTrackingEvents)
+    private readonly shipmentTrackingEventsRepository: Repository<ShipmentTrackingEvents>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -90,7 +100,7 @@ export class EasyparcelService {
   private async submitEndpoint(
     accessToken: string,
     url: string,
-    payload: SubmitOrderDto | ShipmentQuotationDto,
+    payload: SubmitOrderDto | ShipmentQuotationDto | ShipmentTrackingDto,
   ) {
     return await firstValueFrom(
       this.httpService.post(url, payload, {
@@ -130,26 +140,25 @@ export class EasyparcelService {
         payload,
       );
 
-      if (response.data?.data[0]?.shipments[0]?.status == 'error') {
-        throw new UnprocessableEntityException(
-          response.data?.data[0]?.shipments[0]?.errors?.[0]?.[0]?.message ||
-            'EasyParcel shipment submission failed',
-        );
-      }
+      await this.handleSubmitOrderResponse(payload, response.data);
 
       return { status: true, data: response.data };
     } catch (error) {
       const easyParcelError = error as EasyParcelError;
 
       if (easyParcelError.status === HttpStatus.UNAUTHORIZED) {
-        return await this.refreshTokenIfNeeded(url, payload);
+        const response = await this.refreshTokenIfNeeded(url, payload);
+        await this.handleSubmitOrderResponse(payload, response.data);
       } else {
         throw error;
       }
     }
   }
 
-  private async refreshTokenIfNeeded(url: string, payload: SubmitOrderDto) {
+  private async refreshTokenIfNeeded(
+    url: string,
+    payload: SubmitOrderDto | ShipmentTrackingDto,
+  ) {
     const loginResponse = await this.login({
       grant_type: 'refresh_token',
       type: 'refresh_token',
@@ -165,6 +174,114 @@ export class EasyparcelService {
     const response = await this.submitEndpoint(newAccessToken, url, payload);
 
     return { status: true, data: response.data };
+  }
+
+  async fetchTrackingStatus(trackingNumber: ShipmentTrackingDto) {
+    const easyParcelAuth = await this.fetchEasyParcelAuth();
+    const url = await this.buildEasyParcelUrl('shipment/tracking_status');
+
+    try {
+      const response = await this.submitEndpoint(
+        easyParcelAuth.auth_token,
+        url,
+        trackingNumber,
+      );
+
+      return { status: true, data: response.data };
+    } catch (error) {
+      const easyParcelError = error as EasyParcelError;
+
+      if (easyParcelError.status === HttpStatus.UNAUTHORIZED) {
+        return await this.refreshTokenIfNeeded(url, trackingNumber);
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  private async handleSubmitOrderResponse(
+    payload: SubmitOrderDto,
+    responseData: EasyParcelSubmitOrderResponse,
+  ) {
+    const failedShipment = responseData.data?.[0]?.shipments.find(
+      (shipment) => shipment.status?.toLowerCase() === 'error',
+    );
+
+    if (failedShipment) {
+      throw new UnprocessableEntityException(
+        failedShipment.errors?.[0]?.[0]?.message ||
+          'EasyParcel shipment submission failed',
+      );
+    }
+
+    await this.saveShipments(payload, responseData);
+  }
+
+  private async saveShipments(payload: SubmitOrderDto, responseData: unknown) {
+    const eventTime = new Date();
+    const responseShipments = responseData?.[0]?.shipments;
+
+    const shipments = payload.shipment.map((requestedShipment, index) => {
+      const responseShipment = responseShipments[index] ?? {};
+      const trackingNumber = responseShipment.shipment_number;
+
+      if (!trackingNumber) {
+        throw new InternalServerErrorException(
+          'EasyParcel response did not include a shipment tracking number.',
+        );
+      }
+
+      const courier = responseShipment.courier;
+      const serviceType = requestedShipment.service_id;
+      const shipmentStatus = responseShipment.status ?? 'pending';
+
+      const fetchTrackingStatus = this.fetchTrackingStatus(
+        { awb_numbers: [responseShipment.awb_number] },
+      );
+
+      const trackingEvent = this.shipmentTrackingEventsRepository.create({
+        status: shipmentStatus,
+        courier_status: shipmentStatus,
+        description:
+          this.firstString(responseShipment, ['remarks', 'description']) ??
+          'Shipment submitted to EasyParcel',
+        location: this.firstString(responseShipment, ['location']),
+        event_time: eventTime,
+        raw_data: responseShipment,
+      });
+
+      return this.shipmentsRepository.create({
+        order_id: payload.order_id,
+        courier,
+        service_type: serviceType,
+        tracking_number: trackingNumber,
+        shipment_status: shipmentStatus,
+        courier_reference: this.firstString(responseShipment, [
+          'courier_reference',
+          'order_number',
+          'parcel_number',
+        ]),
+        label_url: this.firstString(responseShipment, [
+          'label_url',
+          'awb_id_link',
+        ]),
+        shipped_at: null,
+        delivered_at: null,
+        last_tracking_at: eventTime,
+        tracking_events: [trackingEvent],
+      });
+    });
+
+    await this.shipmentsRepository.save(shipments);
+  }
+
+  private firstString(record: Record<string, unknown>, keys: string[]) {
+    for (const key of keys) {
+      const value = record[key];
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+
+    return null;
   }
 
   private toShippingRates(response: EasyParcelQuotationResponse) {

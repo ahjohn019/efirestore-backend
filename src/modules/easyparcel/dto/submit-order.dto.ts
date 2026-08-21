@@ -190,6 +190,8 @@ export class SubmitOrderShipmentDto {
 }
 
 export class SubmitOrderDto {
+  @IsInt()
+  @IsPositive()
   order_id: number;
 
   @IsArray()
@@ -221,4 +223,13 @@ export interface EasyParcelQuotation {
 
 export interface EasyParcelQuotationResponse {
   data?: Array<{ quotations?: EasyParcelQuotation[] }>;
+}
+
+export interface EasyParcelSubmitOrderResponse {
+  data?: Array<{
+    shipments?: Array<{
+      status?: string;
+      errors?: Array<Array<{ message?: string }>>;
+    }>;
+  }>;
 }

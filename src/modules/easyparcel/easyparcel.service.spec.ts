@@ -1,4 +1,5 @@
 import { HttpService } from '@nestjs/axios';
+import { HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -6,6 +7,10 @@ import { AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
 import { EasyparcelService } from './easyparcel.service';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
+import {
+  Shipments,
+  ShipmentTrackingEvents,
+} from '../orders/entities/shipments.entity';
 
 describe('EasyparcelService', () => {
   let service: EasyparcelService;
@@ -14,6 +19,8 @@ describe('EasyparcelService', () => {
     findOne: jest.Mock;
     update: jest.Mock;
   };
+  let shipmentsRepository: { create: jest.Mock; save: jest.Mock };
+  let shipmentTrackingEventsRepository: { create: jest.Mock };
 
   beforeEach(async () => {
     httpService = { post: jest.fn() };
@@ -30,6 +37,13 @@ describe('EasyparcelService', () => {
       }),
       update: jest.fn().mockResolvedValue({ affected: 1 }),
     };
+    shipmentsRepository = {
+      create: jest.fn((shipment) => shipment),
+      save: jest.fn().mockResolvedValue([]),
+    };
+    shipmentTrackingEventsRepository = {
+      create: jest.fn((event) => event),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -38,6 +52,14 @@ describe('EasyparcelService', () => {
         {
           provide: getRepositoryToken(EasyParcelAuth),
           useValue: easyParcelAuthRepository,
+        },
+        {
+          provide: getRepositoryToken(Shipments),
+          useValue: shipmentsRepository,
+        },
+        {
+          provide: getRepositoryToken(ShipmentTrackingEvents),
+          useValue: shipmentTrackingEventsRepository,
         },
         {
           provide: ConfigService,
@@ -240,6 +262,7 @@ describe('EasyparcelService', () => {
 
   it('submits an order using the EasyParcel shipment order payload', async () => {
     const payload = {
+      order_id: 42,
       shipment: [
         {
           service_id: 'EP-CS09R',
@@ -300,7 +323,25 @@ describe('EasyparcelService', () => {
         },
       ],
     };
-    const response = { data: { data: [{ order_number: 'EP123' }] } };
+    const response = {
+      data: {
+        data: [
+          {
+            order_number: 'EP123',
+            shipments: [
+              {
+                status: 'success',
+                tracking_number: 'TRACK123',
+                courier_name: 'J&T Express',
+                service_name: 'J&T Standard',
+                parcel_number: 'PARCEL123',
+                awb_id_link: 'https://example.com/label.pdf',
+              },
+            ],
+          },
+        ],
+      },
+    };
     httpService.post.mockReturnValue(of(response));
 
     await expect(service.submitOrder(payload)).resolves.toEqual({
@@ -317,10 +358,33 @@ describe('EasyparcelService', () => {
         },
       },
     );
+    expect(shipmentsRepository.save).toHaveBeenCalledWith([
+      expect.objectContaining({
+        order_id: 42,
+        courier: 'J&T Express',
+        service_type: 'J&T Standard',
+        tracking_number: 'TRACK123',
+        shipment_status: 'success',
+        courier_reference: 'EP123',
+        label_url: 'https://example.com/label.pdf',
+        tracking_events: [
+          expect.objectContaining({
+            status: 'success',
+            courier_status: 'success',
+            raw_data: expect.objectContaining({
+              order_number: 'EP123',
+              tracking_number: 'TRACK123',
+            }),
+          }),
+        ],
+      }),
+    ]);
 
     httpService.post.mockReset();
     httpService.post
-      .mockReturnValueOnce(throwError(() => new Error('Unauthorized')))
+      .mockReturnValueOnce(
+        throwError(() => ({ status: HttpStatus.UNAUTHORIZED })),
+      )
       .mockReturnValueOnce(of(response));
     jest.spyOn(service, 'login').mockResolvedValue({
       status: true,
@@ -331,6 +395,7 @@ describe('EasyparcelService', () => {
       status: true,
       data: response.data,
     });
+    expect(shipmentsRepository.save).toHaveBeenCalledTimes(2);
     expect(service.login).toHaveBeenCalledWith({
       grant_type: 'refresh_token',
       type: 'refresh_token',
