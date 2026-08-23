@@ -1,5 +1,7 @@
 import { HttpService } from '@nestjs/axios';
 import {
+  NotFoundException,
+  ConflictException,
   Injectable,
   InternalServerErrorException,
   UnprocessableEntityException,
@@ -8,6 +10,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { firstValueFrom } from 'rxjs';
+import { isDeepStrictEqual } from 'node:util';
 import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto';
 import { ShipmentQuotationDto } from './dto/shipment-quotation.dto';
@@ -19,10 +22,16 @@ import {
   EasyParcelSubmitOrderResponse,
 } from './dto/submit-order.dto';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
-import {
-  Shipments,
-  ShipmentTrackingEvents,
-} from '../orders/entities/shipments.entity';
+import { Shipments } from '../orders/entities/shipments.entity';
+import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
+
+interface EasyParcelTrackingRequest {
+  awb_numbers: string[];
+}
+
+interface EasyParcelStatusLog extends Record<string, unknown> {
+  tracking_status: string;
+}
 
 @Injectable()
 export class EasyparcelService {
@@ -32,8 +41,8 @@ export class EasyparcelService {
     private readonly easyParcelAuthRepository: Repository<EasyParcelAuth>,
     @InjectRepository(Shipments)
     private readonly shipmentsRepository: Repository<Shipments>,
-    @InjectRepository(ShipmentTrackingEvents)
-    private readonly shipmentTrackingEventsRepository: Repository<ShipmentTrackingEvents>,
+    @InjectRepository(ShipmentTrackLogs)
+    private readonly shipmentTrackLogsRepository: Repository<ShipmentTrackLogs>,
     private readonly configService: ConfigService,
   ) {}
 
@@ -100,7 +109,7 @@ export class EasyparcelService {
   private async submitEndpoint(
     accessToken: string,
     url: string,
-    payload: SubmitOrderDto | ShipmentQuotationDto | ShipmentTrackingDto,
+    payload: SubmitOrderDto | ShipmentQuotationDto | EasyParcelTrackingRequest,
   ) {
     return await firstValueFrom(
       this.httpService.post(url, payload, {
@@ -130,6 +139,16 @@ export class EasyparcelService {
   }
 
   async submitOrder(payload: SubmitOrderDto) {
+    const shipmentExists = await this.shipmentsRepository.exists({
+      where: { order_id: payload.order_id },
+    });
+
+    if (shipmentExists) {
+      throw new ConflictException(
+        `A shipment already exists for order ID ${payload.order_id}.`,
+      );
+    }
+
     const easyParcelAuth = await this.fetchEasyParcelAuth();
     const url = await this.buildEasyParcelUrl('shipment/submit_orders');
 
@@ -157,7 +176,7 @@ export class EasyparcelService {
 
   private async refreshTokenIfNeeded(
     url: string,
-    payload: SubmitOrderDto | ShipmentTrackingDto,
+    payload: SubmitOrderDto | EasyParcelTrackingRequest,
   ) {
     const loginResponse = await this.login({
       grant_type: 'refresh_token',
@@ -180,11 +199,27 @@ export class EasyparcelService {
     const easyParcelAuth = await this.fetchEasyParcelAuth();
     const url = await this.buildEasyParcelUrl('shipment/tracking_status');
 
+    const findShipment = await this.shipmentsRepository.findOne({
+      where: { order_id: trackingNumber.order_id },
+    });
+
+    if (!findShipment) {
+      throw new ConflictException(`No shipment found for order.`);
+    }
+
+    const awbNumber = findShipment.raw_data?.awb_number as string;
+
+    if (!awbNumber) {
+      throw new NotFoundException(`Awb Number not found for order.`);
+    }
+
+    const awbNumbers = [awbNumber];
+
     try {
       const response = await this.submitEndpoint(
         easyParcelAuth.auth_token,
         url,
-        trackingNumber,
+        { awb_numbers: awbNumbers },
       );
 
       return { status: true, data: response.data };
@@ -192,7 +227,9 @@ export class EasyparcelService {
       const easyParcelError = error as EasyParcelError;
 
       if (easyParcelError.status === HttpStatus.UNAUTHORIZED) {
-        return await this.refreshTokenIfNeeded(url, trackingNumber);
+        return await this.refreshTokenIfNeeded(url, {
+          awb_numbers: awbNumbers,
+        });
       } else {
         throw error;
       }
@@ -203,7 +240,9 @@ export class EasyparcelService {
     payload: SubmitOrderDto,
     responseData: EasyParcelSubmitOrderResponse,
   ) {
-    const failedShipment = responseData.data?.[0]?.shipments.find(
+    const fetchShipments = responseData.data?.[0]?.shipments;
+
+    const failedShipment = fetchShipments.find(
       (shipment) => shipment.status?.toLowerCase() === 'error',
     );
 
@@ -214,15 +253,15 @@ export class EasyparcelService {
       );
     }
 
-    await this.saveShipments(payload, responseData);
+    await this.saveShipments(payload, fetchShipments);
   }
 
-  private async saveShipments(payload: SubmitOrderDto, responseData: unknown) {
-    const eventTime = new Date();
-    const responseShipments = responseData?.[0]?.shipments;
-
-    const shipments = payload.shipment.map((requestedShipment, index) => {
-      const responseShipment = responseShipments[index] ?? {};
+  private async saveShipments(
+    payload: SubmitOrderDto,
+    fetchShipments: unknown,
+  ) {
+    const shipments = payload.shipment.map((_, index) => {
+      const responseShipment = fetchShipments[index] ?? {};
       const trackingNumber = responseShipment.shipment_number;
 
       if (!trackingNumber) {
@@ -232,56 +271,51 @@ export class EasyparcelService {
       }
 
       const courier = responseShipment.courier;
-      const serviceType = requestedShipment.service_id;
       const shipmentStatus = responseShipment.status ?? 'pending';
 
-      const fetchTrackingStatus = this.fetchTrackingStatus(
-        { awb_numbers: [responseShipment.awb_number] },
-      );
-
-      const trackingEvent = this.shipmentTrackingEventsRepository.create({
-        status: shipmentStatus,
-        courier_status: shipmentStatus,
-        description:
-          this.firstString(responseShipment, ['remarks', 'description']) ??
-          'Shipment submitted to EasyParcel',
-        location: this.firstString(responseShipment, ['location']),
-        event_time: eventTime,
-        raw_data: responseShipment,
-      });
-
-      return this.shipmentsRepository.create({
+      return {
         order_id: payload.order_id,
         courier,
-        service_type: serviceType,
         tracking_number: trackingNumber,
         shipment_status: shipmentStatus,
-        courier_reference: this.firstString(responseShipment, [
-          'courier_reference',
-          'order_number',
-          'parcel_number',
-        ]),
-        label_url: this.firstString(responseShipment, [
-          'label_url',
-          'awb_id_link',
-        ]),
-        shipped_at: null,
-        delivered_at: null,
-        last_tracking_at: eventTime,
-        tracking_events: [trackingEvent],
-      });
+        raw_data: responseShipment,
+      };
     });
 
     await this.shipmentsRepository.save(shipments);
   }
 
-  private firstString(record: Record<string, unknown>, keys: string[]) {
-    for (const key of keys) {
-      const value = record[key];
-      if (typeof value === 'string' && value.trim()) return value;
+  private async saveShipmentTrackLogs(payload: SubmitOrderDto) {
+    const trackingStatus = await this.fetchTrackingStatus({
+      order_id: payload.order_id,
+    });
+
+    const statusLog = trackingStatus.data?.data?.[0]?.status_log as
+      | EasyParcelStatusLog[]
+      | undefined;
+
+    if (!Array.isArray(statusLog) || statusLog.length === 0) return;
+
+    const latestTrackingStatus = statusLog[0]?.tracking_status;
+
+    if (typeof latestTrackingStatus !== 'string' || !latestTrackingStatus) {
+      return;
     }
 
-    return null;
+    const latestTrackLog = await this.shipmentTrackLogsRepository.findOne({
+      where: { order_id: payload.order_id },
+      order: { id: 'DESC' },
+    });
+
+    if (isDeepStrictEqual(latestTrackLog?.raw_data, statusLog)) {
+      return;
+    }
+
+    await this.shipmentTrackLogsRepository.save({
+      order_id: payload.order_id,
+      tracking_status: latestTrackingStatus,
+      raw_data: statusLog,
+    });
   }
 
   private toShippingRates(response: EasyParcelQuotationResponse) {

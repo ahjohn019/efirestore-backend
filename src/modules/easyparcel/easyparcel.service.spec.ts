@@ -7,10 +7,8 @@ import { AxiosResponse } from 'axios';
 import { of, throwError } from 'rxjs';
 import { EasyparcelService } from './easyparcel.service';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
-import {
-  Shipments,
-  ShipmentTrackingEvents,
-} from '../orders/entities/shipments.entity';
+import { Shipments } from '../orders/entities/shipments.entity';
+import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
 
 describe('EasyparcelService', () => {
   let service: EasyparcelService;
@@ -19,8 +17,15 @@ describe('EasyparcelService', () => {
     findOne: jest.Mock;
     update: jest.Mock;
   };
-  let shipmentsRepository: { create: jest.Mock; save: jest.Mock };
-  let shipmentTrackingEventsRepository: { create: jest.Mock };
+  let shipmentsRepository: {
+    create: jest.Mock;
+    exists: jest.Mock;
+    save: jest.Mock;
+  };
+  let shipmentTrackLogsRepository: {
+    findOne: jest.Mock;
+    save: jest.Mock;
+  };
 
   beforeEach(async () => {
     httpService = { post: jest.fn() };
@@ -39,10 +44,12 @@ describe('EasyparcelService', () => {
     };
     shipmentsRepository = {
       create: jest.fn((shipment) => shipment),
+      exists: jest.fn().mockResolvedValue(false),
       save: jest.fn().mockResolvedValue([]),
     };
-    shipmentTrackingEventsRepository = {
-      create: jest.fn((event) => event),
+    shipmentTrackLogsRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+      save: jest.fn().mockResolvedValue({}),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -58,9 +65,10 @@ describe('EasyparcelService', () => {
           useValue: shipmentsRepository,
         },
         {
-          provide: getRepositoryToken(ShipmentTrackingEvents),
-          useValue: shipmentTrackingEventsRepository,
+          provide: getRepositoryToken(ShipmentTrackLogs),
+          useValue: shipmentTrackLogsRepository,
         },
+
         {
           provide: ConfigService,
           useValue: {
@@ -411,5 +419,68 @@ describe('EasyparcelService', () => {
         },
       },
     );
+  });
+
+  it('saves a new shipment status log snapshot', async () => {
+    const statusLog = [
+      {
+        event_date: '2026-01-23 12:29:47',
+        shipment_status_code: 7,
+        tracking_status:
+          'Shipment data received - Awaiting Parcel Handover to DHL',
+        location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
+      },
+    ];
+    jest.spyOn(service, 'fetchTrackingStatus').mockResolvedValue({
+      status: true,
+      data: { data: [{ status_log: statusLog }] },
+    });
+
+    await (service as any).saveShipmentTrackLogs({ order_id: 42 });
+
+    expect(shipmentTrackLogsRepository.findOne).toHaveBeenCalledWith({
+      where: { order_id: 42 },
+      order: { id: 'DESC' },
+    });
+    expect(shipmentTrackLogsRepository.save).toHaveBeenCalledWith({
+      order_id: 42,
+      tracking_status:
+        'Shipment data received - Awaiting Parcel Handover to DHL',
+      raw_data: statusLog,
+    });
+  });
+
+  it('does not save an unchanged shipment status log snapshot', async () => {
+    const statusLog = [
+      {
+        event_date: '2026-01-23 12:29:47',
+        shipment_status_code: 7,
+        tracking_status:
+          'Shipment data received - Awaiting Parcel Handover to DHL',
+        location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
+      },
+    ];
+    jest.spyOn(service, 'fetchTrackingStatus').mockResolvedValue({
+      status: true,
+      data: { data: [{ status_log: statusLog }] },
+    });
+    shipmentTrackLogsRepository.findOne.mockResolvedValue({
+      id: 1,
+      order_id: 42,
+      tracking_status: statusLog[0].tracking_status,
+      raw_data: [
+        {
+          location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
+          tracking_status:
+            'Shipment data received - Awaiting Parcel Handover to DHL',
+          shipment_status_code: 7,
+          event_date: '2026-01-23 12:29:47',
+        },
+      ],
+    });
+
+    await (service as any).saveShipmentTrackLogs({ order_id: 42 });
+
+    expect(shipmentTrackLogsRepository.save).not.toHaveBeenCalled();
   });
 });

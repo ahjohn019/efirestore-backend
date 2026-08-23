@@ -1,8 +1,7 @@
-import { ArrayNotEmpty, IsArray, IsNotEmpty } from 'class-validator';
+import { IsInt, IsPositive } from 'class-validator';
 
 export class ShipmentTrackingDto {
-  @IsNotEmpty()
-  @IsArray()
-  @ArrayNotEmpty()
-  awb_numbers: string[];
+  @IsInt()
+  @IsPositive()
+  order_id: number;
 }

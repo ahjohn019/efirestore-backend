@@ -9,7 +9,7 @@ import { OrderRefundController } from './refund/refund.controller';
 import { OrderRefundService } from './refund/refund.service';
 import { OrderRefunds } from './entities/order-refunds.entity';
 import { OrderRefundItems } from './entities/order-refund-items.entity';
-import { Shipments, ShipmentTrackingEvents } from './entities/shipments.entity';
+import { Shipments } from './entities/shipments.entity';
 
 @Module({
   imports: [
@@ -19,7 +19,6 @@ import { Shipments, ShipmentTrackingEvents } from './entities/shipments.entity';
       OrderRefunds,
       OrderRefundItems,
       Shipments,
-      ShipmentTrackingEvents,
     ]),
   ],
   controllers: [OrdersController, OrderRefundController],

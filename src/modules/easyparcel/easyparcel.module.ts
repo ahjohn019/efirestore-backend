@@ -5,18 +5,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EasyparcelController } from './easyparcel.controller';
 import { EasyparcelService } from './easyparcel.service';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
-import {
-  Shipments,
-  ShipmentTrackingEvents,
-} from '../orders/entities/shipments.entity';
+import { Shipments } from '../orders/entities/shipments.entity';
+import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      EasyParcelAuth,
-      Shipments,
-      ShipmentTrackingEvents,
-    ]),
+    TypeOrmModule.forFeature([EasyParcelAuth, Shipments, ShipmentTrackLogs]),
     HttpModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
