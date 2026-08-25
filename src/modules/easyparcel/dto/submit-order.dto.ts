@@ -233,3 +233,20 @@ export interface EasyParcelSubmitOrderResponse {
     }>;
   }>;
 }
+
+export interface EasyParcelTrackingRequest {
+  awb_numbers: string[];
+}
+
+export interface EasyParcelStatusLog extends Record<string, unknown> {
+  tracking_status: string;
+}
+
+export interface EasyParcelTrackingResponse {
+  data?: {
+    results?: Array<{
+      status?: string;
+      status_log?: EasyParcelStatusLog[];
+    }>;
+  };
+}

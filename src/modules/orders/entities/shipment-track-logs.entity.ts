@@ -12,5 +12,5 @@ export class ShipmentTrackLogs {
   tracking_status: string;
 
   @Column({ type: 'json', nullable: true })
-  raw_data: Record<string, unknown>[] | null;
+  raw_data: Record<string, unknown> | Record<string, unknown>[] | null;
 }

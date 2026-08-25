@@ -20,18 +20,13 @@ import {
   EasyParcelError,
   EasyParcelQuotationResponse,
   EasyParcelSubmitOrderResponse,
+  EasyParcelStatusLog,
+  EasyParcelTrackingResponse,
+  EasyParcelTrackingRequest,
 } from './dto/submit-order.dto';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 import { Shipments } from '../orders/entities/shipments.entity';
 import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
-
-interface EasyParcelTrackingRequest {
-  awb_numbers: string[];
-}
-
-interface EasyParcelStatusLog extends Record<string, unknown> {
-  tracking_status: string;
-}
 
 @Injectable()
 export class EasyparcelService {
@@ -215,6 +210,8 @@ export class EasyparcelService {
 
     const awbNumbers = [awbNumber];
 
+    let responseData: EasyParcelTrackingResponse;
+
     try {
       const response = await this.submitEndpoint(
         easyParcelAuth.auth_token,
@@ -222,14 +219,23 @@ export class EasyparcelService {
         { awb_numbers: awbNumbers },
       );
 
-      return { status: true, data: response.data };
+      responseData = response.data as EasyParcelTrackingResponse;
+
+      const fetchStatusLogs = responseData.data?.results?.[0]?.status_log;
+      await this.saveShipmentTrackLogs(
+        trackingNumber.order_id,
+        fetchStatusLogs,
+      );
+
+      return { status: true, data: responseData };
     } catch (error) {
       const easyParcelError = error as EasyParcelError;
 
       if (easyParcelError.status === HttpStatus.UNAUTHORIZED) {
-        return await this.refreshTokenIfNeeded(url, {
+        const response = await this.refreshTokenIfNeeded(url, {
           awb_numbers: awbNumbers,
         });
+        responseData = response.data as EasyParcelTrackingResponse;
       } else {
         throw error;
       }
@@ -285,37 +291,40 @@ export class EasyparcelService {
     await this.shipmentsRepository.save(shipments);
   }
 
-  private async saveShipmentTrackLogs(payload: SubmitOrderDto) {
-    const trackingStatus = await this.fetchTrackingStatus({
-      order_id: payload.order_id,
-    });
+  private async saveShipmentTrackLogs(
+    orderId: number,
+    fetchStatusLogs: EasyParcelStatusLog[],
+  ) {
+    await Promise.all(
+      fetchStatusLogs.map(async (statusLog) => {
+        const { tracking_status, ...rawData } = statusLog;
+        const statusToSnakeCase = tracking_status
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, '_');
 
-    const statusLog = trackingStatus.data?.data?.[0]?.status_log as
-      | EasyParcelStatusLog[]
-      | undefined;
+        const findExistingLog = await this.shipmentTrackLogsRepository.exists({
+          where: {
+            order_id: orderId,
+            tracking_status: statusToSnakeCase,
+          },
+        });
 
-    if (!Array.isArray(statusLog) || statusLog.length === 0) return;
+        if (findExistingLog) {
+          throw new ConflictException(
+            `A shipment track log already exists for order ID ${orderId} with status ${tracking_status}.`,
+          );
+        }
 
-    const latestTrackingStatus = statusLog[0]?.tracking_status;
+        const shipmentTrackLog = this.shipmentTrackLogsRepository.create({
+          order_id: orderId,
+          tracking_status: statusToSnakeCase,
+          raw_data: rawData,
+        });
 
-    if (typeof latestTrackingStatus !== 'string' || !latestTrackingStatus) {
-      return;
-    }
-
-    const latestTrackLog = await this.shipmentTrackLogsRepository.findOne({
-      where: { order_id: payload.order_id },
-      order: { id: 'DESC' },
-    });
-
-    if (isDeepStrictEqual(latestTrackLog?.raw_data, statusLog)) {
-      return;
-    }
-
-    await this.shipmentTrackLogsRepository.save({
-      order_id: payload.order_id,
-      tracking_status: latestTrackingStatus,
-      raw_data: statusLog,
-    });
+        await this.shipmentTrackLogsRepository.save(shipmentTrackLog);
+      }),
+    );
   }
 
   private toShippingRates(response: EasyParcelQuotationResponse) {

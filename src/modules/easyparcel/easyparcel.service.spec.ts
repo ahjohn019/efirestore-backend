@@ -20,10 +20,11 @@ describe('EasyparcelService', () => {
   let shipmentsRepository: {
     create: jest.Mock;
     exists: jest.Mock;
+    findOne: jest.Mock;
     save: jest.Mock;
   };
   let shipmentTrackLogsRepository: {
-    findOne: jest.Mock;
+    find: jest.Mock;
     save: jest.Mock;
   };
 
@@ -45,10 +46,14 @@ describe('EasyparcelService', () => {
     shipmentsRepository = {
       create: jest.fn((shipment) => shipment),
       exists: jest.fn().mockResolvedValue(false),
+      findOne: jest.fn().mockResolvedValue({
+        order_id: 42,
+        raw_data: { awb_number: 'AWB123' },
+      }),
       save: jest.fn().mockResolvedValue([]),
     };
     shipmentTrackLogsRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
+      find: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockResolvedValue({}),
     };
 
@@ -421,7 +426,7 @@ describe('EasyparcelService', () => {
     );
   });
 
-  it('saves a new shipment status log snapshot', async () => {
+  it('saves each status log item as a separate row', async () => {
     const statusLog = [
       {
         event_date: '2026-01-23 12:29:47',
@@ -430,27 +435,43 @@ describe('EasyparcelService', () => {
           'Shipment data received - Awaiting Parcel Handover to DHL',
         location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
       },
+      {
+        event_date: '2026-01-23 15:30:00',
+        shipment_status_code: 8,
+        tracking_status: 'Parcel picked up',
+        location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
+      },
     ];
-    jest.spyOn(service, 'fetchTrackingStatus').mockResolvedValue({
+    httpService.post.mockReturnValue(
+      of({ data: { data: { results: [{ status_log: statusLog }] } } }),
+    );
+
+    await expect(
+      service.fetchTrackingStatus({ order_id: 42 }),
+    ).resolves.toEqual({
       status: true,
-      data: { data: [{ status_log: statusLog }] },
+      data: { data: { results: [{ status_log: statusLog }] } },
     });
 
-    await (service as any).saveShipmentTrackLogs({ order_id: 42 });
-
-    expect(shipmentTrackLogsRepository.findOne).toHaveBeenCalledWith({
+    expect(shipmentTrackLogsRepository.find).toHaveBeenCalledWith({
       where: { order_id: 42 },
-      order: { id: 'DESC' },
     });
-    expect(shipmentTrackLogsRepository.save).toHaveBeenCalledWith({
-      order_id: 42,
-      tracking_status:
-        'Shipment data received - Awaiting Parcel Handover to DHL',
-      raw_data: statusLog,
-    });
+    expect(shipmentTrackLogsRepository.save).toHaveBeenCalledWith([
+      {
+        order_id: 42,
+        tracking_status:
+          'Shipment data received - Awaiting Parcel Handover to DHL',
+        raw_data: statusLog[0],
+      },
+      {
+        order_id: 42,
+        tracking_status: 'Parcel picked up',
+        raw_data: statusLog[1],
+      },
+    ]);
   });
 
-  it('does not save an unchanged shipment status log snapshot', async () => {
+  it('does not save status log rows that already exist', async () => {
     const statusLog = [
       {
         event_date: '2026-01-23 12:29:47',
@@ -460,27 +481,51 @@ describe('EasyparcelService', () => {
         location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
       },
     ];
-    jest.spyOn(service, 'fetchTrackingStatus').mockResolvedValue({
-      status: true,
-      data: { data: [{ status_log: statusLog }] },
-    });
-    shipmentTrackLogsRepository.findOne.mockResolvedValue({
-      id: 1,
-      order_id: 42,
-      tracking_status: statusLog[0].tracking_status,
-      raw_data: [
-        {
+    httpService.post.mockReturnValue(
+      of({ data: { data: { results: [{ status_log: statusLog }] } } }),
+    );
+    shipmentTrackLogsRepository.find.mockResolvedValue([
+      {
+        id: 1,
+        order_id: 42,
+        tracking_status: statusLog[0].tracking_status,
+        raw_data: {
           location: 'Kuala Lumpur Hub, Kuala Lumpur, MY',
           tracking_status:
             'Shipment data received - Awaiting Parcel Handover to DHL',
           shipment_status_code: 7,
           event_date: '2026-01-23 12:29:47',
         },
-      ],
-    });
+      },
+    ]);
 
-    await (service as any).saveShipmentTrackLogs({ order_id: 42 });
+    await service.fetchTrackingStatus({ order_id: 42 });
 
     expect(shipmentTrackLogsRepository.save).not.toHaveBeenCalled();
+  });
+
+  it('saves tracking status after refreshing an expired token', async () => {
+    const statusLog = [{ tracking_status: 'Parcel delivered' }];
+    httpService.post
+      .mockReturnValueOnce(
+        throwError(() => ({ status: HttpStatus.UNAUTHORIZED })),
+      )
+      .mockReturnValueOnce(
+        of({ data: { data: { results: [{ status_log: statusLog }] } } }),
+      );
+    jest.spyOn(service, 'login').mockResolvedValue({
+      status: true,
+      data: { access_token: 'refreshed-access-token' },
+    });
+
+    await service.fetchTrackingStatus({ order_id: 42 });
+
+    expect(shipmentTrackLogsRepository.save).toHaveBeenCalledWith([
+      {
+        order_id: 42,
+        tracking_status: 'Parcel delivered',
+        raw_data: statusLog[0],
+      },
+    ]);
   });
 });
