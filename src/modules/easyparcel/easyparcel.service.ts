@@ -227,7 +227,14 @@ export class EasyparcelService {
         fetchStatusLogs,
       );
 
-      return { status: true, data: responseData };
+      const findShipmentStatus = await this.shipmentTrackLogsRepository.find({
+        where: { order_id: trackingNumber.order_id },
+        order: {
+          created_at: 'DESC',
+        },
+      });
+
+      return { status: true, data: findShipmentStatus };
     } catch (error) {
       const easyParcelError = error as EasyParcelError;
 
@@ -310,19 +317,15 @@ export class EasyparcelService {
           },
         });
 
-        if (findExistingLog) {
-          throw new ConflictException(
-            `A shipment track log already exists for order ID ${orderId} with status ${tracking_status}.`,
-          );
+        if (!findExistingLog) {
+          const shipmentTrackLog = {
+            order_id: orderId,
+            tracking_status: statusToSnakeCase,
+            raw_data: rawData,
+          };
+
+          await this.shipmentTrackLogsRepository.save(shipmentTrackLog);
         }
-
-        const shipmentTrackLog = this.shipmentTrackLogsRepository.create({
-          order_id: orderId,
-          tracking_status: statusToSnakeCase,
-          raw_data: rawData,
-        });
-
-        await this.shipmentTrackLogsRepository.save(shipmentTrackLog);
       }),
     );
   }

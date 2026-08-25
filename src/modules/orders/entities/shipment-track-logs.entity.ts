@@ -1,7 +1,8 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { BaseEntity } from '../../base/entities/base.entity';
 
 @Entity('shipment_track_logs')
-export class ShipmentTrackLogs {
+export class ShipmentTrackLogs extends BaseEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
