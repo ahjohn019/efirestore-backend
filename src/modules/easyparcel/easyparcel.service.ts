@@ -18,7 +18,6 @@ import { ShipmentTrackingDto } from './dto/shipment-tracking.dto';
 import {
   SubmitOrderDto,
   EasyParcelError,
-  EasyParcelQuotationResponse,
   EasyParcelSubmitOrderResponse,
   EasyParcelStatusLog,
   EasyParcelTrackingResponse,
@@ -27,9 +26,11 @@ import {
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 import { Shipments } from '../orders/entities/shipments.entity';
 import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
+import { easyParcelUtil } from './easyparcel.util';
 
 @Injectable()
 export class EasyparcelService {
+  private readonly easyParcel = easyParcelUtil(this.httpService);
   constructor(
     private readonly httpService: HttpService,
     @InjectRepository(EasyParcelAuth)
@@ -101,33 +102,21 @@ export class EasyparcelService {
     }
   }
 
-  private async submitEndpoint(
-    accessToken: string,
-    url: string,
-    payload: SubmitOrderDto | ShipmentQuotationDto | EasyParcelTrackingRequest,
-  ) {
-    return await firstValueFrom(
-      this.httpService.post(url, payload, {
-        headers: {
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/json',
-        },
-      }),
-    );
-  }
-
   async getStripeShipmentQuotations(payload: ShipmentQuotationDto) {
     try {
       const easyParcelAuth = await this.fetchEasyParcelAuth();
       const url = await this.buildEasyParcelUrl('shipment/quotations');
 
-      const response = await this.submitEndpoint(
+      const response = await this.easyParcel.submitEndpoint(
         easyParcelAuth.auth_token,
         url,
         payload,
       );
 
-      return { status: true, data: this.toShippingRates(response.data) };
+      return {
+        status: true,
+        data: this.easyParcel.toShippingRates(response.data),
+      };
     } catch (error) {
       throw error;
     }
@@ -148,7 +137,7 @@ export class EasyparcelService {
     const url = await this.buildEasyParcelUrl('shipment/submit_orders');
 
     try {
-      const response = await this.submitEndpoint(
+      const response = await this.easyParcel.submitEndpoint(
         easyParcelAuth.auth_token,
         url,
         payload,
@@ -185,7 +174,11 @@ export class EasyparcelService {
       );
     }
 
-    const response = await this.submitEndpoint(newAccessToken, url, payload);
+    const response = await this.easyParcel.submitEndpoint(
+      newAccessToken,
+      url,
+      payload,
+    );
 
     return { status: true, data: response.data };
   }
@@ -213,7 +206,7 @@ export class EasyparcelService {
     let responseData: EasyParcelTrackingResponse;
 
     try {
-      const response = await this.submitEndpoint(
+      const response = await this.easyParcel.submitEndpoint(
         easyParcelAuth.auth_token,
         url,
         { awb_numbers: awbNumbers },
@@ -328,54 +321,5 @@ export class EasyparcelService {
         }
       }),
     );
-  }
-
-  private toShippingRates(response: EasyParcelQuotationResponse) {
-    const fetchQuotations = response.data?.[0]?.quotations ?? [];
-
-    return fetchQuotations.map((quotation) => {
-      const {
-        service_name,
-        courier_name,
-        service_id,
-        courier_id,
-        delivery_duration,
-      } = quotation.courier;
-      const { currency, total_amount } = quotation.pricing;
-
-      const deliveryEstimate = this.toDeliveryEstimate(delivery_duration);
-
-      return {
-        shipping_rate_data: {
-          type: 'fixed_amount',
-          fixed_amount: {
-            amount: Math.round(Number(total_amount) * 100),
-            currency: currency.toLowerCase(),
-          },
-          display_name: service_name,
-          delivery_estimate: deliveryEstimate,
-          metadata: {
-            service_id: service_id ?? '',
-            service_name: service_name ?? '',
-            courier_id: courier_id ?? '',
-            courier_name: courier_name ?? '',
-          },
-        },
-      };
-    });
-  }
-
-  private toDeliveryEstimate(deliveryDuration: string | null) {
-    let deliveryDurationValue = null;
-
-    if (deliveryDuration !== null) {
-      const convertedDuration = JSON.parse(deliveryDuration);
-      deliveryDurationValue = parseInt(convertedDuration.value);
-    }
-
-    return {
-      minimum: { unit: 'business_day', value: 1 },
-      maximum: { unit: 'business_day', value: deliveryDurationValue ?? 1 },
-    };
   }
 }
