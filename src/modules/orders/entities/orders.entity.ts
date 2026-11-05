@@ -11,6 +11,7 @@ import { BaseEntity } from '../../base/entities/base.entity';
 import { OrderRefunds } from './order-refunds.entity';
 import { Products } from '../../products/entities/products.entity';
 import { Shipments } from './shipments.entity';
+import type { SubmitOrderShipmentDto } from '../../easyparcel/dto/submit-order.dto';
 
 @Entity()
 export class Orders extends BaseEntity {
@@ -67,6 +68,9 @@ export class Orders extends BaseEntity {
 
   @OneToMany(() => Shipments, (shipment) => shipment.order)
   shipments: Shipments[];
+
+  @Column({ type: 'json', nullable: true })
+  easyparcel_shipment: SubmitOrderShipmentDto[] | null;
 
   @Column()
   checkout_stripe_id: string;

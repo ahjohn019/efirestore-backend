@@ -7,9 +7,16 @@ import { EasyparcelService } from './easyparcel.service';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 import { Shipments } from '../orders/entities/shipments.entity';
 import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
+import { BullModule } from '@nestjs/bullmq';
+import { EasyparcelQueueService } from './easyparcel-queue.service';
+import { EasyparcelProcessor } from './easyparcel.processor';
+import { EASY_PARCEL_QUEUE } from './easyparcel-queue.constants';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
   imports: [
+    BullModule.registerQueue({ name: EASY_PARCEL_QUEUE }),
+    OrdersModule,
     TypeOrmModule.forFeature([EasyParcelAuth, Shipments, ShipmentTrackLogs]),
     HttpModule.registerAsync({
       inject: [ConfigService],
@@ -21,7 +28,7 @@ import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity
     }),
   ],
   controllers: [EasyparcelController],
-  providers: [EasyparcelService],
-  exports: [EasyparcelService],
+  providers: [EasyparcelService, EasyparcelQueueService, EasyparcelProcessor],
+  exports: [EasyparcelService, EasyparcelQueueService],
 })
 export class EasyparcelModule {}

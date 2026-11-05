@@ -18,6 +18,8 @@ import { UserAddress } from 'src/modules/users/entities/user-address.entity';
 import { AddressType } from 'src/enum/address-type.enum';
 import { Request as ExpressRequest } from 'express';
 import { Session } from 'node:inspector';
+import { EasyparcelQueueService } from '../../easyparcel/easyparcel-queue.service';
+import { SubmitOrderShipmentDto } from '../../easyparcel/dto/submit-order.dto';
 
 @Injectable()
 export class StripeService extends BaseStripeService {
@@ -25,6 +27,8 @@ export class StripeService extends BaseStripeService {
     protected configService: ConfigService,
 
     private readonly ordersService: OrdersService,
+
+    private readonly easyparcelQueueService: EasyparcelQueueService,
 
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
@@ -47,6 +51,7 @@ export class StripeService extends BaseStripeService {
 
       const checkoutSession = await this.createStripeCheckout(
         stripeCheckoutFieldData,
+        createStripeDto.easyparcel_shipment,
       );
 
       return this.createSuccessResponse(checkoutSession);
@@ -71,7 +76,8 @@ export class StripeService extends BaseStripeService {
 
     await this.validateCheckoutAddresses(user.id);
 
-    const { customer_email, ...stripeData } = createStripeDto;
+    const { customer_email, easyparcel_shipment, ...stripeData } =
+      createStripeDto;
 
     return {
       ...stripeData,
@@ -116,13 +122,22 @@ export class StripeService extends BaseStripeService {
    * @param createStripeDtoResult
    * @returns
    */
-  async createStripeCheckout(createStripeDtoResult: CreateStripeDto) {
+  async createStripeCheckout(
+    createStripeDtoResult: Omit<
+      CreateStripeDto,
+      'customer_email' | 'easyparcel_shipment'
+    > & { customer: string | null },
+    easyparcelShipment?: SubmitOrderShipmentDto[],
+  ) {
     try {
       const session = await this.stripe.checkout.sessions.create(
         createStripeDtoResult,
       );
 
-      const prepareOrderFields = await this.prepareOrderFields(session);
+      const prepareOrderFields = await this.prepareOrderFields(
+        session,
+        easyparcelShipment,
+      );
       await this.ordersService.create(prepareOrderFields);
 
       return this.createSuccessResponse(session);
@@ -159,8 +174,14 @@ export class StripeService extends BaseStripeService {
 
       // update the order based on stripe checkout id
       const result = await this.ordersService.update(findStripeOrder.data.id, {
-        status: findStripeCheckout.data.status,
+        status: findStripeCheckout.data.payment_status,
       });
+
+      if (findStripeCheckout.data.payment_status === 'paid') {
+        await this.easyparcelQueueService.enqueuePaidOrder(
+          findStripeOrder.data.id,
+        );
+      }
 
       return this.createSuccessResponse(result);
     } catch (error) {
@@ -228,7 +249,8 @@ export class StripeService extends BaseStripeService {
     );
 
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session;
 
         if (!session.id) {
@@ -348,10 +370,11 @@ export class StripeService extends BaseStripeService {
    */
   async prepareOrderFields(
     checkoutGetData: Stripe.Response<Stripe.Checkout.Session>,
+    easyparcelShipment?: SubmitOrderShipmentDto[],
   ) {
     const {
       id,
-      status,
+      payment_status,
       customer,
       customer_details,
       amount_subtotal,
@@ -378,7 +401,7 @@ export class StripeService extends BaseStripeService {
 
     return {
       title: `Order - ${(Math.random() + 5).toString(36).substring(2).toUpperCase()}`,
-      status,
+      status: payment_status,
       shipping_address: shippingFullAddress,
       billing_address: fullAddress,
       customer_email: email,
@@ -391,6 +414,7 @@ export class StripeService extends BaseStripeService {
       user_id: checkUserByEmail?.id ?? null,
       tracking_number: '',
       checkout_stripe_id: id,
+      easyparcel_shipment: easyparcelShipment ?? null,
     };
   }
 
@@ -405,13 +429,28 @@ export class StripeService extends BaseStripeService {
 
     if (findStripeOrder?.data?.id) {
       await this.ordersService.update(findStripeOrder.data.id, {
-        status: prepareOrderFields.status,
+        status: session.payment_status,
       });
 
-      return findStripeOrder.data;
+      const order = {
+        ...findStripeOrder.data,
+        status: session.payment_status,
+      };
+
+      if (session.payment_status === 'paid') {
+        await this.easyparcelQueueService.enqueuePaidOrder(order.id);
+      }
+
+      return order;
     }
 
     const createOrder = await this.ordersService.create(prepareOrderFields);
-    return createOrder.data ?? createOrder;
+    const order = createOrder.data;
+
+    if (session.payment_status === 'paid' && order?.id) {
+      await this.easyparcelQueueService.enqueuePaidOrder(order.id);
+    }
+
+    return order;
   }
 }

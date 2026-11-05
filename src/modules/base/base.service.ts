@@ -1,6 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { BaseServiceDto } from './dto/base-service.dto';
 
+export function createSuccessResponse<T>(data: T): BaseServiceDto<T> {
+  return { status: 'success', code: 200, data };
+}
+
 @Injectable()
 export class BaseService {
   protected createResponse<T>(
@@ -16,7 +20,7 @@ export class BaseService {
   }
 
   protected createSuccessResponse<T>(data: T): BaseServiceDto<T> {
-    return this.createResponse('success', 200, data);
+    return createSuccessResponse(data);
   }
 
   protected createErrorResponse<T>(

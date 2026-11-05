@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { dataSourceOptions } from './config/datasource';
 import { UsersModule } from './modules/users/users.module';
@@ -19,6 +19,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CronjobsModule } from './cronjobs/cronjobs.module';
 import { EasyparcelModule } from './modules/easyparcel/easyparcel.module';
+import { BullModule } from '@nestjs/bullmq';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -28,6 +29,15 @@ import { EasyparcelModule } from './modules/easyparcel/easyparcel.module';
       ...dataSourceOptions,
       retryAttempts: 20,
       retryDelay: 3000,
+    }),
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        connection: {
+          host: configService.get<string>('REDIS_HOST', '127.0.0.1'),
+          port: configService.get<number>('REDIS_PORT', 6379),
+        },
+      }),
     }),
     UsersModule,
     AuthModule,

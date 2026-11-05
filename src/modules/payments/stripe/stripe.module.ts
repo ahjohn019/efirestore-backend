@@ -12,11 +12,13 @@ import { StripeCustomerController } from './customer/customer.controller';
 import { StripeCustomerService } from './customer/customer.service';
 import { Users } from 'src/modules/users/entities/users.entity';
 import { UserAddress } from 'src/modules/users/entities/user-address.entity';
+import { EasyparcelModule } from 'src/modules/easyparcel/easyparcel.module';
 
 @Module({
   imports: [
     OrdersModule,
     ProductsModule,
+    EasyparcelModule,
     TypeOrmModule.forFeature([StripeUsers, Users, UserAddress]),
   ],
   controllers: [StripeController, StripeCustomerController],

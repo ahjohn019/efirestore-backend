@@ -11,6 +11,7 @@ import { PaymentMode } from '../../../enum/stripe-payment-mode.enum';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { EasyparcelQueueService } from '../../easyparcel/easyparcel-queue.service';
 
 describe('StripeService', () => {
   let service: StripeService;
@@ -18,6 +19,7 @@ describe('StripeService', () => {
   let mockUsersRepository: Partial<Repository<Users>>;
   let mockUserAddressRepository: Partial<Repository<UserAddress>>;
   let mockOrdersService: Partial<OrdersService>;
+  let mockEasyparcelQueueService: { enqueuePaidOrder: jest.Mock };
 
   const mockUser = {
     id: 1,
@@ -81,6 +83,7 @@ describe('StripeService', () => {
     },
     amount_subtotal: 1000,
     amount_total: 1100,
+    payment_status: 'paid',
   };
 
   const mockCheckoutLineItems = {
@@ -143,7 +146,11 @@ describe('StripeService', () => {
     };
 
     mockOrdersService = {
-      create: jest.fn().mockResolvedValue({ success: true }),
+      create: jest.fn().mockResolvedValue({
+        status: 'success',
+        code: 200,
+        data: { id: 1 },
+      }),
       findStripeCheckout: jest.fn().mockResolvedValue({
         status: 'success',
         code: 200,
@@ -154,6 +161,10 @@ describe('StripeService', () => {
         code: 200,
         data: { affected: 1 },
       }),
+    };
+
+    mockEasyparcelQueueService = {
+      enqueuePaidOrder: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -177,6 +188,10 @@ describe('StripeService', () => {
         {
           provide: OrdersService,
           useValue: mockOrdersService,
+        },
+        {
+          provide: EasyparcelQueueService,
+          useValue: mockEasyparcelQueueService,
         },
         {
           provide: getRepositoryToken(Users),
@@ -220,14 +235,14 @@ describe('StripeService', () => {
     it('should handle errors during checkout creation', async () => {
       // Mock the createStripeCheckout method to throw an error
       const originalCreateStripeCheckout = service.createStripeCheckout;
-      service.createStripeCheckout = jest.fn().mockRejectedValue(new Error('Stripe API error'));
+      service.createStripeCheckout = jest
+        .fn()
+        .mockRejectedValue(new Error('Stripe API error'));
 
-      const result = await service.checkout(mockCreateStripeDto);
+      await expect(service.checkout(mockCreateStripeDto)).rejects.toThrow(
+        'Stripe API error',
+      );
 
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Stripe API error');
-      
       // Restore the original method
       service.createStripeCheckout = originalCreateStripeCheckout;
     });
@@ -235,7 +250,8 @@ describe('StripeService', () => {
 
   describe('createStripeCheckoutField', () => {
     it('should successfully create checkout field data', async () => {
-      const result = await service.createStripeCheckoutField(mockCreateStripeDto);
+      const result =
+        await service.createStripeCheckoutField(mockCreateStripeDto);
 
       const { customer_email, ...stripeData } = mockCreateStripeDto;
       expect(result).toEqual({
@@ -258,9 +274,9 @@ describe('StripeService', () => {
     it('should throw NotFoundException when user not found', async () => {
       mockUsersRepository.findOne = jest.fn().mockResolvedValue(null);
 
-      await expect(service.createStripeCheckoutField(mockCreateStripeDto)).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(
+        service.createStripeCheckoutField(mockCreateStripeDto),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should block checkout when user has no active billing and shipping address', async () => {
@@ -294,11 +310,9 @@ describe('StripeService', () => {
       const error = new Error('Stripe API error');
       mockStripe.checkout.sessions.retrieve.mockRejectedValue(error);
 
-      const result = await service.retrieveStripeCheckout(mockCheckoutIdDto);
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Stripe API error');
+      await expect(
+        service.retrieveStripeCheckout(mockCheckoutIdDto),
+      ).rejects.toThrow('Stripe API error');
     });
   });
 
@@ -322,11 +336,9 @@ describe('StripeService', () => {
       const error = new Error('Stripe API error');
       mockStripe.checkout.sessions.listLineItems.mockRejectedValue(error);
 
-      const result = await service.checkoutGetLineItems(mockCheckoutIdDto);
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Stripe API error');
+      await expect(
+        service.checkoutGetLineItems(mockCheckoutIdDto),
+      ).rejects.toThrow('Stripe API error');
     });
   });
 
@@ -344,18 +356,16 @@ describe('StripeService', () => {
       const error = new Error('Stripe API error');
       mockStripe.products.retrieve.mockRejectedValue(error);
 
-      const result = await service.fetchProduct('prod_123');
-
-      expect(result.status).toBe('error');
-      expect(result.code).toBe(500);
-      expect(result.data).toBe('Stripe API error');
+      await expect(service.fetchProduct('prod_123')).rejects.toThrow(
+        'Stripe API error',
+      );
     });
   });
 
   describe('postWebhook', () => {
     const mockRequest = {
       headers: {
-        'stripe-signature': 'test_signature'
+        'stripe-signature': 'test_signature',
       },
       rawBody: Buffer.from('test_body'),
     } as any;
@@ -371,6 +381,9 @@ describe('StripeService', () => {
         'test_endpoint_secret',
       );
       expect(mockOrdersService.create).toHaveBeenCalled();
+      expect(mockEasyparcelQueueService.enqueuePaidOrder).toHaveBeenCalledWith(
+        1,
+      );
     });
 
     it('should handle unknown event types', async () => {
