@@ -8,6 +8,20 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+FROM builder AS local
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends procps \
+  && rm -rf /var/lib/apt/lists/* \
+  && sed -i 's/\r$//' ./docker/start.sh \
+  && chmod +x ./docker/start.sh
+
+ENV NODE_ENV=development
+ENV TYPEORM_RUNTIME=dist
+
+EXPOSE 3000
+CMD ["./docker/start.sh"]
+
 FROM node:20-bookworm-slim AS runner
 
 WORKDIR /app

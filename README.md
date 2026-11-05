@@ -194,32 +194,31 @@ npm test -- --runInBand modules/easyparcel/easyparcel-queue.service.spec.ts modu
 
 Last verified: 4 suites and 28 tests passed. These tests use mocks and do not require Redis or call Stripe or EasyParcel. The broader `easyparcel.service.spec.ts` suite has four known failures involving shipment response fixtures and tracking-log handling; it is separate from this passing queue workflow command.
 
-## Local Watch Mode
+## Local Docker Desktop Hot Reload
 
-For local development, run the app container and watch mode in separate terminals.
+The local Compose override bind-mounts `src/`, `public/`, and the NestJS/TypeScript configuration files into the app container. With `APP_MODE=local`, the container runs `npm run start:dev`; NestJS watches the mounted source files using polling. The local image includes `procps`, which NestJS needs to restart its child process. No host terminal or Compose Watch process needs to remain open.
 
-Terminal 1:
+Build and apply the local configuration once (or after changing the image or container mounts):
 
-```bash
-npm run docker:dev
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build --no-deps --force-recreate app
 ```
 
-Terminal 2:
+For everyday use:
 
-```bash
-npm run docker:watch
+1. Open Docker Desktop and select **Containers**.
+2. Start the `efirestore-backend` Compose project so `mysql`, `redis`, and `app` are running.
+3. Edit and save a file under `src/` in your local editor.
+4. Open the `app` container's **Logs** tab to see NestJS recompile and restart.
+5. Test the updated API at `http://efirestore-backend.test/api/` or `http://localhost/api/`.
+
+Closing your terminal does not stop these detached containers. Keep Docker Desktop running. Source changes reload automatically; dependency changes (`package.json` / `package-lock.json`) or Dockerfile changes require an image rebuild:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build --no-deps app
 ```
 
-Equivalent raw commands:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up
-docker compose -f docker-compose.yml -f docker-compose.local.yml watch
-```
-
-This setup is intended for `APP_MODE=local`.
-
-When you change files in `src/` or `public/`, Docker Compose watch syncs the changes and restarts the app container.
+The bind mounts apply only when using `docker-compose.local.yml`. They do not change the base deployment configuration.
 
 ## Endpoints
 
@@ -330,7 +329,7 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 If file changes are not reflected during local development:
 
 - make sure `APP_MODE=local`
-- keep both `npm run docker:dev` and `npm run docker:watch` running
+- confirm the app was recreated with `docker-compose.local.yml` and the `src/` bind mount is present
 - check app logs with:
 
 ```bash
