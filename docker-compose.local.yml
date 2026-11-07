@@ -1,4 +1,17 @@
 services:
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    profiles: ['stripe']
+    restart: unless-stopped
+    environment:
+      STRIPE_API_KEY: ${STRIPE_PAYMENT_DEV_SECRET_KEY:-}
+    command: ['listen', '--events', 'checkout.session.completed,checkout.session.async_payment_succeeded', '--forward-to', 'http://efirestore-backend.test/api/stripe/webhook']
+    extra_hosts:
+      - 'efirestore-backend.test:host-gateway'
+    depends_on:
+      app:
+        condition: service_started
+
   app:
     build:
       target: local
