@@ -1,3 +1,4 @@
+import { getStripeShippingOptions } from './stripe.util';
 import {
   BadRequestException,
   Injectable,
@@ -130,9 +131,10 @@ export class StripeService extends BaseStripeService {
     easyparcelShipment?: SubmitOrderShipmentDto[],
   ) {
     try {
-      const session = await this.stripe.checkout.sessions.create(
-        createStripeDtoResult,
-      );
+      const session = await this.stripe.checkout.sessions.create({
+        ...createStripeDtoResult,
+        shipping_options: getStripeShippingOptions(),
+      });
 
       const prepareOrderFields = await this.prepareOrderFields(
         session,
@@ -414,7 +416,6 @@ export class StripeService extends BaseStripeService {
       user_id: checkUserByEmail?.id ?? null,
       tracking_number: '',
       checkout_stripe_id: id,
-      easyparcel_shipment: easyparcelShipment ?? null,
     };
   }
 
