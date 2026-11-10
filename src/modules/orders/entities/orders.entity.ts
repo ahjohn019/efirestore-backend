@@ -69,9 +69,6 @@ export class Orders extends BaseEntity {
   @OneToMany(() => Shipments, (shipment) => shipment.order)
   shipments: Shipments[];
 
-  @Column({ type: 'json', nullable: true })
-  easyparcel_shipment: SubmitOrderShipmentDto[] | null;
-
   @Column()
   checkout_stripe_id: string;
 }
