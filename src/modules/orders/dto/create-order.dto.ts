@@ -78,6 +78,7 @@ export class CreateOrderDto {
 
   admin_id: number;
   user_id: number;
+  easyparcel_service_id?: string | null;
 }
 
 export interface orderItemTotalPrice {

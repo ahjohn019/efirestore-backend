@@ -183,10 +183,6 @@ export class SubmitOrderShipmentDto {
   @ValidateNested()
   @Type(() => SubmitOrderAddressDto)
   receiver: SubmitOrderAddressDto;
-
-  @ValidateNested()
-  @Type(() => SubmitOrderFeatureDto)
-  feature: SubmitOrderFeatureDto;
 }
 
 export class SubmitOrderDto {
@@ -226,12 +222,22 @@ export interface EasyParcelQuotationResponse {
 }
 
 export interface EasyParcelSubmitOrderResponse {
+  message?: string;
+  errors?: unknown;
   data?: Array<{
+    message?: string;
+    errors?: unknown;
     shipments?: Array<{
       status?: string;
-      errors?: Array<Array<{ message?: string }>>;
+      message?: string;
+      errors?: unknown;
     }>;
   }>;
+}
+
+export interface EasyParcelSyncResult {
+  message: string;
+  response: unknown;
 }
 
 export interface EasyParcelTrackingRequest {

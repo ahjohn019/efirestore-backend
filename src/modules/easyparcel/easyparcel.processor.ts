@@ -14,10 +14,10 @@ import {
 } from './easyparcel-queue.constants';
 import { EasyparcelService } from './easyparcel.service';
 import { OrdersService } from '../orders/orders.service';
-
-interface PaidOrderJobData {
-  orderId: number;
-}
+import type {
+  EasyParcelSyncResult,
+  SubmitOrderDto,
+} from './dto/submit-order.dto';
 
 @Processor(EASY_PARCEL_QUEUE)
 export class EasyparcelProcessor extends WorkerHost {
@@ -30,25 +30,32 @@ export class EasyparcelProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<BaseServiceDto<boolean>> {
+  async process(
+    job: Job,
+  ): Promise<BaseServiceDto<boolean | EasyParcelSyncResult>> {
     switch (job.name) {
       case EASY_PARCEL_SAMPLE_JOB:
         return createSuccessResponse(true);
       case EASY_PARCEL_PAID_ORDER_JOB:
-        return this.processPaidOrder(job as Job<PaidOrderJobData>);
+        return this.processPaidOrder(job as Job<SubmitOrderDto>);
       default:
         throw new Error(`Unknown EasyParcel job: ${job.name}`);
     }
   }
 
   private async processPaidOrder(
-    job: Job<PaidOrderJobData>,
-  ): Promise<BaseServiceDto<boolean>> {
-    const orderResponse = await this.ordersService.findOne(job.data.orderId);
+    job: Job<SubmitOrderDto>,
+  ): Promise<BaseServiceDto<EasyParcelSyncResult>> {
+    const easyParcelOrder = job.data;
+    const orderResponse = await this.ordersService.findOne(
+      easyParcelOrder.order_id,
+    );
     const order = orderResponse?.data;
 
     if (!order) {
-      throw new NotFoundException(`Order ID ${job.data.orderId} not found.`);
+      throw new NotFoundException(
+        `Order ID ${easyParcelOrder.order_id} not found.`,
+      );
     }
 
     if (order.status !== 'paid') {
@@ -57,18 +64,30 @@ export class EasyparcelProcessor extends WorkerHost {
       );
     }
 
-    if (!order.easyparcel_shipment?.length) {
+    const shipment = easyParcelOrder.shipment;
+    if (!shipment?.length) {
       throw new UnprocessableEntityException(
-        `Order ID ${order.id} does not contain EasyParcel shipment details.`,
+        `Job for order ID ${order.id} does not contain EasyParcel shipment details.`,
       );
     }
 
-    await this.easyparcelService.submitOrder({
-      order_id: order.id,
-      shipment: order.easyparcel_shipment,
+    const response = await this.easyparcelService.submitOrder(easyParcelOrder);
+
+    if (!response?.status) {
+      throw new UnprocessableEntityException(
+        'EasyParcel did not confirm shipment submission.',
+      );
+    }
+    await this.ordersService.update(order.id, {
+      status: 'completed',
+      sync_easyparcel: 1,
     });
 
-    return createSuccessResponse(true);
+    return createSuccessResponse({
+      message:
+        response.data?.message || 'Order synced to EasyParcel successfully.',
+      response: response.data,
+    });
   }
 
   @OnWorkerEvent('active')

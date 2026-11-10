@@ -71,6 +71,12 @@ export class Orders extends BaseEntity {
 
   @Column()
   checkout_stripe_id: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  easyparcel_service_id: string | null;
+
+  @Column({ type: 'tinyint', width: 1, default: 0 })
+  sync_easyparcel: number;
 }
 
 @Entity()

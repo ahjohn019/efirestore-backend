@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { OrdersController } from './orders.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -10,9 +10,11 @@ import { OrderRefundService } from './refund/refund.service';
 import { OrderRefunds } from './entities/order-refunds.entity';
 import { OrderRefundItems } from './entities/order-refund-items.entity';
 import { Shipments } from './entities/shipments.entity';
+import { EasyparcelModule } from '../easyparcel/easyparcel.module';
 
 @Module({
   imports: [
+    forwardRef(() => EasyparcelModule),
     TypeOrmModule.forFeature([
       Orders,
       Users,

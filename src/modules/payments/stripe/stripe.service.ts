@@ -19,7 +19,6 @@ import { UserAddress } from 'src/modules/users/entities/user-address.entity';
 import { AddressType } from 'src/enum/address-type.enum';
 import { Request as ExpressRequest } from 'express';
 import { Session } from 'node:inspector';
-import { EasyparcelQueueService } from '../../easyparcel/easyparcel-queue.service';
 import { SubmitOrderShipmentDto } from '../../easyparcel/dto/submit-order.dto';
 
 @Injectable()
@@ -28,8 +27,6 @@ export class StripeService extends BaseStripeService {
     protected configService: ConfigService,
 
     private readonly ordersService: OrdersService,
-
-    private readonly easyparcelQueueService: EasyparcelQueueService,
 
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
@@ -177,13 +174,11 @@ export class StripeService extends BaseStripeService {
       // update the order based on stripe checkout id
       const result = await this.ordersService.update(findStripeOrder.data.id, {
         status: findStripeCheckout.data.payment_status,
+        easyparcel_service_id:
+          (await this.getEasyparcelServiceId(findStripeCheckout.data)) ??
+          findStripeOrder.data.easyparcel_service_id ??
+          null,
       });
-
-      if (findStripeCheckout.data.payment_status === 'paid') {
-        await this.easyparcelQueueService.enqueuePaidOrder(
-          findStripeOrder.data.id,
-        );
-      }
 
       return this.createSuccessResponse(result);
     } catch (error) {
@@ -416,7 +411,24 @@ export class StripeService extends BaseStripeService {
       user_id: checkUserByEmail?.id ?? null,
       tracking_number: '',
       checkout_stripe_id: id,
+      easyparcel_service_id: await this.getEasyparcelServiceId(checkoutGetData),
     };
+  }
+
+  private async getEasyparcelServiceId(
+    session: Stripe.Checkout.Session,
+  ): Promise<string | null> {
+    const shippingRate = session.shipping_cost?.shipping_rate;
+    if (!shippingRate) {
+      return null;
+    }
+
+    const rate =
+      typeof shippingRate === 'string'
+        ? await this.stripe.shippingRates.retrieve(shippingRate)
+        : shippingRate;
+
+    return rate.metadata?.service_id ?? null;
   }
 
   private async syncCheckoutSession(checkoutId: string) {
@@ -431,26 +443,26 @@ export class StripeService extends BaseStripeService {
     if (findStripeOrder?.data?.id) {
       await this.ordersService.update(findStripeOrder.data.id, {
         status: session.payment_status,
+        easyparcel_service_id:
+          prepareOrderFields.easyparcel_service_id ??
+          findStripeOrder.data.easyparcel_service_id ??
+          null,
       });
 
       const order = {
         ...findStripeOrder.data,
         status: session.payment_status,
+        easyparcel_service_id:
+          prepareOrderFields.easyparcel_service_id ??
+          findStripeOrder.data.easyparcel_service_id ??
+          null,
       };
-
-      if (session.payment_status === 'paid') {
-        await this.easyparcelQueueService.enqueuePaidOrder(order.id);
-      }
 
       return order;
     }
 
     const createOrder = await this.ordersService.create(prepareOrderFields);
     const order = createOrder.data;
-
-    if (session.payment_status === 'paid' && order?.id) {
-      await this.easyparcelQueueService.enqueuePaidOrder(order.id);
-    }
 
     return order;
   }

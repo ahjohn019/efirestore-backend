@@ -26,7 +26,7 @@ import {
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 import { Shipments } from '../orders/entities/shipments.entity';
 import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
-import { easyParcelUtil } from './easyparcel.util';
+import { easyParcelUtil, getEasyparcelErrorMessage } from './easyparcel.util';
 
 @Injectable()
 export class EasyparcelService {
@@ -152,6 +152,7 @@ export class EasyparcelService {
       if (easyParcelError.status === HttpStatus.UNAUTHORIZED) {
         const response = await this.refreshTokenIfNeeded(url, payload);
         await this.handleSubmitOrderResponse(payload, response.data);
+        return { status: true, data: response.data };
       } else {
         throw error;
       }
@@ -246,16 +247,19 @@ export class EasyparcelService {
     payload: SubmitOrderDto,
     responseData: EasyParcelSubmitOrderResponse,
   ) {
-    const fetchShipments = responseData.data?.[0]?.shipments;
+    const result = responseData.data?.[0];
+    const fetchShipments = result?.shipments ?? [];
 
     const failedShipment = fetchShipments.find(
       (shipment) => shipment.status?.toLowerCase() === 'error',
     );
 
-    if (failedShipment) {
+    if (failedShipment || !fetchShipments.length) {
+      const reason =
+        getEasyparcelErrorMessage(failedShipment?.errors) ||
+        'No shipment details or error reason returned by EasyParcel';
       throw new UnprocessableEntityException(
-        failedShipment.errors?.[0]?.[0]?.message ||
-          'EasyParcel shipment submission failed',
+        `EasyParcel shipment submission failed: ${reason}`,
       );
     }
 

@@ -7,6 +7,26 @@ import {
 import { ShipmentQuotationDto } from './dto/shipment-quotation.dto';
 import { EasyParcelQuotationResponse } from './dto/submit-order.dto';
 
+export function getEasyparcelErrorMessage(errors: unknown): string {
+  if (typeof errors === 'string') return errors.trim();
+  if (Array.isArray(errors)) {
+    return errors.map(getEasyparcelErrorMessage).filter(Boolean).join('; ');
+  }
+  if (errors && typeof errors === 'object') {
+    const fields = errors as Record<string, unknown>;
+    if (fields.message) return getEasyparcelErrorMessage(fields.message);
+    return Object.entries(fields)
+      .filter(([key]) => !['code', 'status'].includes(key))
+      .map(([key, value]) => {
+        const message = getEasyparcelErrorMessage(value);
+        return message ? `${key}: ${message}` : '';
+      })
+      .filter(Boolean)
+      .join('; ');
+  }
+  return '';
+}
+
 export function easyParcelUtil(httpService: HttpService) {
   return {
     submitEndpoint: (

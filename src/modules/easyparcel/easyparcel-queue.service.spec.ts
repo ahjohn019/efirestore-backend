@@ -10,11 +10,16 @@ import { EasyparcelQueueService } from './easyparcel-queue.service';
 
 describe('EasyparcelQueueService', () => {
   let service: EasyparcelQueueService;
-  let queue: Pick<Queue, 'add' | 'getJobCounts'>;
+  let queue: Pick<Queue, 'add' | 'getJobCounts' | 'getJob'>;
+
+  const result = { status: 'success', code: 200, data: { message: 'Shipment created', response: { message: 'Shipment created' } } };
+  const waitUntilFinished = jest.fn().mockResolvedValue(result);
+  const queueEvents = { waitUntilReady: jest.fn().mockResolvedValue(undefined), close: jest.fn() };
 
   beforeEach(async () => {
     queue = {
-      add: jest.fn().mockResolvedValue({}),
+      getJob: jest.fn().mockResolvedValue(undefined),
+      add: jest.fn().mockResolvedValue({ waitUntilFinished }),
       getJobCounts: jest.fn().mockResolvedValue({
         waiting: 0,
         active: 1,
@@ -28,6 +33,7 @@ describe('EasyparcelQueueService', () => {
       providers: [
         EasyparcelQueueService,
         { provide: getQueueToken(EASY_PARCEL_QUEUE), useValue: queue },
+        { provide: 'EASY_PARCEL_QUEUE_EVENTS', useValue: queueEvents },
       ],
     }).compile();
 
@@ -40,10 +46,12 @@ describe('EasyparcelQueueService', () => {
   });
 
   it('adds an idempotent paid-order job with retries', async () => {
-    await expect(service.enqueuePaidOrder(42)).resolves.toBeUndefined();
+    const easyParcelOrder = { order_id: 42, shipment: [] };
+    await expect(service.enqueuePaidOrder(easyParcelOrder)).resolves.toEqual(result);
+    expect(waitUntilFinished).toHaveBeenCalledWith(queueEvents, 60000);
     expect(queue.add).toHaveBeenCalledWith(
       EASY_PARCEL_PAID_ORDER_JOB,
-      { orderId: 42 },
+      easyParcelOrder,
       {
         jobId: 'easyparcel-order-42',
         attempts: 5,
@@ -68,4 +76,28 @@ describe('EasyparcelQueueService', () => {
       'delayed',
     );
   });
+
+  it('propagates submission failures instead of returning success', async () => {
+    waitUntilFinished.mockRejectedValueOnce(new Error('Invalid collection date'));
+    await expect(service.enqueuePaidOrder({ order_id: 42, shipment: [] }))
+      .rejects.toThrow('Invalid collection date');
+  });
+
+  it('updates a failed job with the direct payload before retrying', async () => {
+    const easyParcelOrder = { order_id: 42, shipment: [] };
+    const existingJob = {
+      getState: jest.fn().mockResolvedValue('failed'),
+      waitUntilFinished,
+      updateData: jest.fn().mockResolvedValue(undefined),
+      retry: jest.fn().mockResolvedValue(undefined),
+    };
+    (queue.getJob as jest.Mock).mockResolvedValue(existingJob);
+
+    await service.enqueuePaidOrder(easyParcelOrder);
+
+    expect(existingJob.updateData).toHaveBeenCalledWith(easyParcelOrder);
+    expect(existingJob.retry).toHaveBeenCalled();
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
 });

@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { AllOrderDto } from './dto/all-order.dto';
@@ -51,6 +52,13 @@ export class OrdersController {
   @UseGuards(AuthGuard, RolesGuard)
   updateOrder(@Param('id') id: string, @Body() UpdateOrderDto: UpdateOrderDto) {
     return this.ordersService.update(+id, UpdateOrderDto);
+  }
+
+  @Post(':orderId/verify')
+  @Roles(Role.ADMIN)
+  @UseGuards(AuthGuard, RolesGuard)
+  verifyOrder(@Param('orderId', ParseIntPipe) orderId: number) {
+    return this.ordersService.verifyOrder(orderId);
   }
 
   @Delete(':id')

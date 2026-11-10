@@ -33,6 +33,21 @@ export class Products extends BaseEntity {
   @Column('decimal', { precision: 10, scale: 2 })
   price: number;
 
+  @Column({ type: 'int', default: 0 })
+  width: number;
+
+  @Column({ type: 'int', default: 0 })
+  height: number;
+
+  @Column({ type: 'int', default: 0 })
+  length: number;
+
+  @Column({ type: 'int', default: 0 })
+  weight: number;
+
+  @Column({ type: 'int', nullable: true })
+  category_id: number | null;
+
   @Column({ type: 'datetime' })
   created_at: Date;
 

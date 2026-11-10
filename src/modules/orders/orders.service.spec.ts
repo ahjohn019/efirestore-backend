@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrdersService } from './orders.service';
+import { EasyparcelService } from '../easyparcel/easyparcel.service';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Orders, OrderItems } from './entities/orders.entity';
@@ -31,6 +32,10 @@ describe('OrdersService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
+        {
+          provide: EasyparcelService,
+          useValue: { submitOrder: jest.fn() },
+        },
         {
           provide: getRepositoryToken(Orders),
           useClass: Repository,

@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Repository, In } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { AllOrderDto } from './dto/all-order.dto';
@@ -8,6 +9,8 @@ import { Orders } from './entities/orders.entity';
 import { Helper } from '../../utils/helper';
 import { Users } from '../users/entities/users.entity';
 import { BaseService } from '../base/base.service';
+import { EasyparcelService } from '../easyparcel/easyparcel.service';
+import { buildEasyParcelOrder } from './order.util';
 
 @Injectable()
 export class OrdersService extends BaseService {
@@ -17,6 +20,8 @@ export class OrdersService extends BaseService {
 
     @InjectRepository(Users)
     private usersRepository: Repository<Users>,
+    private readonly easyparcelService: EasyparcelService,
+    private readonly configService: ConfigService,
   ) {
     super();
   }
@@ -117,6 +122,53 @@ export class OrdersService extends BaseService {
     } catch (error) {
       throw error;
     }
+  }
+
+  async verifyOrder(orderId: number) {
+    const findOrder = await this.orderRepository.findOne({
+      where: { id: orderId },
+      relations: ['items', 'user', 'user.user_addresses', 'user.user_details'],
+    });
+
+    if (!findOrder) {
+      throw new NotFoundException('Order Not Found.');
+    }
+
+    if (findOrder.status !== 'paid') {
+      throw new UnprocessableEntityException('Order must be paid before syncing to EasyParcel.');
+    }
+
+    const shippingAddress = findOrder.user.user_addresses.find(
+      (address) => address.address_type === 'shipping' && address.status,
+    );
+
+    if (!shippingAddress) {
+      throw new NotFoundException('Active shipping address not found.');
+    }
+
+    const easyParcelOrder = buildEasyParcelOrder(
+      findOrder,
+      shippingAddress,
+      this.configService,
+    );
+
+    const response = await this.easyparcelService.submitOrder(easyParcelOrder);
+    if (!response?.status) {
+      throw new UnprocessableEntityException('EasyParcel synchronization failed.');
+    }
+
+    const update = await this.orderRepository.update(findOrder.id, {
+      status: 'completed',
+      sync_easyparcel: 1,
+    });
+    if (update.affected === 0) {
+      throw new NotFoundException('Order Not Found.');
+    }
+
+    return this.createSuccessResponse({
+      message: response.data?.message || 'Order synced to EasyParcel successfully.',
+      response: response.data,
+    });
   }
 
   async findStripeCheckout(stripeCheckoutId: string) {

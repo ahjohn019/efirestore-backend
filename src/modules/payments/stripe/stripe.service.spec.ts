@@ -151,6 +151,7 @@ describe('StripeService', () => {
         code: 200,
         data: { id: 1 },
       }),
+      verifyOrder: jest.fn().mockResolvedValue(undefined),
       findStripeCheckout: jest.fn().mockResolvedValue({
         status: 'success',
         code: 200,
@@ -370,6 +371,45 @@ describe('StripeService', () => {
       rawBody: Buffer.from('test_body'),
     } as any;
 
+    it('should save the selected shipping service when creating a paid order', async () => {
+      mockStripe.checkout.sessions.retrieve.mockResolvedValue({
+        ...mockCheckoutSession,
+        shipping_cost: { shipping_rate: 'shr_selected' },
+      });
+      mockStripe.shippingRates = {
+        retrieve: jest.fn().mockResolvedValue({
+          metadata: { service_id: 'EP-CS098' },
+        }),
+      };
+
+      await service.postWebhook(mockRequest);
+
+      expect(mockStripe.shippingRates.retrieve).toHaveBeenCalledWith('shr_selected');
+      expect(mockOrdersService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ easyparcel_service_id: 'EP-CS098' }),
+      );
+    });
+
+    it('should save the selected shipping service on an existing order', async () => {
+      (mockOrdersService.findStripeCheckout as jest.Mock).mockResolvedValue({
+        data: { id: 1, easyparcel_service_id: null },
+      });
+      mockStripe.checkout.sessions.retrieve.mockResolvedValue({
+        ...mockCheckoutSession,
+        shipping_cost: {
+          shipping_rate: { metadata: { service_id: 'EP-CS09R' } },
+        },
+      });
+
+      await service.postWebhook(mockRequest);
+
+      expect(mockOrdersService.update).toHaveBeenCalledWith(1, {
+        status: 'paid',
+        easyparcel_service_id: 'EP-CS09R',
+      });
+      expect(mockOrdersService.verifyOrder).not.toHaveBeenCalled();
+    });
+
     it('should successfully process checkout.session.completed event', async () => {
       const result = await service.postWebhook(mockRequest);
 
@@ -381,9 +421,7 @@ describe('StripeService', () => {
         'test_endpoint_secret',
       );
       expect(mockOrdersService.create).toHaveBeenCalled();
-      expect(mockEasyparcelQueueService.enqueuePaidOrder).toHaveBeenCalledWith(
-        1,
-      );
+      expect(mockOrdersService.verifyOrder).not.toHaveBeenCalled();
     });
 
     it('should handle unknown event types', async () => {
