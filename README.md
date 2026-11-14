@@ -70,129 +70,21 @@ This starts:
 
 - `app`: NestJS backend
 - `mysql`: MySQL 8 database
-- `redis`: Redis for BullMQ background jobs
+- `redis`: Redis service included in Compose; not required for EasyParcel synchronization
 
-## Run And Test The EasyParcel Job Queue
+## Verify and sync an EasyParcel order
 
-The NestJS app runs both the API and the BullMQ worker. Redis holds the jobs; no separate worker command is needed.
+EasyParcel synchronization runs directly through the admin endpoint
+`POST /api/orders/:orderId/verify`. There is no EasyParcel job queue or worker.
+The endpoint requires a paid order and an active shipping address. After a
+successful EasyParcel submission, it sets `status` to `completed` and
+`sync_easyparcel` to `1`. Failed submissions leave the order unchanged.
 
-### 1. Prepare the environment
-
-Start Docker Desktop and wait until the Docker engine is ready. Create `.env` from `.env.example` if you have not already done so, then fill in the database settings and provider keys described above. Add:
-
-```env
-REDIS_HOST=redis
-REDIS_PORT=6379
-EASY_PARCEL_ENDPOINT=https://api.easyparcel.com/
-EASY_PARCEL_ENVIRONMENT=demo
-```
-
-Compose uses `redis` as the Redis hostname. If running NestJS directly on Windows, use `REDIS_HOST=127.0.0.1` instead. Keep passwords containing `$` single-quoted in `.env` so Docker Compose does not interpret them as variable references.
-
-### 2. Build and start the stack
-
-Run from the project root:
+See [EasyParcel testing details](EASYPARCEL_TESTING.md) for setup and verification.
 
 ```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+npm test -- --runInBand modules/orders/orders-sync.service.spec.ts modules/payments/stripe/stripe.service.spec.ts
 ```
-
-Use `--build` to include the current source code and dependencies in the image, including the latest response helper changes.
-
-For a new database, apply migrations before testing:
-
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml exec app npm run migration:run
-```
-
-Check that `app` is running and both `mysql` and `redis` are healthy:
-
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml ps
-docker compose -f docker-compose.yml -f docker-compose.local.yml exec redis redis-cli ping
-```
-
-Redis should return `PONG`. If the API is not ready, inspect startup logs:
-
-```powershell
-docker compose -f docker-compose.yml -f docker-compose.local.yml logs --tail 100 app
-```
-
-### 3. Record the queue counts
-
-These commands use the Windows `curl.exe` executable:
-
-```powershell
-curl.exe --max-time 10 -sS http://localhost/api/easyparcel/jobs/status
-```
-
-Example response:
-
-```json
-{"status":true,"data":{"waiting":0,"active":0,"completed":2,"failed":0,"delayed":0}}
-```
-
-Record the `completed` count. Existing counts may differ.
-
-### 4. Submit a sample job
-
-```powershell
-curl.exe --max-time 10 -sS -X POST -w '\nHTTP %{http_code}\n' http://localhost/api/easyparcel/jobs/sample
-```
-
-Expected response with the latest source:
-
-```json
-{"status":"success","code":200,"data":true}
-```
-
-The HTTP status is `201`; the response body's `code: 200` comes from `createSuccessResponse`. A response of `{"status":true}` indicates an older build; rebuild the app with Step 2.
-
-The sample job tests the queue without calling EasyParcel or creating a shipment.
-
-### 5. Confirm the worker completed the job
-
-Run the status request again after a few seconds:
-
-```powershell
-curl.exe --max-time 10 -sS http://localhost/api/easyparcel/jobs/status
-docker compose -f docker-compose.yml -f docker-compose.local.yml logs --since 5m app | Select-String 'EasyparcelProcessor'
-```
-
-The `completed` count should increase by one, and logs should contain matching job IDs:
-
-```text
-Job 3 (sample) started
-Job 3 (sample) completed
-```
-
-For an otherwise idle queue, `waiting`, `active`, `failed`, and `delayed` should be `0` after completion. If the job remains waiting, check that the app worker is running and uses the same Redis connection. If it fails or is delayed, inspect the worker error logs.
-
-Live verification on 5 November 2026: the sample endpoint returned HTTP 201, completed jobs increased from 2 to 3, and worker logs confirmed Job 3 started and completed. This verified API → Redis → worker processing. The running image at that time returned the older `{"status":true}` response.
-
-### 6. Test a paid order separately
-
-Use EasyParcel demo credentials and Stripe test mode. Configure a matching `easy_parcel_auth` record for `EASY_PARCEL_ENVIRONMENT=demo`, then:
-
-1. Create a checkout through `POST /api/stripe/checkout` with a valid, non-empty `easyparcel_shipment` array. Use Swagger at `http://localhost/api` for the request schema.
-2. Complete the Stripe test payment and ensure its signed webhook reaches `POST /api/stripe/webhook`. Stripe needs a reachable webhook URL or local forwarding.
-3. Check logs for a `paid-order` job starting and completing.
-4. Confirm the order has status `paid`, retains its shipment payload, and has one corresponding row in `shipments`.
-
-Paid-order jobs use the ID `easyparcel-order-<orderId>`, with five attempts and exponential backoff starting at five seconds. The worker rejects missing orders, unpaid orders, and empty shipment payloads.
-
-The sample test does not verify Stripe webhook delivery, EasyParcel credentials, or actual shipment creation. See [EasyParcel testing details](EASYPARCEL_TESTING.md) for credential fields and database queries.
-
-### 7. Run automated workflow tests
-
-With Node.js and npm installed:
-
-```powershell
-npm ci
-npm test -- --runInBand modules/easyparcel/easyparcel-queue.service.spec.ts modules/easyparcel/easyparcel.processor.spec.ts modules/easyparcel/easyparcel.controller.spec.ts modules/payments/stripe/stripe.service.spec.ts
-```
-
-Last verified: 4 suites and 28 tests passed. These tests use mocks and do not require Redis or call Stripe or EasyParcel. The broader `easyparcel.service.spec.ts` suite has four known failures involving shipment response fixtures and tracking-log handling; it is separate from this passing queue workflow command.
 
 ## Local Docker Desktop Hot Reload
 

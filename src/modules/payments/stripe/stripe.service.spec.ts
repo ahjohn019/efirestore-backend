@@ -11,7 +11,6 @@ import { PaymentMode } from '../../../enum/stripe-payment-mode.enum';
 import { CreateStripeDto } from './dto/create-stripe.dto';
 import { CheckoutIdStripeDto } from './dto/checkout-stripe.dto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { EasyparcelQueueService } from '../../easyparcel/easyparcel-queue.service';
 
 describe('StripeService', () => {
   let service: StripeService;
@@ -19,7 +18,6 @@ describe('StripeService', () => {
   let mockUsersRepository: Partial<Repository<Users>>;
   let mockUserAddressRepository: Partial<Repository<UserAddress>>;
   let mockOrdersService: Partial<OrdersService>;
-  let mockEasyparcelQueueService: { enqueuePaidOrder: jest.Mock };
 
   const mockUser = {
     id: 1,
@@ -164,10 +162,6 @@ describe('StripeService', () => {
       }),
     };
 
-    mockEasyparcelQueueService = {
-      enqueuePaidOrder: jest.fn().mockResolvedValue(undefined),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StripeService,
@@ -189,10 +183,6 @@ describe('StripeService', () => {
         {
           provide: OrdersService,
           useValue: mockOrdersService,
-        },
-        {
-          provide: EasyparcelQueueService,
-          useValue: mockEasyparcelQueueService,
         },
         {
           provide: getRepositoryToken(Users),

@@ -46,7 +46,7 @@ describe('OrdersService EasyParcel synchronization', () => {
     expect(repository.update).not.toHaveBeenCalled();
   });
 
-  it('does not update the order when the worker returns an unsuccessful result', async () => {
+  it('does not update the order when EasyParcel returns an unsuccessful result', async () => {
     easyparcel.submitOrder.mockResolvedValue({ status: false });
     await expect(service.verifyOrder(42)).rejects.toThrow('EasyParcel synchronization failed');
     expect(repository.update).not.toHaveBeenCalled();

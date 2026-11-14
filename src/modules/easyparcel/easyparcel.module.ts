@@ -7,15 +7,10 @@ import { EasyparcelService } from './easyparcel.service';
 import { EasyParcelAuth } from './entities/easy-parcel-auth.entity';
 import { Shipments } from '../orders/entities/shipments.entity';
 import { ShipmentTrackLogs } from '../orders/entities/shipment-track-logs.entity';
-import { BullModule, getQueueToken } from '@nestjs/bullmq';
-import { Queue, QueueEvents } from 'bullmq';
-import { EasyparcelQueueService } from './easyparcel-queue.service';
-import { EASY_PARCEL_QUEUE } from './easyparcel-queue.constants';
 import { OrdersModule } from '../orders/orders.module';
 
 @Module({
   imports: [
-    BullModule.registerQueue({ name: EASY_PARCEL_QUEUE }),
     forwardRef(() => OrdersModule),
     TypeOrmModule.forFeature([EasyParcelAuth, Shipments, ShipmentTrackLogs]),
     HttpModule.registerAsync({
@@ -28,14 +23,7 @@ import { OrdersModule } from '../orders/orders.module';
     }),
   ],
   controllers: [EasyparcelController],
-  providers: [EasyparcelService, EasyparcelQueueService, {
-    provide: 'EASY_PARCEL_QUEUE_EVENTS',
-    inject: [getQueueToken(EASY_PARCEL_QUEUE)],
-    useFactory: (queue: Queue) => new QueueEvents(EASY_PARCEL_QUEUE, {
-      connection: queue.opts.connection,
-      prefix: queue.opts.prefix,
-    }),
-  }],
-  exports: [EasyparcelService, EasyparcelQueueService],
+  providers: [EasyparcelService],
+  exports: [EasyparcelService],
 })
 export class EasyparcelModule {}
